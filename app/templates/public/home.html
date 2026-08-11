@@ -3783,8 +3783,13 @@ if (homeRegisterForm) {
 // Auto-dismiss flash messages after 3 seconds
 (function() {
   function autoDismissFlashMessages() {
-    const flashMessages = document.querySelectorAll('.alert--success, .alert--danger, .alert--warning, .alert--info');
+    // Look for flash messages in ALL modals and main page
+    const flashMessages = document.querySelectorAll('.alert--success, .alert--danger, .alert--warning, .alert--info, .alert');
     flashMessages.forEach(function(message) {
+      // Skip if already processed
+      if (message.dataset.autoDismissed) return;
+      message.dataset.autoDismissed = 'true';
+      
       setTimeout(function() {
         message.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
         message.style.opacity = '0';
@@ -3803,10 +3808,47 @@ if (homeRegisterForm) {
     autoDismissFlashMessages();
   }
   
-  // Also run when modals are shown (in case flash messages are inside modals)
-  const modals = document.querySelectorAll('.modal');
-  modals.forEach(function(modal) {
-    modal.addEventListener('shown.bs.modal', autoDismissFlashMessages);
+  // Watch for modals being shown (important for messages inside modals)
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      mutation.addedNodes.forEach(function(node) {
+        if (node.nodeType === 1) { // Element node
+          // Check if modal became visible
+          const modals = node.querySelectorAll ? node.querySelectorAll('[id^="modal"]') : [];
+          modals.forEach(function(modal) {
+            if (!modal.hidden) {
+              autoDismissFlashMessages();
+            }
+          });
+          // Also check if the node itself is a modal
+          if (node.id && node.id.startsWith('modal') && !node.hidden) {
+            autoDismissFlashMessages();
+          }
+        }
+      });
+      // Check for attribute changes (hidden property)
+      if (mutation.type === 'attributes' && mutation.attributeName === 'hidden') {
+        const target = mutation.target;
+        if (target.id && target.id.startsWith('modal') && !target.hidden) {
+          setTimeout(autoDismissFlashMessages, 100);
+        }
+      }
+    });
+  });
+  
+  // Start observing the document for changes
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['hidden']
+  });
+  
+  // Also trigger when clicking login/register buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.js-open-login') || e.target.closest('.js-open-register')) {
+      setTimeout(autoDismissFlashMessages, 200);
+    }
   });
 })();
 </script>
