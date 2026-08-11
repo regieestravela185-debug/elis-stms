@@ -1689,16 +1689,19 @@ def ban_user(user_id: int):
     ))
     db.session.commit()
     
-    # Send email notification to banned user
-    try:
-        from flask_mail import Message
-        from app.extensions import mail
-        
-        msg = Message(
-            subject="Account Suspended - The Elis Center",
-            recipients=[user.email]
-        )
-        msg.body = f"""
+    # Send email notification to banned user (non-blocking)
+    def send_ban_email():
+        try:
+            from flask_mail import Message
+            from app.extensions import mail
+            from flask import current_app
+            
+            with current_app.app_context():
+                msg = Message(
+                    subject="Account Suspended - The Elis Center",
+                    recipients=[user.email]
+                )
+                msg.body = f"""
 Dear {user.full_name},
 
 Your account at The Elis Center Smart Tenant Management System has been suspended.
@@ -1710,7 +1713,7 @@ If you believe this is a mistake or would like to appeal this decision, please c
 Thank you,
 The Elis Center Management
 """
-        msg.html = f"""
+                msg.html = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -1749,9 +1752,15 @@ The Elis Center Management
 </body>
 </html>
 """
-        mail.send(msg)
-    except Exception as e:
-        print(f"Failed to send ban notification email: {e}")
+                mail.send(msg)
+        except Exception as e:
+            print(f"Failed to send ban notification email: {e}")
+    
+    # Send email in background thread (non-blocking)
+    import threading
+    email_thread = threading.Thread(target=send_ban_email)
+    email_thread.daemon = True
+    email_thread.start()
     
     flash(f"{user.full_name} has been banned. They will no longer be able to log in.", "warning")
     return redirect(url_for("admin.users"))
@@ -1775,16 +1784,19 @@ def unban_user(user_id: int):
     ))
     db.session.commit()
     
-    # Send email notification to unbanned user
-    try:
-        from flask_mail import Message
-        from app.extensions import mail
-        
-        msg = Message(
-            subject="Account Reactivated - The Elis Center",
-            recipients=[user.email]
-        )
-        msg.body = f"""
+    # Send email notification to unbanned user (non-blocking)
+    def send_unban_email():
+        try:
+            from flask_mail import Message
+            from app.extensions import mail
+            from flask import current_app
+            
+            with current_app.app_context():
+                msg = Message(
+                    subject="Account Reactivated - The Elis Center",
+                    recipients=[user.email]
+                )
+                msg.body = f"""
 Dear {user.full_name},
 
 Good news! Your account at The Elis Center Smart Tenant Management System has been reactivated.
@@ -1796,7 +1808,7 @@ If you have any questions, please contact the administrator.
 Thank you,
 The Elis Center Management
 """
-        msg.html = f"""
+                msg.html = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -1835,9 +1847,15 @@ The Elis Center Management
 </body>
 </html>
 """
-        mail.send(msg)
-    except Exception as e:
-        print(f"Failed to send unban notification email: {e}")
+                mail.send(msg)
+        except Exception as e:
+            print(f"Failed to send unban notification email: {e}")
+    
+    # Send email in background thread (non-blocking)
+    import threading
+    email_thread = threading.Thread(target=send_unban_email)
+    email_thread.daemon = True
+    email_thread.start()
     
     flash(f"{user.full_name} has been unbanned and can now log in again.", "success")
     return redirect(url_for("admin.users"))
