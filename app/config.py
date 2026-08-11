@@ -46,6 +46,7 @@ class Config:
     
     # Brevo HTTP API (for sending emails on platforms that block SMTP)
     BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+    BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "no-reply@example.com")
     
     # Google OAuth (Phase 2)
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

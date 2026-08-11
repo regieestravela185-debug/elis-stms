@@ -20,6 +20,9 @@ def send_email_async(subject, recipient_email, recipient_name, html_content, tex
                     print("ERROR: BREVO_API_KEY not configured")
                     return
                 
+                # Get sender email from config (use Brevo login email)
+                sender_email = app.config.get('BREVO_SENDER_EMAIL', 'no-reply@example.com')
+                
                 # Brevo API endpoint
                 url = "https://api.brevo.com/v3/smtp/email"
                 
@@ -27,7 +30,7 @@ def send_email_async(subject, recipient_email, recipient_name, html_content, tex
                 payload = {
                     "sender": {
                         "name": "The Elis Center",
-                        "email": "no-reply@elis-stms.onrender.com"
+                        "email": sender_email
                     },
                     "to": [
                         {
