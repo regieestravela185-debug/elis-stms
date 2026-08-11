@@ -621,6 +621,11 @@ def google_callback():
         user = db.session.query(User).filter_by(google_id=google_id).first()
         
         if user:
+            # CHECK IF USER IS BANNED
+            if user.is_banned:
+                flash("Your account has been suspended. Please contact the administrator.", "danger")
+                return redirect(url_for("public.home"))
+            
             # Existing Google user - just login
             user.last_login_at = datetime.utcnow()
             user.profile_picture = profile_picture  # Update profile picture
@@ -636,6 +641,11 @@ def google_callback():
         existing_user = db.session.query(User).filter_by(email=email).first()
         
         if existing_user:
+            # CHECK IF USER IS BANNED
+            if existing_user.is_banned:
+                flash("Your account has been suspended. Please contact the administrator.", "danger")
+                return redirect(url_for("public.home"))
+            
             # Link Google account to existing email account
             existing_user.google_id = google_id
             existing_user.oauth_provider = 'google'
