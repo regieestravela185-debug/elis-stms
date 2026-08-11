@@ -1,0 +1,43 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Uploads (will be created at runtime)
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+
+# Database
+database/
+
+# Misc
+*.log
+.windsurf/
+.kiro/

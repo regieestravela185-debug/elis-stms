@@ -44,6 +44,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='tensorflow')
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
 from app import create_app
+from app.extensions import socketio
 
 app = create_app()
 
@@ -62,5 +63,5 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
     
-    # Standard Flask server (Socket.IO disabled for deployment compatibility)
-    app.run(debug=True, port=port, host='0.0.0.0')
+    # Use socketio.run for WebSocket support with real-time notifications
+    socketio.run(app, debug=True, port=port, allow_unsafe_werkzeug=True)
