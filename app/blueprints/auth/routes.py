@@ -21,52 +21,15 @@ def load_user(user_id: str):
 
 
 def _send_otp_email(recipient_email: str, otp_code: str) -> tuple[bool, str | None]:
+    """Send OTP email using Brevo HTTP API (works on Render free tier)"""
     if not recipient_email or not otp_code:
         return False, "Missing recipient or OTP code"
-    if not current_app.config.get("MAIL_USERNAME"):
-        return False, "MAIL_USERNAME is empty"
-    if not current_app.config.get("MAIL_PASSWORD"):
-        return False, "MAIL_PASSWORD is empty"
-
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>OTP Verification</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Email Verification</h2>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">Thank you for registering with STMS. Please use the following One-Time Password (OTP) to verify your email address:</p>
-                <div style="background: linear-gradient(135deg, rgba(215,179,91,.1) 0%, rgba(215,179,91,.05) 100%); border: 2px solid #D7B35B; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-                    <span style="font-size: 32px; font-weight: 700; color: #D7B35B; letter-spacing: 4px;">{otp_code}</span>
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">This OTP will expire in 10 minutes for your security.</p>
-                <p style="margin: 0; color: #666666; line-height: 1.6;">If you did not request this verification, please ignore this email.</p>
-            </div>
-            <div style="background: #f9f9f9; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e5e5;">
-                <p style="margin: 0; color: #999999; font-size: 12px;"> 2024 The Elis Center. All rights reserved.</p>
-                <p style="margin: 8px 0 0 0; color: #999999; font-size: 12px;">Smart Tenant Management System</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject="Verify Your Email - The Elis Center STMS",
-        recipients=[recipient_email],
-        html=html_body,
-    )
+    
     try:
-        mail.send(msg)
+        from app.email_helper import send_otp_email
+        # Extract name from email (before @)
+        recipient_name = recipient_email.split('@')[0].capitalize()
+        send_otp_email(recipient_email, recipient_name, otp_code)
         current_app.logger.info("OTP email sent to %s", recipient_email)
         return True, None
     except Exception as exc:
@@ -375,59 +338,17 @@ def logout():
 
 
 def _send_password_reset_email(recipient_email: str, reset_token: str) -> tuple[bool, str | None]:
-    """Send password reset email with reset link"""
+    """Send password reset email using Brevo HTTP API (works on Render free tier)"""
     if not recipient_email or not reset_token:
         return False, "Missing recipient or reset token"
-    if not current_app.config.get("MAIL_USERNAME"):
-        return False, "MAIL_USERNAME is empty"
-    if not current_app.config.get("MAIL_PASSWORD"):
-        return False, "MAIL_PASSWORD is empty"
 
     reset_url = url_for("auth.reset_password", token=reset_token, _external=True)
-
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Password Reset</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Password Reset Request</h2>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">We received a request to reset your password for your STMS account. Click the button below to create a new password:</p>
-                <div style="text-align: center; margin: 32px 0;">
-                    <a href="{reset_url}" style="display: inline-block; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Reset Password</a>
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6; font-size: 14px;">Or copy and paste this link into your browser:</p>
-                <div style="background: #f9f9f9; border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; word-break: break-all; font-size: 12px; color: #666666; margin-bottom: 24px;">
-                    {reset_url}
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">This link will expire in 1 hour for your security.</p>
-                <p style="margin: 0; color: #666666; line-height: 1.6;">If you did not request a password reset, please ignore this email. Your password will remain unchanged.</p>
-            </div>
-            <div style="background: #f9f9f9; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e5e5;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">© 2024 The Elis Center. All rights reserved.</p>
-                <p style="margin: 8px 0 0 0; color: #999999; font-size: 12px;">Smart Tenant Management System</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject="Password Reset Request - The Elis Center STMS",
-        recipients=[recipient_email],
-        html=html_body,
-    )
+    
     try:
-        mail.send(msg)
+        from app.email_helper import send_password_reset_email
+        # Extract name from email (before @)
+        recipient_name = recipient_email.split('@')[0].capitalize()
+        send_password_reset_email(recipient_email, recipient_name, reset_token, reset_url)
         current_app.logger.info("Password reset email sent to %s", recipient_email)
         return True, None
     except Exception as exc:

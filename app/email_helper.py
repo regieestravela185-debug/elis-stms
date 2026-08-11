@@ -29,7 +29,7 @@ def send_email_async(subject, recipient_email, recipient_name, html_content, tex
                 # Prepare email data
                 payload = {
                     "sender": {
-                        "name": "The Elis Center",
+                        "name": "ELIS Smart Tenant Management",
                         "email": sender_email
                     },
                     "to": [
@@ -71,6 +71,136 @@ def send_email_async(subject, recipient_email, recipient_name, html_content, tex
     )
     thread.daemon = True
     thread.start()
+
+
+def send_otp_email(recipient_email, recipient_name, otp_code):
+    """Send OTP verification email"""
+    subject = "Your OTP Code - ELIS STMS"
+    
+    text_content = f"""
+Dear {recipient_name},
+
+Your OTP code is: {otp_code}
+
+This code will expire in 10 minutes.
+
+If you did not request this code, please ignore this email.
+
+Thank you,
+ELIS Smart Tenant Management System
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #D7B35B; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+        .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .otp-box {{ background-color: #fff; border: 2px dashed #D7B35B; padding: 20px; margin: 20px 0; text-align: center; border-radius: 8px; }}
+        .otp-code {{ font-size: 32px; font-weight: bold; color: #D7B35B; letter-spacing: 5px; }}
+        .footer {{ text-align: center; margin-top: 30px; color: #6c757d; font-size: 12px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0;">🔐 OTP Verification</h1>
+        </div>
+        <div class="content">
+            <p>Dear <strong>{recipient_name}</strong>,</p>
+            
+            <p>Your One-Time Password (OTP) for email verification is:</p>
+            
+            <div class="otp-box">
+                <div class="otp-code">{otp_code}</div>
+            </div>
+            
+            <p><strong>⏰ Valid for 10 minutes</strong></p>
+            
+            <p>If you did not request this code, please ignore this email.</p>
+            
+            <p>Thank you,<br>
+            <strong>ELIS Smart Tenant Management System</strong></p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, recipient_email, recipient_name, html_content, text_content)
+
+
+def send_password_reset_email(recipient_email, recipient_name, reset_token, reset_url):
+    """Send password reset email"""
+    subject = "Password Reset Request - ELIS STMS"
+    
+    text_content = f"""
+Dear {recipient_name},
+
+You requested to reset your password for ELIS Smart Tenant Management System.
+
+Click the link below to reset your password:
+{reset_url}
+
+This link will expire in 1 hour.
+
+If you did not request this, please ignore this email.
+
+Thank you,
+ELIS Smart Tenant Management System
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #D7B35B; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+        .content {{ background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .button {{ display: inline-block; padding: 12px 30px; background-color: #D7B35B; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+        .footer {{ text-align: center; margin-top: 30px; color: #6c757d; font-size: 12px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0;">🔑 Password Reset</h1>
+        </div>
+        <div class="content">
+            <p>Dear <strong>{recipient_name}</strong>,</p>
+            
+            <p>You requested to reset your password for ELIS Smart Tenant Management System.</p>
+            
+            <p style="text-align: center;">
+                <a href="{reset_url}" class="button" style="color: white;">Reset Password</a>
+            </p>
+            
+            <p>Or copy this link: <br><small>{reset_url}</small></p>
+            
+            <p><strong>⏰ This link will expire in 1 hour</strong></p>
+            
+            <p>If you did not request this, please ignore this email.</p>
+            
+            <p>Thank you,<br>
+            <strong>ELIS Smart Tenant Management System</strong></p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, recipient_email, recipient_name, html_content, text_content)
 
 
 def send_ban_notification(user_email, user_name, ban_reason):
@@ -191,3 +321,4 @@ The Elis Center Management
 """
     
     send_email_async(subject, user_email, user_name, html_content, text_content)
+
