@@ -4,7 +4,7 @@ services:
     env: python
     runtime: python-3.12.6
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn -k gevent -w 1 --bind 0.0.0.0:$PORT run:app"
+    startCommand: "gunicorn -w 2 --bind 0.0.0.0:$PORT run:app"
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.6
