@@ -3778,3 +3778,35 @@ if (homeRegisterForm) {
 }
 </script>
 
+
+<script>
+// Auto-dismiss flash messages after 3 seconds
+(function() {
+  function autoDismissFlashMessages() {
+    const flashMessages = document.querySelectorAll('.alert--success, .alert--danger, .alert--warning, .alert--info');
+    flashMessages.forEach(function(message) {
+      setTimeout(function() {
+        message.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        message.style.opacity = '0';
+        message.style.transform = 'translateY(-10px)';
+        setTimeout(function() {
+          message.remove();
+        }, 300);
+      }, 3000);
+    });
+  }
+  
+  // Run on page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoDismissFlashMessages);
+  } else {
+    autoDismissFlashMessages();
+  }
+  
+  // Also run when modals are shown (in case flash messages are inside modals)
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(function(modal) {
+    modal.addEventListener('shown.bs.modal', autoDismissFlashMessages);
+  });
+})();
+</script>
