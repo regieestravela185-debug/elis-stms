@@ -1689,80 +1689,9 @@ def ban_user(user_id: int):
     ))
     db.session.commit()
     
-    # Send email notification to banned user (non-blocking)
-    def send_ban_email(app, user_email, user_fullname, ban_reason):
-        try:
-            from flask_mail import Message
-            from app.extensions import mail
-            
-            with app.app_context():
-                msg = Message(
-                    subject="Account Suspended - The Elis Center",
-                    recipients=[user_email]
-                )
-                msg.body = f"""
-Dear {user_fullname},
-
-Your account at The Elis Center Smart Tenant Management System has been suspended.
-
-Reason: {ban_reason}
-
-If you believe this is a mistake or would like to appeal this decision, please contact the administrator.
-
-Thank you,
-The Elis Center Management
-"""
-                msg.html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background-color: #dc3545; color: white; padding: 20px; text-align: center; }}
-        .content {{ background-color: #f8f9fa; padding: 20px; margin-top: 20px; }}
-        .reason {{ background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; }}
-        .footer {{ text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>⚠️ Account Suspended</h1>
-        </div>
-        <div class="content">
-            <p>Dear <strong>{user_fullname}</strong>,</p>
-            
-            <p>Your account at <strong>The Elis Center Smart Tenant Management System</strong> has been suspended.</p>
-            
-            <div class="reason">
-                <strong>Reason:</strong> {ban_reason}
-            </div>
-            
-            <p>If you believe this is a mistake or would like to appeal this decision, please contact the administrator.</p>
-            
-            <p>Thank you,<br>
-            <strong>The Elis Center Management</strong></p>
-        </div>
-        <div class="footer">
-            <p>This is an automated message. Please do not reply to this email.</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
-                mail.send(msg)
-        except Exception as e:
-            print(f"Failed to send ban notification email: {e}")
-    
-    # Send email in background thread (non-blocking)
-    import threading
-    email_thread = threading.Thread(
-        target=send_ban_email, 
-        args=(current_app._get_current_object(), user.email, user.full_name, user.ban_reason)
-    )
-    email_thread.daemon = True
-    email_thread.start()
+    # Send email notification using HTTP API (works on Render free tier)
+    from app.email_helper import send_ban_notification
+    send_ban_notification(user.email, user.full_name, user.ban_reason)
     
     flash(f"{user.full_name} has been banned. They will no longer be able to log in.", "warning")
     return redirect(url_for("admin.users"))
@@ -1786,80 +1715,9 @@ def unban_user(user_id: int):
     ))
     db.session.commit()
     
-    # Send email notification to unbanned user (non-blocking)
-    def send_unban_email(app, user_email, user_fullname):
-        try:
-            from flask_mail import Message
-            from app.extensions import mail
-            
-            with app.app_context():
-                msg = Message(
-                    subject="Account Reactivated - The Elis Center",
-                    recipients=[user_email]
-                )
-                msg.body = f"""
-Dear {user_fullname},
-
-Good news! Your account at The Elis Center Smart Tenant Management System has been reactivated.
-
-You can now log in and access all features again.
-
-If you have any questions, please contact the administrator.
-
-Thank you,
-The Elis Center Management
-"""
-                msg.html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background-color: #28a745; color: white; padding: 20px; text-align: center; }}
-        .content {{ background-color: #f8f9fa; padding: 20px; margin-top: 20px; }}
-        .message {{ background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0; }}
-        .footer {{ text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>✅ Account Reactivated</h1>
-        </div>
-        <div class="content">
-            <p>Dear <strong>{user_fullname}</strong>,</p>
-            
-            <div class="message">
-                <p><strong>Good news!</strong> Your account at <strong>The Elis Center Smart Tenant Management System</strong> has been reactivated.</p>
-            </div>
-            
-            <p>You can now log in and access all features again.</p>
-            
-            <p>If you have any questions, please contact the administrator.</p>
-            
-            <p>Thank you,<br>
-            <strong>The Elis Center Management</strong></p>
-        </div>
-        <div class="footer">
-            <p>This is an automated message. Please do not reply to this email.</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
-                mail.send(msg)
-        except Exception as e:
-            print(f"Failed to send unban notification email: {e}")
-    
-    # Send email in background thread (non-blocking)
-    import threading
-    email_thread = threading.Thread(
-        target=send_unban_email,
-        args=(current_app._get_current_object(), user.email, user.full_name)
-    )
-    email_thread.daemon = True
-    email_thread.start()
+    # Send email notification using HTTP API (works on Render free tier)
+    from app.email_helper import send_unban_notification
+    send_unban_notification(user.email, user.full_name)
     
     flash(f"{user.full_name} has been unbanned and can now log in again.", "success")
     return redirect(url_for("admin.users"))

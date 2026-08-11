@@ -44,6 +44,9 @@ class Config:
 
     RESERVATION_AUTO_CANCEL_HOURS = int(os.getenv("RESERVATION_AUTO_CANCEL_HOURS", "48"))
     
+    # Brevo HTTP API (for sending emails on platforms that block SMTP)
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+    
     # Google OAuth (Phase 2)
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
