@@ -635,3 +635,21 @@
     });
   }
 })();
+
+// Auto-open login modal if URL has ?show_login=1 (for ban redirects)
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('show_login') === '1') {
+    const loginModal = document.getElementById('modalLogin');
+    if (loginModal) {
+      loginModal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      const firstInput = loginModal.querySelector('input');
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 100);
+      }
+      // Clean URL without reloading page
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+});

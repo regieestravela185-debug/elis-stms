@@ -624,7 +624,7 @@ def google_callback():
             # CHECK IF USER IS BANNED
             if user.is_banned:
                 flash("Your account has been suspended. Please contact the administrator.", "danger")
-                return redirect(url_for("public.home"))
+                return redirect(url_for("public.home") + "?show_login=1")
             
             # Existing Google user - just login
             user.last_login_at = datetime.utcnow()
@@ -644,7 +644,7 @@ def google_callback():
             # CHECK IF USER IS BANNED
             if existing_user.is_banned:
                 flash("Your account has been suspended. Please contact the administrator.", "danger")
-                return redirect(url_for("public.home"))
+                return redirect(url_for("public.home") + "?show_login=1")
             
             # Link Google account to existing email account
             existing_user.google_id = google_id
