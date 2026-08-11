@@ -1,6 +1,10 @@
 # Use Python 3.11.9 (compatible with eventlet/Socket.IO)
 FROM python:3.11.9-slim
 
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    EVENTLET_NO_GREENDNS=yes
+
 # Set working directory
 WORKDIR /app
 

@@ -9,6 +9,10 @@ from .extensions import db, login_manager, mail, socketio
 from .jobs import start_scheduler
 from datetime import datetime
 
+# Fix eventlet DNS resolution issues in Docker containers
+import os
+os.environ.setdefault('EVENTLET_NO_GREENDNS', 'yes')
+
 # Initialize OAuth
 oauth = OAuth()
 
