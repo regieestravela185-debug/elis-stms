@@ -19,13 +19,13 @@ Werkzeug==3.0.0
 gunicorn==21.2.0
 Authlib==1.3.0
 
-# AI and Emerging Technologies
+# AI and Emerging Technologies (Lightweight versions)
 # deepface==0.0.92  # Face verification - commented out (optional feature)
 opencv-python-headless==4.9.0.80  # For OCR (ID scanning)
-numpy==1.26.4
+numpy>=1.26.0,<2.0.0  # More flexible numpy version
 nltk==3.8.1  # For NLP chatbot
-# spacy==3.7.5  # Heavy dependency - commented out for now
-scikit-learn==1.4.2
+# spacy==3.7.5  # Heavy dependency - commented out
+# scikit-learn==1.4.2  # Commented out - Python 3.14 compatibility issue
 rapidfuzz==3.8.1
-pandas==2.2.2
+pandas>=2.0.0  # More flexible pandas version
 pytesseract==0.3.10  # For OCR text extraction
