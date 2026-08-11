@@ -1,0 +1,554 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Customers Management | STMS Admin{% endblock %}
+
+{% block head %}
+  <style>
+    /* Enhanced Customers Page Styles */
+    .customers-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    
+    .stat-card {
+      padding: 20px;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: currentColor;
+      opacity: 0.7;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
+    
+    .stat-card__icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    
+    .stat-card__number {
+      font-size: 36px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    
+    .stat-card__label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    .stat-card--total { border-color: rgba(215, 179, 91, 0.4); }
+    .stat-card--total .stat-card__number { color: #D7B35B; }
+    
+    .stat-card--tenants { border-color: rgba(59, 130, 246, 0.4); }
+    .stat-card--tenants .stat-card__number { color: #3b82f6; }
+    
+    .stat-card--users { border-color: rgba(156, 163, 175, 0.4); }
+    .stat-card--users .stat-card__number { color: #6b7280; }
+    
+    /* Filters Section */
+    .filters-section {
+      background: linear-gradient(135deg, rgba(215, 179, 91, 0.06) 0%, rgba(215, 179, 91, 0.02) 100%);
+      border: 2px solid rgba(215, 179, 91, 0.25);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .filter-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    /* Table Enhancements */
+    .customers-table-wrap {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    
+    .table tbody tr {
+      transition: all 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+      background: rgba(215, 179, 91, 0.06);
+      transform: scale(1.005);
+    }
+    
+    /* Action Buttons */
+    .btn--view-details {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    
+    .btn--view-details:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px);
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+    }
+    
+    .empty-state__icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+    
+    .empty-state__title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    
+    .empty-state__text {
+      font-size: 15px;
+    }
+    
+    /* User Avatar */
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #D7B35B, #C9A347);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: white;
+      font-size: 16px;
+      margin-right: 12px;
+      vertical-align: middle;
+    }
+    
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .fade-in-row {
+      animation: fadeInUp 0.4s ease forwards;
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Customers Management</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <!-- Statistics Cards -->
+    <div class="customers-stats">
+      <div class="stat-card stat-card--total">
+        <span class="stat-card__icon">👥</span>
+        <div class="stat-card__number">{{ stats.total }}</div>
+        <div class="stat-card__label">Total Customers</div>
+      </div>
+      <div class="stat-card stat-card--tenants">
+        <span class="stat-card__icon">🏠</span>
+        <div class="stat-card__number">{{ stats.tenants }}</div>
+        <div class="stat-card__label">Active Tenants</div>
+      </div>
+      <div class="stat-card stat-card--users">
+        <span class="stat-card__icon">👤</span>
+        <div class="stat-card__number">{{ stats.total - stats.tenants }}</div>
+        <div class="stat-card__label">Regular Users</div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
+          <a href="{{ url_for('admin.export_users') }}" class="btn btn--primary btn--sm">
+            📊 Export CSV
+          </a>
+        </div>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label class="filter-label">Search</label>
+          <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" />
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Role</label>
+          <select class="input" id="roleSelect">
+            <option value="">All Roles</option>
+            <option value="user">User</option>
+            <option value="tenant">Tenant</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select class="input" id="archivedSelect">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+            <option value="banned">Banned</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Sort By</label>
+          <select class="input" id="sortSelect">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customers Table -->
+    <div class="card">
+      <div class="section__header">
+        <div>
+          <h3>📋 All Customers</h3>
+          <p class="muted" id="results-count">{{ all_users|length }} customer(s) found</p>
+        </div>
+      </div>
+
+      {% if all_users %}
+        <div class="customers-table-wrap mt-16">
+          <table class="table" id="customersTable">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Joined Date</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in all_users %}
+                <tr class="fade-in-row"
+                    data-role="{{ u.role.value }}"
+                    data-joined="{{ u.created_at.timestamp() }}"
+                    data-name="{{ u.full_name.lower() }}"
+                    data-email="{{ u.email.lower() }}"
+                    data-archived="{{ 'true' if u.is_archived else 'false' }}"
+                    data-banned="{{ 'true' if u.is_banned else 'false' }}">
+                  <td>
+                    <div style="display: flex; align-items: center;">
+                      <span class="user-avatar">{{ u.full_name[0]|upper }}</span>
+                      <div>
+                        <strong style="font-size: 15px;">{{ u.full_name }}</strong>
+                        <div class="muted" style="font-size: 12px; margin-top: 2px;">ID: #{{ u.id }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span style="font-size: 14px;">{{ u.email }}</span>
+                  </td>
+                  <td>
+                    {% if u.role.value == 'tenant' %}
+                      <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
+                        🏠 Tenant
+                      </span>
+                    {% else %}
+                      <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3);">
+                        👤 User
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td class="muted" style="font-size: 13px;">
+                    {{ u.created_at.strftime("%b %d, %Y") }}
+                  </td>
+                  <td class="muted" style="font-size: 13px;">
+                    {% if u.last_login_at %}
+                      {{ u.last_login_at.strftime("%b %d, %Y") }}
+                      <div style="font-size: 11px; margin-top: 2px;">{{ u.last_login_at.strftime("%I:%M %p") }}</div>
+                    {% else %}
+                      <span style="color: #9ca3af;">Never</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                      {% if u.is_banned %}
+                        <span class="badge badge--rejected" style="font-size: 10px;">🚫 Banned</span>
+                        <form method="post" action="{{ url_for('admin.unban_user', user_id=u.id) }}" style="display: inline;">
+                          <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;" onclick="return confirm('Unban {{ u.full_name }}?')">Unban</button>
+                        </form>
+                      {% elif u.is_archived %}
+                        <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; font-size: 10px;">📦 Archived</span>
+                        <form method="post" action="{{ url_for('admin.unarchive_user', user_id=u.id) }}" style="display: inline;">
+                          <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;" onclick="return confirm('Restore {{ u.full_name }} from archive?')">Restore</button>
+                        </form>
+                      {% else %}
+                        <button type="button" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #ef4444;" data-user-id="{{ u.id }}" data-user-name="{{ u.full_name }}" onclick="openBanModal(this.dataset.userId, this.dataset.userName)">🚫 Ban</button>
+                        <form method="post" action="{{ url_for('admin.archive_user', user_id=u.id) }}" style="display: inline;">
+                          <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #6b7280;" onclick="return confirm('Archive {{ u.full_name }}? This will hide them from active lists and free their unit if they are a tenant.')">📦 Archive</button>
+                        </form>
+                      {% endif %}
+                      <a href="{{ url_for('admin.user_details', user_id=u.id) }}" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;">👁️ View</a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state__icon">👥</div>
+          <div class="empty-state__title">No Customers Found</div>
+          <div class="empty-state__text">Try adjusting your filters or search criteria.</div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const roleSelect = document.getElementById('roleSelect');
+    const archivedSelect = document.getElementById('archivedSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    const customersTable = document.getElementById('customersTable');
+    const resultsCount = document.getElementById('results-count');
+    
+    // Statistics elements
+    const statTotal = document.querySelector('.stat-card--total .stat-card__number');
+    const statTenants = document.querySelector('.stat-card--tenants .stat-card__number');
+    const statUsers = document.querySelector('.stat-card--users .stat-card__number');
+    
+    if (!customersTable) return;
+    
+    const allRows = Array.from(customersTable.querySelectorAll('tbody tr'));
+    
+    function updateStatistics(visibleRows) {
+      const total = visibleRows.length;
+      let tenants = 0;
+      
+      visibleRows.forEach(row => {
+        const role = row.getAttribute('data-role');
+        if (role === 'tenant') tenants++;
+      });
+      
+      const users = total - tenants;
+      
+      statTotal.textContent = total;
+      statTenants.textContent = tenants;
+      statUsers.textContent = users;
+    }
+    
+    function sortRows(rows, sortBy) {
+      return rows.sort((a, b) => {
+        if (sortBy === 'newest') {
+          return parseFloat(b.getAttribute('data-joined')) - parseFloat(a.getAttribute('data-joined'));
+        } else if (sortBy === 'oldest') {
+          return parseFloat(a.getAttribute('data-joined')) - parseFloat(b.getAttribute('data-joined'));
+        } else if (sortBy === 'name') {
+          return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+        } else if (sortBy === 'name-desc') {
+          return b.getAttribute('data-name').localeCompare(a.getAttribute('data-name'));
+        }
+        return 0;
+      });
+    }
+    
+    function filterTable() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const roleValue = roleSelect.value.toLowerCase();
+      const statusValue = archivedSelect.value.toLowerCase();
+      const sortBy = sortSelect.value;
+
+      let visibleRows = [];
+
+      allRows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        const email = row.getAttribute('data-email');
+        const role = row.getAttribute('data-role');
+        const isArchived = row.getAttribute('data-archived') === 'true';
+        const isBanned = row.getAttribute('data-banned') === 'true';
+
+        const matchesSearch = !searchTerm ||
+          name.includes(searchTerm) ||
+          email.includes(searchTerm);
+
+        const matchesRole = !roleValue || role === roleValue;
+
+        let matchesStatus = true;
+        if (statusValue === 'active') {
+          matchesStatus = !isArchived && !isBanned;
+        } else if (statusValue === 'archived') {
+          matchesStatus = isArchived;
+        } else if (statusValue === 'banned') {
+          matchesStatus = isBanned;
+        }
+
+        if (matchesSearch && matchesRole && matchesStatus) {
+          visibleRows.push(row);
+        }
+      });
+      
+      // Sort visible rows
+      visibleRows = sortRows(visibleRows, sortBy);
+      
+      // Hide all rows first
+      allRows.forEach(row => row.style.display = 'none');
+      
+      // Show and reorder visible rows
+      const tbody = customersTable.querySelector('tbody');
+      visibleRows.forEach(row => {
+        row.style.display = '';
+        tbody.appendChild(row);
+      });
+      
+      resultsCount.textContent = `${visibleRows.length} customer(s) found`;
+      updateStatistics(visibleRows);
+      
+      let noResultsRow = document.getElementById('noResultsRow');
+      
+      if (visibleRows.length === 0 && allRows.length > 0) {
+        if (!noResultsRow) {
+          noResultsRow = document.createElement('tr');
+          noResultsRow.id = 'noResultsRow';
+          noResultsRow.innerHTML = `
+            <td colspan="6" style="text-align: center; padding: 60px 20px;">
+              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
+              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Customers Found</div>
+              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
+            </td>
+          `;
+          tbody.appendChild(noResultsRow);
+        }
+      } else if (noResultsRow) {
+        noResultsRow.remove();
+      }
+    }
+    
+    clearFiltersBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      roleSelect.value = '';
+      archivedSelect.value = '';
+      sortSelect.value = 'newest';
+      filterTable();
+    });
+
+    searchInput.addEventListener('input', debounce(filterTable, 400));
+    roleSelect.addEventListener('change', filterTable);
+    archivedSelect.addEventListener('change', filterTable);
+    sortSelect.addEventListener('change', filterTable);
+    
+    filterTable();
+  });
+
+  // Ban modal functions
+  function openBanModal(userId, userName) {
+    const modal = document.getElementById('banModal');
+    const form = document.getElementById('banForm');
+    const nameDisplay = document.getElementById('banUserName');
+
+    nameDisplay.textContent = userName;
+    form.action = `/admin/users/${userId}/ban`;
+    modal.style.display = 'flex';
+  }
+
+  function closeBanModal() {
+    const modal = document.getElementById('banModal');
+    modal.style.display = 'none';
+  }
+
+  // Close modal on outside click
+  document.getElementById('banModal').addEventListener('click', function(e) {
+    if (e.target === this) closeBanModal();
+  });
+</script>
+
+<!-- Ban Modal -->
+<div id="banModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 9999;">
+  <div style="background: var(--bg); padding: 24px; border-radius: 12px; max-width: 450px; width: 90%; border: 2px solid var(--border);">
+    <h3 style="margin: 0 0 12px 0; font-size: 18px;">🚫 Ban User</h3>
+    <p class="muted" style="margin: 0 0 20px 0; font-size: 13px;">
+      You are about to ban <strong id="banUserName"></strong>. They will no longer be able to log in to the system.
+    </p>
+    <form method="post" action="" id="banForm">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px;">Reason (optional)</label>
+        <textarea name="reason" class="input" rows="3" placeholder="e.g., Violation of terms, non-payment, etc." style="width: 100%;"></textarea>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn--ghost" onclick="closeBanModal()">Cancel</button>
+        <button type="submit" class="btn btn--primary" style="background: #ef4444; border-color: #ef4444;">Confirm Ban</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

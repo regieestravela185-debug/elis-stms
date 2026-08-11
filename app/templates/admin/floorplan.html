@@ -1,0 +1,482 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Floorplan | Admin | STMS{% endblock %}
+
+{% block head %}
+  <script defer src="{{ url_for('static', filename='js/floorplan.js') }}"></script>
+  <style>
+    /* Enhanced animations for floorplan */
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 80, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(255, 215, 80, 0);
+      }
+    }
+    
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    /* ENHANCED OCCUPIED STATUS - More Visible Blue */
+    .status-occupied {
+      border: 3px solid rgba(59, 130, 246, 0.8) !important;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(59, 130, 246, 0.15) 100%) !important;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    }
+    
+    .status-occupied:hover {
+      border-color: rgba(59, 130, 246, 1) !important;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0.25) 100%) !important;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4) !important;
+    }
+    
+    /* Enhanced Available Status */
+    .status-available {
+      border: 3px solid rgba(34, 197, 94, 0.6);
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%);
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+    }
+    
+    .status-available:hover {
+      border-color: rgba(34, 197, 94, 0.9);
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+    }
+    
+    /* Enhanced Reserved Status */
+    .status-reserved {
+      border: 3px solid rgba(239, 68, 68, 0.7);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+    
+    .status-reserved:hover {
+      border-color: rgba(239, 68, 68, 1);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.2) 100%);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+    }
+    
+    /* Enhanced Unpaid Status with Pulse */
+    .status-unpaid {
+      border: 3px solid rgba(234, 179, 8, 0.8);
+      background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(234, 179, 8, 0.15) 100%);
+      box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3);
+      animation: fadeInScale 0.4s ease forwards, pulse 2s ease-in-out infinite;
+    }
+    
+    .status-unpaid:hover {
+      border-color: rgba(234, 179, 8, 1);
+      background: linear-gradient(135deg, rgba(234, 179, 8, 0.35) 0%, rgba(234, 179, 8, 0.25) 100%);
+      box-shadow: 0 8px 20px rgba(234, 179, 8, 0.4);
+    }
+    
+    .unit-tile {
+      animation: fadeInScale 0.4s ease forwards;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Shimmer effect on hover */
+    .unit-tile::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+    
+    .unit-tile:hover::after {
+      left: 100%;
+    }
+    
+    .unit-tile::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .unit-tile:hover {
+      transform: translateY(-6px) scale(1.08);
+    }
+    
+    .unit-tile:hover::before {
+      opacity: 1;
+    }
+    
+    .unit-tile:active {
+      transform: translateY(-3px) scale(1.04);
+    }
+    
+    /* Stagger animation delays */
+    .unit-tile:nth-child(1) { animation-delay: 0.05s; }
+    .unit-tile:nth-child(2) { animation-delay: 0.1s; }
+    .unit-tile:nth-child(3) { animation-delay: 0.15s; }
+    .unit-tile:nth-child(4) { animation-delay: 0.2s; }
+    .unit-tile:nth-child(5) { animation-delay: 0.25s; }
+    .unit-tile:nth-child(6) { animation-delay: 0.3s; }
+    .unit-tile:nth-child(7) { animation-delay: 0.35s; }
+    .unit-tile:nth-child(8) { animation-delay: 0.4s; }
+    .unit-tile:nth-child(n+9) { animation-delay: 0.45s; }
+    
+    /* Enhanced legend with better colors */
+    .legend-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(215, 179, 91, 0.08) 0%, rgba(215, 179, 91, 0.03) 100%);
+      border-radius: 16px;
+      margin-top: 16px;
+      border: 2px solid rgba(215, 179, 91, 0.2);
+    }
+    
+    .legend {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--bg);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+    
+    .legend:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .legend::before {
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* More visible legend colors */
+    .legend.av { border-color: rgba(34, 197, 94, 0.3); }
+    .legend.av::before { background: rgba(34, 197, 94, 1); }
+    .legend.av:hover { border-color: rgba(34, 197, 94, 0.6); background: rgba(34, 197, 94, 0.05); }
+    
+    .legend.oc { border-color: rgba(59, 130, 246, 0.3); }
+    .legend.oc::before { background: rgba(59, 130, 246, 1); }
+    .legend.oc:hover { border-color: rgba(59, 130, 246, 0.6); background: rgba(59, 130, 246, 0.05); }
+    
+    .legend.rs { border-color: rgba(239, 68, 68, 0.3); }
+    .legend.rs::before { background: rgba(239, 68, 68, 1); }
+    .legend.rs:hover { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.05); }
+    
+    .legend.up { border-color: rgba(234, 179, 8, 0.3); }
+    .legend.up::before { background: rgba(234, 179, 8, 1); }
+    .legend.up:hover { border-color: rgba(234, 179, 8, 0.6); background: rgba(234, 179, 8, 0.05); }
+    
+    /* Stats summary with animations */
+    .floorplan-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      padding: 20px;
+      background: var(--bg);
+      border: 3px solid var(--border);
+      border-radius: 16px;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: currentColor;
+      opacity: 0.5;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card__number {
+      font-size: 40px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-card__label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+    
+    .stat-card--available { border-color: rgba(34, 197, 94, 0.4); }
+    .stat-card--available .stat-card__number { color: rgba(34, 197, 94, 1); }
+    .stat-card--available::before { background: rgba(34, 197, 94, 1); }
+    
+    .stat-card--occupied { border-color: rgba(59, 130, 246, 0.4); }
+    .stat-card--occupied .stat-card__number { color: rgba(59, 130, 246, 1); }
+    .stat-card--occupied::before { background: rgba(59, 130, 246, 1); }
+    
+    .stat-card--reserved { border-color: rgba(239, 68, 68, 0.4); }
+    .stat-card--reserved .stat-card__number { color: rgba(239, 68, 68, 1); }
+    .stat-card--reserved::before { background: rgba(239, 68, 68, 1); }
+    
+    .stat-card--unpaid { border-color: rgba(234, 179, 8, 0.4); }
+    .stat-card--unpaid .stat-card__number { color: rgba(234, 179, 8, 1); }
+    .stat-card--unpaid::before { background: rgba(234, 179, 8, 1); }
+    
+    /* Building button enhancements */
+    .building-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .building-btn::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--gold2);
+      transform: scaleY(0);
+      transition: transform 0.3s ease;
+    }
+    
+    .building-btn:hover {
+      transform: translateX(6px);
+      background: rgba(215, 179, 91, 0.08);
+    }
+    
+    .building-btn:hover::before {
+      transform: scaleY(1);
+    }
+    
+    .building-btn.is-active {
+      transform: translateX(6px);
+      background: rgba(215, 179, 91, 0.12);
+      font-weight: 700;
+    }
+    
+    .building-btn.is-active::before {
+      transform: scaleY(1);
+    }
+    
+    /* Loading state */
+    .floorplan__grid.loading {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    
+    /* Real-time update indicator with pulse */
+    .realtime-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: rgba(64, 201, 120, 0.12);
+      border: 2px solid rgba(64, 201, 120, 0.4);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #22c55e;
+    }
+    
+    .realtime-indicator::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+    }
+    
+    /* Unit tile text enhancement */
+    .unit-tile__code {
+      font-size: 1.1rem;
+      font-weight: 900;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .unit-tile__meta {
+      font-size: 0.75rem;
+      opacity: 0.85;
+    }
+
+    /* Floor filter pills */
+    .floor-pill {
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .floor-pill:hover {
+      border-color: #D7B35B;
+      background: rgba(215, 179, 91, 0.08);
+    }
+    .floor-pill.is-active {
+      background: linear-gradient(135deg, #D7B35B, #C9A84A);
+      color: #fff;
+      border-color: #D7B35B;
+      box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Floorplan</div>
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <div class="section__header">
+      <div>
+        <h2>Floorplan (Admin)</h2>
+        <p class="muted">Real-time unit status monitoring with automatic updates</p>
+      </div>
+      <div class="realtime-indicator">
+        <span>Live Updates</span>
+      </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="floorplan-stats mt-16">
+      <div class="stat-card stat-card--available">
+        <div class="stat-card__number" id="stat-available">{{ units|selectattr('status.value', 'equalto', 'available')|list|length }}</div>
+        <div class="stat-card__label">Available</div>
+      </div>
+      <div class="stat-card stat-card--occupied">
+        <div class="stat-card__number" id="stat-occupied">{{ units|selectattr('status.value', 'equalto', 'occupied')|list|length }}</div>
+        <div class="stat-card__label">Occupied</div>
+      </div>
+      <div class="stat-card stat-card--reserved">
+        <div class="stat-card__number" id="stat-reserved">{{ units|selectattr('status.value', 'equalto', 'reserved')|list|length }}</div>
+        <div class="stat-card__label">Reserved</div>
+      </div>
+      <div class="stat-card stat-card--unpaid">
+        <div class="stat-card__number" id="stat-unpaid">{{ units|selectattr('status.value', 'equalto', 'unpaid')|list|length }}</div>
+        <div class="stat-card__label">Unpaid</div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-container">
+      <strong style="font-size: 0.875rem;">Color Codes:</strong>
+      <span class="legend av">Available</span>
+      <span class="legend oc">Occupied</span>
+      <span class="legend rs">Reserved</span>
+      <span class="legend up">Unpaid</span>
+    </div>
+
+    <div class="floorplan mt-16">
+      <div class="floorplan__sidebar card">
+        <h3>Buildings</h3>
+        <div class="building-list" id="buildingList">
+          {% for b in buildings %}
+            <button class="building-btn {% if loop.first %}is-active{% endif %}" data-building="{{ b.id }}">
+              <span class="mono">{{ b.code }}</span> — {{ b.name }}
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="floorplan__main card">
+        <!-- Floor filter pills -->
+        <div id="floorFilterBar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+          <strong style="font-size: 13px; align-self: center; margin-right: 4px;">Floor:</strong>
+          <button class="floor-pill is-active" data-floor="all" type="button">All Floors</button>
+        </div>
+
+        {# Group units by floor #}
+        {% set floors_grouped = {} %}
+        {% for u in units %}
+          {% set fl = u.floor or 0 %}
+          {% if floors_grouped.update({fl: floors_grouped.get(fl, []) + [u]}) %}{% endif %}
+        {% endfor %}
+
+        <div class="floorplan__grid" id="unitGrid">
+          {% for floor_num in floors_grouped.keys()|sort %}
+            <div class="floor-section" data-floor="{{ floor_num }}" style="grid-column: 1 / -1; margin-top: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 8px 14px; background: linear-gradient(135deg, rgba(215,179,91,0.12), rgba(215,179,91,0.04)); border-left: 4px solid #D7B35B; border-radius: 6px;">
+                <strong style="font-size: 15px; color: #B8962E;">
+                  {% if floor_num == 0 %}Ground / Unassigned{% else %}Floor {{ floor_num }}{% endif %}
+                </strong>
+                <span class="muted" style="font-size: 12px;">{{ floors_grouped[floor_num]|length }} unit(s)</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
+                {% for u in floors_grouped[floor_num] %}
+                  <button
+                    class="unit-tile status-{{ u.status.value }}"
+                    data-building="{{ u.building_id }}"
+                    data-unit-id="{{ u.id }}"
+                    data-status="{{ u.status.value }}"
+                    data-floor="{{ u.floor or 0 }}"
+                    title="{{ u.unit_code }} • Floor {{ u.floor or '—' }} • ₱{{ '{:,.2f}'.format(u.price_monthly|float) }} • {{ u.status.value|title }}"
+                  >
+                    <div class="unit-tile__code">{{ u.unit_number }}</div>
+                    <div class="unit-tile__meta mono">{{ u.unit_code }}</div>
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+

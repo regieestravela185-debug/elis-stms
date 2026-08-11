@@ -1,0 +1,581 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Concerns | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Concerns</div>
+{% endblock %}
+
+{% block content %}
+  <div id="concernsBaseUrl" data-base-url="{{ url_for('tenant.concerns') }}" style="display: none;"></div>
+  <!-- Statistics Dashboard -->
+  <div class="grid grid--4" style="gap: 16px; margin-bottom: 24px;">
+    <div class="card card--lift" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white;">
+      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.total }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Total Concerns</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white;">
+      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.pending }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Pending</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.in_progress }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">In Progress</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.resolved }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Resolved</div>
+    </div>
+  </div>
+
+  <!-- Additional Stats -->
+  <div class="grid grid--3" style="gap: 16px; margin-bottom: 24px;">
+    <div class="card card--lift">
+      <div class="kicker">Average Response Time</div>
+      <div style="font-size: 20px; font-weight: 700; color: #D7B35B; margin-top: 8px;">
+        {{ "%.1f"|format(stats.avg_response_hours) }} hours
+      </div>
+    </div>
+    
+    <div class="card card--lift">
+      <div class="kicker">Resolution Rate</div>
+      <div style="font-size: 20px; font-weight: 700; color: #10b981; margin-top: 8px;">
+        {{ "%.0f"|format(stats.resolution_rate) }}%
+      </div>
+    </div>
+    
+    <div class="card card--lift">
+      <div class="kicker">Most Common Category</div>
+      <div style="font-size: 20px; font-weight: 700; color: #3b82f6; margin-top: 8px;">
+        {{ stats.most_common_category|title if stats.most_common_category else "N/A" }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card card--lift" style="margin-bottom: 24px;">
+    <div class="section__header" style="margin-bottom: 16px;">
+      <h3>Filters</h3>
+    </div>
+    <div class="grid grid--2" style="gap: 12px; margin-top: 16px;">
+      <input type="text" id="searchInput" class="input" placeholder="🔍 Search by subject or description..." value="{{ request.args.get('search', '') }}" />
+      <select id="statusFilter" class="input">
+        <option value="">All Status</option>
+        <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>⏳ Pending</option>
+        <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>🔄 In Progress</option>
+        <option value="resolved" {% if request.args.get('status') == 'resolved' %}selected{% endif %}>✓ Resolved</option>
+      </select>
+    </div>
+    <div class="grid grid--3" style="gap: 12px; margin-top: 12px;">
+      <select id="priorityFilter" class="input">
+        <option value="">All Priority</option>
+        <option value="urgent" {% if request.args.get('priority') == 'urgent' %}selected{% endif %}>🔴 Urgent</option>
+        <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>🟠 High</option>
+        <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>🟡 Medium</option>
+        <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>🟢 Low</option>
+      </select>
+      <select id="categoryFilter" class="input">
+        <option value="">All Category</option>
+        <option value="maintenance" {% if request.args.get('category') == 'maintenance' %}selected{% endif %}>🔧 Maintenance</option>
+        <option value="billing" {% if request.args.get('category') == 'billing' %}selected{% endif %}>💰 Billing</option>
+        <option value="noise" {% if request.args.get('category') == 'noise' %}selected{% endif %}>🔊 Noise</option>
+        <option value="security" {% if request.args.get('category') == 'security' %}selected{% endif %}>🔒 Security</option>
+        <option value="cleanliness" {% if request.args.get('category') == 'cleanliness' %}selected{% endif %}>🧹 Cleanliness</option>
+        <option value="facilities" {% if request.args.get('category') == 'facilities' %}selected{% endif %}>🏢 Facilities</option>
+        <option value="other" {% if request.args.get('category') == 'other' %}selected{% endif %}>📋 Other</option>
+      </select>
+      <button type="button" class="btn btn--ghost" onclick="clearFilters()">Clear Filters</button>
+    </div>
+    <div class="grid grid--2" style="gap: 12px; margin-top: 12px;">
+      <div>
+        <label class="label" style="font-size: 12px;">Date From</label>
+        <input type="date" id="dateFrom" class="input" value="{{ request.args.get('date_from', '') }}" />
+      </div>
+      <div>
+        <label class="label" style="font-size: 12px;">Date To</label>
+        <input type="date" id="dateTo" class="input" value="{{ request.args.get('date_to', '') }}" />
+      </div>
+    </div>
+  </div>
+
+      <!-- Concerns List -->
+      <div class="card">
+        <div class="section__header" style="margin-bottom: 16px;">
+          <h3>My Concerns</h3>
+          <p class="muted">{{ concerns|length }} items</p>
+        </div>
+        
+        {% if concerns %}
+          {% for concern in concerns %}
+            {% set concern_border_class = 'concern-border-low' %}
+            {% if concern.priority == 'urgent' %}
+              {% set concern_border_class = 'concern-border-urgent' %}
+            {% elif concern.priority == 'high' %}
+              {% set concern_border_class = 'concern-border-high' %}
+            {% elif concern.priority == 'medium' %}
+              {% set concern_border_class = 'concern-border-medium' %}
+            {% endif %}
+            <div class="card {{ concern_border_class }}" style="margin-bottom: 16px; padding: 20px;">
+              
+              <!-- Header -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div>
+                  <strong style="font-size: 16px;">{{ concern.subject }}</strong>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  {% set priority_badge_class = 'badge-priority-low' %}
+                  {% if concern.priority == 'urgent' %}
+                    {% set priority_badge_class = 'badge-priority-urgent' %}
+                  {% elif concern.priority == 'high' %}
+                    {% set priority_badge_class = 'badge-priority-high' %}
+                  {% elif concern.priority == 'medium' %}
+                    {% set priority_badge_class = 'badge-priority-medium' %}
+                  {% endif %}
+                  <span class="badge {{ priority_badge_class }}">
+                    {% if concern.priority == 'urgent' %}🔴 Urgent
+                    {% elif concern.priority == 'high' %}🟠 High
+                    {% elif concern.priority == 'medium' %}🟡 Medium
+                    {% else %}🟢 Low{% endif %}
+                  </span>
+                  
+                  {% set status_chip_class = 'chip-status-resolved' %}
+                  {% if concern.status.value == 'pending' %}
+                    {% set status_chip_class = 'chip-status-pending' %}
+                  {% elif concern.status.value == 'in_progress' %}
+                    {% set status_chip_class = 'chip-status-in-progress' %}
+                  {% endif %}
+                  <span class="chip {{ status_chip_class }}">
+                    {% if concern.status.value == 'pending' %}⏳ Pending
+                    {% elif concern.status.value == 'in_progress' %}🔄 In Progress
+                    {% else %}✓ Resolved{% endif %}
+                  </span>
+                  
+                  <span class="badge" style="background: rgba(215, 179, 91, 0.15); color: #D7B35B;">
+                    {% if concern.category == 'maintenance' %}🔧 Maintenance
+                    {% elif concern.category == 'billing' %}💰 Billing
+                    {% elif concern.category == 'noise' %}🔊 Noise
+                    {% elif concern.category == 'security' %}🔒 Security
+                    {% elif concern.category == 'cleanliness' %}🧹 Cleanliness
+                    {% elif concern.category == 'facilities' %}🏢 Facilities
+                    {% else %}📋 {{ concern.category|title }}{% endif %}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Description -->
+              <p style="line-height: 1.6; margin-bottom: 12px;">{{ concern.description }}</p>
+
+              <!-- Status Timeline -->
+              <div style="background: rgba(215, 179, 91, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <div class="kicker" style="margin-bottom: 8px;">Status Timeline</div>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                  <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 11px; color: #666;">Created</div>
+                    <div style="font-size: 13px; font-weight: 600;">{{ concern.created_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                  </div>
+                  {% if concern.in_progress_at %}
+                  <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 11px; color: #666;">In Progress</div>
+                    <div style="font-size: 13px; font-weight: 600;">{{ concern.in_progress_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                  </div>
+                  {% endif %}
+                  {% if concern.resolved_at %}
+                  <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 11px; color: #666;">Resolved</div>
+                    <div style="font-size: 13px; font-weight: 600;">{{ concern.resolved_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Attachments with Preview -->
+              {% if concern.attachments_json %}
+                {% set attachments = concern.attachments_json|from_json %}
+                {% if attachments %}
+                  <div style="margin-bottom: 12px;">
+                    <div class="kicker">Attachments</div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                      {% for attachment in attachments %}
+                        {% if attachment.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                          <div style="position: relative;">
+                            <img src="{{ url_for('static', filename=attachment) }}" 
+                                 style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer;"
+                                 data-image-url="{{ url_for('static', filename=attachment) }}"
+                                 onclick="showImagePreview(this.dataset.imageUrl)" />
+                          </div>
+                        {% else %}
+                          <a href="{{ url_for('static', filename=attachment) }}" target="_blank" class="btn btn--ghost btn--sm">
+                            📎 {{ attachment.split('/')[-1] }}
+                          </a>
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+              {% endif %}
+
+              <!-- Admin Response -->
+              {% if concern.admin_response %}
+                <div style="background: rgba(215, 179, 91, 0.1); padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin-bottom: 12px;">
+                  <div class="kicker">Admin Response</div>
+                  <p style="margin-top: 8px; line-height: 1.6;">{{ concern.admin_response }}</p>
+                  <div class="muted" style="margin-top: 8px; font-size: 12px;">
+                    By {{ concern.responder.full_name if concern.responder else 'Admin' }} on {{ concern.admin_response_at.strftime('%B %d, %Y at %I:%M %p') if concern.admin_response_at else '' }}
+                  </div>
+                </div>
+              {% endif %}
+
+              <!-- Follow-ups -->
+              {% if concern.follow_ups %}
+                <div style="margin-bottom: 12px;">
+                  <div class="kicker">Follow-ups ({{ concern.follow_ups|length }})</div>
+                  {% for followup in concern.follow_ups %}
+                    <div style="background: rgba(59, 130, 246, 0.05); padding: 12px; border-radius: 8px; margin-top: 8px; border-left: 3px solid #3b82f6;">
+                      <p style="line-height: 1.6;">{{ followup.message }}</p>
+                      <div class="muted" style="margin-top: 4px; font-size: 11px;">{{ followup.created_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              <!-- Quick Actions -->
+              <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                {% if concern.status.value != 'resolved' %}
+                  <button type="button" class="btn btn--ghost btn--sm" data-concern-id="{{ concern.id }}" data-concern-subject="{{ concern.subject }}" onclick="openFollowUpModal(this.dataset.concernId, this.dataset.concernSubject)">
+                    ➕ Add Follow-up
+                  </button>
+                  
+                  {% if concern.priority != 'urgent' %}
+                    <form method="post" action="{{ url_for('tenant.escalate_concern', concern_id=concern.id) }}" style="display: inline;">
+                      <button type="submit" class="btn btn--ghost btn--sm">⬆️ Escalate Priority</button>
+                    </form>
+                  {% endif %}
+                  
+                  <form method="post" action="{{ url_for('tenant.cancel_concern', concern_id=concern.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this concern?')">
+                    <button type="submit" class="btn btn--ghost btn--sm" style="color: #ef4444;">❌ Cancel Concern</button>
+                  </form>
+                {% else %}
+                  {% if not concern.satisfaction_rating %}
+                    <button type="button" class="btn btn--primary btn--sm" data-concern-id="{{ concern.id }}" data-concern-subject="{{ concern.subject }}" onclick="openRatingModal(this.dataset.concernId, this.dataset.concernSubject)">
+                      ⭐ Rate Resolution
+                    </button>
+                  {% else %}
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                      <span style="font-size: 12px; color: #666;">Your Rating:</span>
+                      {% for i in range(1, 6) %}
+                        {% set star_class = 'star-empty' %}
+                        {% if i <= concern.satisfaction_rating %}
+                          {% set star_class = 'star-filled' %}
+                        {% endif %}
+                        <span class="{{ star_class }}">⭐</span>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state mt-16">
+            <div class="empty-state__icon">📋</div>
+            <div class="empty-state__title">No Concerns Found</div>
+            <div class="empty-state__text">Try adjusting your filters or submit a new concern.</div>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <aside class="dash-panel dash-panel--side">
+      <div class="card">
+        <div class="section__header" style="margin-bottom: 16px;">
+          <h3>Submit New Concern</h3>
+          <p class="muted">Report issues or requests</p>
+        </div>
+        <form method="post" action="{{ url_for('tenant.create_concern') }}" class="form" enctype="multipart/form-data">
+          <label class="label">Subject</label>
+          <input class="input" name="subject" required placeholder="Brief description of the issue" />
+          
+          <label class="label">Priority</label>
+          <select class="input" name="priority" required>
+            <option value="low">🟢 Low - Minor issue</option>
+            <option value="medium" selected>🟡 Medium - Normal issue</option>
+            <option value="high">🟠 High - Important issue</option>
+            <option value="urgent">🔴 Urgent - Critical issue</option>
+          </select>
+          
+          <label class="label">Category</label>
+          <select class="input" name="category" required>
+            <option value="maintenance">🔧 Maintenance</option>
+            <option value="billing">💰 Billing</option>
+            <option value="noise">🔊 Noise</option>
+            <option value="security">🔒 Security</option>
+            <option value="cleanliness">🧹 Cleanliness</option>
+            <option value="facilities">🏢 Facilities</option>
+            <option value="other">📋 Other</option>
+          </select>
+          
+          <label class="label">Description</label>
+          <textarea class="input" name="description" rows="5" required placeholder="Provide detailed information about your concern..."></textarea>
+          
+          <label class="label">Attachments (Optional)</label>
+          <input type="file" class="input" name="attachments" multiple accept="image/*,.pdf,.doc,.docx" id="fileInput" />
+          <p class="muted" style="font-size: 12px; margin-top: 4px;">Max 4 files. Images, PDF, or Word documents.</p>
+          <div id="filePreview" style="margin-top: 8px;"></div>
+          
+          <button class="btn btn--primary" type="submit" style="margin-top: 8px;">📤 Submit Concern</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Follow-up Modal -->
+  <div class="modal" id="followUpModal" hidden>
+    <div class="modal__backdrop" onclick="closeFollowUpModal()"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x" onclick="closeFollowUpModal()">×</button>
+      <h3 class="modal__title" id="followUpTitle">Add Follow-up</h3>
+      <form method="post" id="followUpForm" enctype="multipart/form-data">
+        <label class="label">Additional Information</label>
+        <textarea name="message" class="input" rows="4" required placeholder="Provide additional details or updates..."></textarea>
+        
+        <label class="label">Attachments (Optional)</label>
+        <input type="file" class="input" name="attachments" multiple accept="image/*,.pdf,.doc,.docx" />
+        <p class="muted" style="font-size: 12px; margin-top: 4px;">Max 4 files</p>
+        
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" onclick="closeFollowUpModal()">Cancel</button>
+          <button type="submit" class="btn btn--primary">Add Follow-up</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Rating Modal -->
+  <div class="modal" id="ratingModal" hidden>
+    <div class="modal__backdrop" onclick="closeRatingModal()"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x" onclick="closeRatingModal()">×</button>
+      <h3 class="modal__title" id="ratingTitle">Rate Resolution</h3>
+      <form method="post" id="ratingForm">
+        <label class="label">How satisfied are you with the resolution?</label>
+        <div style="display: flex; gap: 8px; margin: 16px 0; justify-content: center;">
+          <input type="radio" name="rating" value="1" id="star1" required style="display: none;" />
+          <label for="star1" class="star-rating" data-rating="1">⭐</label>
+          
+          <input type="radio" name="rating" value="2" id="star2" style="display: none;" />
+          <label for="star2" class="star-rating" data-rating="2">⭐</label>
+          
+          <input type="radio" name="rating" value="3" id="star3" style="display: none;" />
+          <label for="star3" class="star-rating" data-rating="3">⭐</label>
+          
+          <input type="radio" name="rating" value="4" id="star4" style="display: none;" />
+          <label for="star4" class="star-rating" data-rating="4">⭐</label>
+          
+          <input type="radio" name="rating" value="5" id="star5" style="display: none;" />
+          <label for="star5" class="star-rating" data-rating="5">⭐</label>
+        </div>
+        
+        <label class="label">Additional Feedback (Optional)</label>
+        <textarea name="feedback" class="input" rows="3" placeholder="Share your experience..."></textarea>
+        
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" onclick="closeRatingModal()">Cancel</button>
+          <button type="submit" class="btn btn--primary">Submit Rating</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal -->
+  <div class="modal" id="imagePreviewModal" hidden>
+    <div class="modal__backdrop" onclick="closeImagePreview()"></div>
+    <div class="modal__card" style="max-width: 800px;">
+      <button type="button" class="modal__x" onclick="closeImagePreview()">×</button>
+      <img id="previewImage" src="" style="width: 100%; height: auto; border-radius: 8px;" />
+    </div>
+  </div>
+
+  <style>
+    .star-rating {
+      font-size: 32px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      filter: grayscale(100%);
+      opacity: 0.3;
+    }
+
+    .star-rating:hover,
+    .star-rating.active {
+      filter: grayscale(0%);
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .card--lift {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card--lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .concern-border-urgent { border-left: 4px solid #ef4444; }
+    .concern-border-high { border-left: 4px solid #f97316; }
+    .concern-border-medium { border-left: 4px solid #eab308; }
+    .concern-border-low { border-left: 4px solid #10b981; }
+    .badge-priority-urgent { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .badge-priority-high { background: rgba(249, 115, 22, 0.15); color: #f97316; }
+    .badge-priority-medium { background: rgba(234, 179, 8, 0.15); color: #eab308; }
+    .badge-priority-low { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .chip-status-pending { background: rgba(234, 179, 8, 0.15); color: #eab308; }
+    .chip-status-in-progress { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .chip-status-resolved { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .star-filled { color: #f59e0b; }
+    .star-empty { color: #d1d5db; }
+  </style>
+
+  <script>
+    // Filter functionality
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const priorityFilter = document.getElementById('priorityFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (statusFilter.value) params.set('status', statusFilter.value);
+      if (priorityFilter.value) params.set('priority', priorityFilter.value);
+      if (categoryFilter.value) params.set('category', categoryFilter.value);
+      if (dateFrom.value) params.set('date_from', dateFrom.value);
+      if (dateTo.value) params.set('date_to', dateTo.value);
+      
+      const baseUrl = document.getElementById('concernsBaseUrl').dataset.baseUrl;
+      window.location.href = `${baseUrl}?${params.toString()}`;
+    }
+    
+    function clearFilters() {
+      window.location.href = document.getElementById('concernsBaseUrl').dataset.baseUrl;
+    }
+    
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    
+    statusFilter.addEventListener('change', applyFilters);
+    priorityFilter.addEventListener('change', applyFilters);
+    categoryFilter.addEventListener('change', applyFilters);
+    dateFrom.addEventListener('change', applyFilters);
+    dateTo.addEventListener('change', applyFilters);
+    
+    // Follow-up Modal
+    function openFollowUpModal(concernId, subject) {
+      document.getElementById('followUpModal').hidden = false;
+      document.getElementById('followUpTitle').textContent = `Add Follow-up: ${subject}`;
+      document.getElementById('followUpForm').action = `/tenant/concerns/${concernId}/follow-up`;
+    }
+    
+    function closeFollowUpModal() {
+      document.getElementById('followUpModal').hidden = true;
+    }
+    
+    // Rating Modal
+    function openRatingModal(concernId, subject) {
+      document.getElementById('ratingModal').hidden = false;
+      document.getElementById('ratingTitle').textContent = `Rate Resolution: ${subject}`;
+      document.getElementById('ratingForm').action = `/tenant/concerns/${concernId}/rate`;
+    }
+    
+    function closeRatingModal() {
+      document.getElementById('ratingModal').hidden = true;
+    }
+    
+    // Star rating interaction
+    document.querySelectorAll('.star-rating').forEach(star => {
+      star.addEventListener('click', function() {
+        const rating = parseInt(this.dataset.rating);
+        document.querySelectorAll('.star-rating').forEach((s, index) => {
+          if (index < rating) {
+            s.classList.add('active');
+          } else {
+            s.classList.remove('active');
+          }
+        });
+      });
+      
+      star.addEventListener('mouseenter', function() {
+        const rating = parseInt(this.dataset.rating);
+        document.querySelectorAll('.star-rating').forEach((s, index) => {
+          if (index < rating) {
+            s.style.filter = 'grayscale(0%)';
+            s.style.opacity = '1';
+          }
+        });
+      });
+      
+      star.addEventListener('mouseleave', function() {
+        document.querySelectorAll('.star-rating').forEach(s => {
+          if (!s.classList.contains('active')) {
+            s.style.filter = 'grayscale(100%)';
+            s.style.opacity = '0.3';
+          }
+        });
+      });
+    });
+    
+    // Image Preview
+    function showImagePreview(imageSrc) {
+      document.getElementById('imagePreviewModal').hidden = false;
+      document.getElementById('previewImage').src = imageSrc;
+    }
+    
+    function closeImagePreview() {
+      document.getElementById('imagePreviewModal').hidden = true;
+    }
+    
+    // File input preview
+    const fileInput = document.getElementById('fileInput');
+    const filePreview = document.getElementById('filePreview');
+    
+    if (fileInput) {
+      fileInput.addEventListener('change', function() {
+        filePreview.innerHTML = '';
+        const files = Array.from(this.files).slice(0, 4);
+        
+        files.forEach(file => {
+          const fileItem = document.createElement('div');
+          fileItem.style.cssText = 'display: inline-block; padding: 4px 8px; background: rgba(215, 179, 91, 0.1); border-radius: 4px; margin-right: 8px; font-size: 12px;';
+          fileItem.textContent = file.name;
+          filePreview.appendChild(fileItem);
+        });
+        
+        if (this.files.length > 4) {
+          const warning = document.createElement('div');
+          warning.style.cssText = 'color: #f59e0b; font-size: 12px; margin-top: 4px;';
+          warning.textContent = 'Only first 4 files will be uploaded';
+          filePreview.appendChild(warning);
+        }
+      });
+    }
+    
+    // Close modals on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeFollowUpModal();
+        closeRatingModal();
+        closeImagePreview();
+      }
+    });
+  </script>
+{% endblock %}

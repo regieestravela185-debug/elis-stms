@@ -1,0 +1,763 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Reservations Management | STMS Admin{% endblock %}
+
+{% block head %}
+  <style>
+    /* Enhanced Reservations Page Styles */
+    .reservations-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    
+    .stat-card {
+      padding: 20px;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: currentColor;
+      opacity: 0.7;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
+    
+    .stat-card__icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    
+    .stat-card__number {
+      font-size: 36px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    
+    .stat-card__label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    .stat-card--total { border-color: rgba(215, 179, 91, 0.4); }
+    .stat-card--total .stat-card__number { color: #D7B35B; }
+    
+    .stat-card--pending { border-color: rgba(234, 179, 8, 0.4); }
+    .stat-card--pending .stat-card__number { color: #eab308; }
+    
+    .stat-card--approved { border-color: rgba(34, 197, 94, 0.4); }
+    .stat-card--approved .stat-card__number { color: #22c55e; }
+    
+    .stat-card--rejected { border-color: rgba(239, 68, 68, 0.4); }
+    .stat-card--rejected .stat-card__number { color: #ef4444; }
+    
+    .stat-card--cancelled { border-color: rgba(156, 163, 175, 0.4); }
+    .stat-card--cancelled .stat-card__number { color: #9ca3af; }
+    
+    /* Filters Section */
+    .filters-section {
+      background: linear-gradient(135deg, rgba(215, 179, 91, 0.06) 0%, rgba(215, 179, 91, 0.02) 100%);
+      border: 2px solid rgba(215, 179, 91, 0.25);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .filter-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    /* Table Enhancements */
+    .reservations-table-wrap {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    
+    .table tbody tr {
+      transition: all 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+      background: rgba(215, 179, 91, 0.06);
+      transform: scale(1.002);
+    }
+    
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .btn--approve {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      width: 100%;
+    }
+    
+    .btn--approve:hover {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: rgba(34, 197, 94, 0.5);
+    }
+    
+    .btn--reject {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      width: 100%;
+    }
+    
+    .btn--reject:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+    
+    .btn--cancel {
+      background: rgba(156, 163, 175, 0.1);
+      color: #6b7280;
+      border: 1px solid rgba(156, 163, 175, 0.3);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      width: 100%;
+    }
+    
+    .btn--cancel:hover {
+      background: rgba(156, 163, 175, 0.2);
+      border-color: rgba(156, 163, 175, 0.5);
+    }
+    
+    .btn--view {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+    
+    .btn--view:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+    }
+    
+    .empty-state__icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+    
+    .empty-state__title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    
+    .empty-state__text {
+      font-size: 15px;
+    }
+    
+    /* Priority Badge */
+    .priority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .priority-badge--urgent {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .priority-badge--soon {
+      background: rgba(234, 179, 8, 0.15);
+      color: #eab308;
+      border: 1px solid rgba(234, 179, 8, 0.3);
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Reservations Management</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <!-- Statistics Cards -->
+    <div class="reservations-stats">
+      <div class="stat-card stat-card--total">
+        <span class="stat-card__icon">📋</span>
+        <div class="stat-card__number" id="stat-total">{{ rows|length }}</div>
+        <div class="stat-card__label">Total Reservations</div>
+      </div>
+      <div class="stat-card stat-card--pending">
+        <span class="stat-card__icon">⏳</span>
+        <div class="stat-card__number" id="stat-pending">
+          {{ rows|selectattr('status.value', 'equalto', 'pending')|list|length }}
+        </div>
+        <div class="stat-card__label">Pending</div>
+      </div>
+      <div class="stat-card stat-card--approved">
+        <span class="stat-card__icon">✅</span>
+        <div class="stat-card__number" id="stat-approved">
+          {{ rows|selectattr('status.value', 'equalto', 'approved')|list|length }}
+        </div>
+        <div class="stat-card__label">Approved</div>
+      </div>
+      <div class="stat-card stat-card--rejected">
+        <span class="stat-card__icon">❌</span>
+        <div class="stat-card__number" id="stat-rejected">
+          {{ rows|selectattr('status.value', 'equalto', 'rejected')|list|length }}
+        </div>
+        <div class="stat-card__label">Rejected</div>
+      </div>
+      <div class="stat-card stat-card--cancelled">
+        <span class="stat-card__icon">🚫</span>
+        <div class="stat-card__number" id="stat-cancelled">
+          {{ rows|selectattr('status.value', 'equalto', 'cancelled')|list|length }}
+        </div>
+        <div class="stat-card__label">Cancelled</div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
+          <a href="{{ url_for('admin.export_reservations') }}" class="btn btn--primary btn--sm">
+            📊 Export CSV
+          </a>
+        </div>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label class="filter-label">Search</label>
+          <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" />
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select class="input" id="statusSelect">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Building</label>
+          <select class="input" id="buildingSelect">
+            <option value="">All Buildings</option>
+            {% for building in buildings %}
+              <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Floor</label>
+          <select class="input" id="floorSelect">
+            <option value="">All Floors</option>
+            <option value="1">Floor 1</option>
+            <option value="2">Floor 2</option>
+            <option value="3">Floor 3</option>
+            <option value="4">Floor 4</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Sort By</label>
+          <select class="input" id="sortSelect">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="move-in">Move-in Date</option>
+            <option value="name">Name (A-Z)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reservations Table -->
+    <div class="card">
+      <div class="section__header">
+        <div>
+          <h3>📋 All Reservations</h3>
+          <p class="muted" id="results-count">{{ rows|length }} reservation(s) found</p>
+        </div>
+      </div>
+
+      {% if rows %}
+        <div class="reservations-table-wrap mt-16">
+          <table class="table" id="reservationsTable">
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Customer</th>
+                <th>Contact</th>
+                <th>Building</th>
+                <th>Unit</th>
+                <th>Move-in</th>
+                <th>Move-out</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>ID Info</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                {% set days_until_movein = (r.move_in_date - today).days if r.move_in_date else None %}
+                {% set duration_days = (r.move_out_date - r.move_in_date).days if r.move_in_date and r.move_out_date else None %}
+                {% set movein_timestamp = r.move_in_date.toordinal() if r.move_in_date else 0 %}
+                <tr data-status="{{ r.status.value }}" 
+                    data-building="{{ r.unit.building.code }}"
+                    data-floor="{{ r.unit.floor or 0 }}"
+                    data-created="{{ r.created_at.timestamp() }}"
+                    data-movein="{{ movein_timestamp }}"
+                    data-name="{{ r.full_name.lower() }}"
+                    data-email="{{ r.email.lower() }}">
+                  <td class="muted" style="font-size: 12px;">
+                    {{ r.created_at.strftime("%b %d, %Y") }}
+                    <div style="font-size: 10px; margin-top: 2px;">{{ r.created_at.strftime("%I:%M %p") }}</div>
+                  </td>
+                  <td>
+                    <strong style="font-size: 14px;">{{ r.full_name }}</strong>
+                    <div class="muted" style="font-size: 12px; margin-top: 2px;">{{ r.email }}</div>
+                  </td>
+                  <td class="mono" style="font-size: 13px;">{{ r.contact }}</td>
+                  <td>
+                    <span class="badge" style="background: rgba(215, 179, 91, 0.25); color: #B8962E; border: 1px solid rgba(215, 179, 91, 0.5); font-size: 12px; font-weight: 700; text-transform: uppercase;">
+                      {{ r.unit.building.code }}
+                    </span>
+                  </td>
+                  <td class="mono" style="font-size: 14px; font-weight: 600;">{{ r.unit.unit_code }}</td>
+                  <td>
+                    <div style="font-size: 13px;">{{ r.move_in_date.strftime("%b %d, %Y") if r.move_in_date else "—" }}</div>
+                  </td>
+                  <td class="muted" style="font-size: 13px;">
+                    {{ r.move_out_date.strftime("%b %d, %Y") if r.move_out_date else "—" }}
+                  </td>
+                  <td class="muted" style="font-size: 13px;">
+                    {% if duration_days %}
+                      {{ duration_days }} days
+                      <div style="font-size: 11px; margin-top: 2px;">({{ (duration_days / 30)|round(1) }} months)</div>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if r.status.value == 'pending' %}
+                      <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3);">
+                        ⏳ Pending
+                      </span>
+                    {% elif r.status.value == 'approved' %}
+                      <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3);">
+                        ✅ Approved
+                      </span>
+                    {% elif r.status.value == 'rejected' %}
+                      <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+                        ❌ Rejected
+                      </span>
+                    {% elif r.status.value == 'cancelled' %}
+                      <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3);">
+                        🚫 Cancelled
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div style="font-size: 12px;">
+                      <strong>{{ r.id_type or "—" }}</strong>
+                      {% if r.id_number %}
+                        <div class="mono muted" style="font-size: 11px; margin-top: 2px;">{{ r.id_number }}</div>
+                      {% endif %}
+                      {% if r.id_upload_path %}
+                        <a href="{{ url_for('static', filename=r.id_upload_path) }}" target="_blank" style="font-size: 11px; color: #3b82f6; margin-top: 4px; display: block;">📄 View ID</a>
+                      {% endif %}
+                      
+                      <!-- AI Verification Status -->
+                      {% if r.verification_status %}
+                        {% if r.verification_status.value == 'verified' %}
+                          <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
+                            ✓ AI Verified
+                          </span>
+                        {% elif r.verification_status.value == 'failed' %}
+                          <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
+                            ✗ Failed
+                          </span>
+                        {% elif r.verification_status.value == 'manual_review' %}
+                          <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
+                            👁 Manual Review
+                          </span>
+                        {% else %}
+                          <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
+                            ⏳ Pending
+                          </span>
+                        {% endif %}
+                      {% endif %}
+                      
+                      {% if r.fake_id_flag %}
+                        <span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 10px; margin-top: 4px; display: inline-block;">
+                          ⚠️ Fake ID Flag
+                        </span>
+                      {% endif %}
+                      
+                      <button type="button" class="btn btn--ghost btn--sm view-verification-btn" data-reservation-id="{{ r.id }}" style="font-size: 10px; padding: 4px 8px; margin-top: 6px;">
+                        🔍 View Details
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      {% if r.status.value == 'pending' %}
+                        <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Approve this reservation? This will create a tenant profile and mark the unit as occupied.');">
+                          <button class="btn--approve" type="submit">✅ Approve</button>
+                        </form>
+                        <form method="post" action="{{ url_for('admin.reject_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Reject this reservation? The unit will become available again.');">
+                          <button class="btn--reject" type="submit">❌ Reject</button>
+                        </form>
+                        <form method="post" action="{{ url_for('admin.cancel_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Cancel this reservation?');">
+                          <button class="btn--cancel" type="submit">🚫 Cancel</button>
+                        </form>
+                      {% else %}
+                        <span class="muted" style="font-size: 12px;">No actions</span>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state__icon">📋</div>
+          <div class="empty-state__title">No Reservations</div>
+          <div class="empty-state__text">There are no reservations in the system yet.</div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const statusSelect = document.getElementById('statusSelect');
+    const buildingSelect = document.getElementById('buildingSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    const reservationsTable = document.getElementById('reservationsTable');
+    const resultsCount = document.getElementById('results-count');
+    
+    // Statistics elements
+    const statTotal = document.getElementById('stat-total');
+    const statPending = document.getElementById('stat-pending');
+    const statApproved = document.getElementById('stat-approved');
+    const statRejected = document.getElementById('stat-rejected');
+    const statCancelled = document.getElementById('stat-cancelled');
+    
+    if (!reservationsTable) return;
+    
+    const allRows = Array.from(reservationsTable.querySelectorAll('tbody tr'));
+    
+    function updateStatistics(visibleRows) {
+      const total = visibleRows.length;
+      let pending = 0, approved = 0, rejected = 0, cancelled = 0;
+      
+      visibleRows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        if (status === 'pending') pending++;
+        else if (status === 'approved') approved++;
+        else if (status === 'rejected') rejected++;
+        else if (status === 'cancelled') cancelled++;
+      });
+      
+      statTotal.textContent = total;
+      statPending.textContent = pending;
+      statApproved.textContent = approved;
+      statRejected.textContent = rejected;
+      statCancelled.textContent = cancelled;
+    }
+    
+    function sortRows(rows, sortBy) {
+      return rows.sort((a, b) => {
+        if (sortBy === 'newest') {
+          return parseFloat(b.getAttribute('data-created')) - parseFloat(a.getAttribute('data-created'));
+        } else if (sortBy === 'oldest') {
+          return parseFloat(a.getAttribute('data-created')) - parseFloat(b.getAttribute('data-created'));
+        } else if (sortBy === 'move-in') {
+          return parseFloat(a.getAttribute('data-movein')) - parseFloat(b.getAttribute('data-movein'));
+        } else if (sortBy === 'name') {
+          return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+        }
+        return 0;
+      });
+    }
+    
+    function filterTable() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const statusValue = statusSelect.value.toLowerCase();
+      const buildingCode = buildingSelect.value.toLowerCase();
+      const sortBy = sortSelect.value;
+      
+      let visibleRows = [];
+      
+      allRows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        const email = row.getAttribute('data-email');
+        const status = row.getAttribute('data-status');
+        const building = row.getAttribute('data-building').toUpperCase();
+        const floor = row.getAttribute('data-floor');
+        const floorFilter = (document.getElementById('floorSelect') || {value: ''}).value;
+        
+        const matchesSearch = !searchTerm || 
+          name.includes(searchTerm) || 
+          email.includes(searchTerm);
+        
+        const matchesStatus = !statusValue || status === statusValue;
+        const matchesBuilding = !buildingCode || building === buildingCode.toUpperCase();
+        const matchesFloor = !floorFilter || floor === floorFilter;
+        
+        if (matchesSearch && matchesStatus && matchesBuilding && matchesFloor) {
+          visibleRows.push(row);
+        }
+      });
+      
+      // Sort visible rows
+      visibleRows = sortRows(visibleRows, sortBy);
+      
+      // Hide all rows first
+      allRows.forEach(row => row.style.display = 'none');
+      
+      // Show and reorder visible rows
+      const tbody = reservationsTable.querySelector('tbody');
+      visibleRows.forEach(row => {
+        row.style.display = '';
+        tbody.appendChild(row);
+      });
+      
+      resultsCount.textContent = `${visibleRows.length} reservation(s) found`;
+      updateStatistics(visibleRows);
+      
+      let noResultsRow = document.getElementById('noResultsRow');
+      
+      if (visibleRows.length === 0 && allRows.length > 0) {
+        if (!noResultsRow) {
+          noResultsRow = document.createElement('tr');
+          noResultsRow.id = 'noResultsRow';
+          noResultsRow.innerHTML = `
+            <td colspan="11" style="text-align: center; padding: 60px 20px;">
+              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
+              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Reservations Found</div>
+              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
+            </td>
+          `;
+          tbody.appendChild(noResultsRow);
+        }
+      } else if (noResultsRow) {
+        noResultsRow.remove();
+      }
+    }
+    
+    clearFiltersBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      statusSelect.value = '';
+      buildingSelect.value = '';
+      sortSelect.value = 'newest';
+      filterTable();
+    });
+    
+    searchInput.addEventListener('input', debounce(filterTable, 400));
+    statusSelect.addEventListener('change', filterTable);
+    buildingSelect.addEventListener('change', filterTable);
+    const floorSelect = document.getElementById('floorSelect');
+    if (floorSelect) floorSelect.addEventListener('change', filterTable);
+    sortSelect.addEventListener('change', filterTable);
+    
+    filterTable();
+    
+    // Verification Details Modal
+    const verificationModal = document.getElementById('verificationModal');
+    const verificationContent = document.getElementById('verificationContent');
+    const closeVerificationModal = document.getElementById('closeVerificationModal');
+    
+    document.querySelectorAll('.view-verification-btn').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const reservationId = this.dataset.reservationId;
+        verificationModal.style.display = 'flex';
+        verificationContent.innerHTML = '<div style="text-align:center; padding:40px;"><div class="spinner"></div><p class="muted">Loading verification details...</p></div>';
+        
+        try {
+          const res = await fetch(`/admin/api/reservations/${reservationId}/verification`);
+          const data = await res.json();
+          
+          if (data.error) {
+            verificationContent.innerHTML = `<div style="text-align:center; padding:40px; color:#ef4444;">Error: ${data.error}</div>`;
+            return;
+          }
+          
+          const authenticity = data.id_authenticity_score ? (data.id_authenticity_score * 100).toFixed(0) : '—';
+          const faceMatch = data.face_match_score ? (data.face_match_score * 100).toFixed(0) : '—';
+          const log = data.verification_log || {};
+          
+          let statusBadge = '';
+          if (data.verification_status === 'verified') {
+            statusBadge = '<span style="background:#d1fae5; color:#065f46; padding:4px 12px; border-radius:20px; font-weight:600;">✓ Verified</span>';
+          } else if (data.verification_status === 'failed') {
+            statusBadge = '<span style="background:#fee2e2; color:#991b1b; padding:4px 12px; border-radius:20px; font-weight:600;">✗ Failed</span>';
+          } else if (data.verification_status === 'manual_review') {
+            statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-weight:600;">👁 Manual Review</span>';
+          } else {
+            statusBadge = '<span style="background:#f3f4f6; color:#6b7280; padding:4px 12px; border-radius:20px; font-weight:600;">⏳ Pending</span>';
+          }
+          
+          let reasonsHtml = '';
+          if (log.detection_reasons && log.detection_reasons.length > 0) {
+            reasonsHtml = `
+              <div style="margin-top:16px; padding:12px; background:rgba(239,68,68,0.1); border-radius:8px; border:1px solid rgba(239,68,68,0.2);">
+                <strong style="color:#dc2626;">Detection Flags:</strong>
+                <ul style="margin:8px 0 0 20px; color:#991b1b; font-size:13px;">
+                  ${log.detection_reasons.map(r => `<li>${r}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+          
+          verificationContent.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+              <h3 style="margin:0;">Verification Details</h3>
+              ${statusBadge}
+            </div>
+            
+            <!-- ID Document Only -->
+            <div>
+              <h4 style="margin:0 0 12px 0; color:#64748b; font-size:12px; text-transform:uppercase;">ID Document</h4>
+              <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0;">
+                ${data.id_upload_path ? `<img src="/static/${data.id_upload_path}" style="width:100%; max-width:500px; border-radius:8px; margin-bottom:12px;" alt="ID Image"/>` : '<div style="text-align:center; padding:20px; color:#94a3b8;">No ID image</div>'}
+                <div style="font-size:13px;">
+                  <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span class="muted">ID Type:</span>
+                    <strong>${data.id_type || '—'}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span class="muted">ID Number:</span>
+                    <strong class="mono">${data.id_number || '—'}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        } catch (err) {
+          verificationContent.innerHTML = `<div style="text-align:center; padding:40px; color:#ef4444;">Error loading verification details: ${err.message}</div>`;
+        }
+      });
+    });
+    
+    closeVerificationModal.addEventListener('click', () => {
+      verificationModal.style.display = 'none';
+    });
+    
+    verificationModal.addEventListener('click', (e) => {
+      if (e.target === verificationModal) {
+        verificationModal.style.display = 'none';
+      }
+    });
+  });
+  </script>
+  
+  <!-- Verification Details Modal -->
+  <div id="verificationModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:16px; padding:24px; max-width:700px; width:95%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <button type="button" id="closeVerificationModal" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
+      <div id="verificationContent"></div>
+    </div>
+  </div>
+  
+  <style>
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+{% endblock %}

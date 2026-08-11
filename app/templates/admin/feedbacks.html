@@ -1,0 +1,363 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Feedbacks | STMS Admin{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">✎ Tenant Feedback</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <!-- Statistics Dashboard -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">✎</div>
+        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.total }}</div>
+        <div class="stat-card__label" style="position: relative; z-index: 1;">Total Feedback</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">📝</div>
+        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.submitted }}</div>
+        <div class="stat-card__label" style="position: relative; z-index: 1;">Unreviewed</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">✓</div>
+        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.reviewed }}</div>
+        <div class="stat-card__label" style="position: relative; z-index: 1;">Reviewed</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">⭐</div>
+        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.avg_rating }}</div>
+        <div class="stat-card__label" style="position: relative; z-index: 1;">Avg Rating</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">📅</div>
+        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.this_month }}</div>
+        <div class="stat-card__label" style="position: relative; z-index: 1;">This Month</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">😊</div>
+        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.satisfaction_score }}%</div>
+        <div class="stat-card__label" style="position: relative; z-index: 1;">Satisfaction</div>
+      </div>
+    </div>
+
+    <!-- Rating Distribution -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="section__header">
+        <h3>⭐ Rating Distribution</h3>
+        <p class="muted">Breakdown of tenant ratings</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px;">
+        {% for rating in [5, 4, 3, 2, 1] %}
+          {% set count = stats.rating_dist[rating] %}
+          {% set total_with_rating = stats.total - stats.rating_dist['no_rating'] %}
+          {% set percentage = (count / total_with_rating * 100)|round(1) if total_with_rating > 0 else 0 %}
+          {% set rating_bg_class = 'rating-bg-negative' %}
+          {% set rating_border_class = 'rating-border-negative' %}
+          {% set rating_color_class = 'rating-color-negative' %}
+          {% if rating >= 4 %}
+            {% set rating_bg_class = 'rating-bg-positive' %}
+            {% set rating_border_class = 'rating-border-positive' %}
+            {% set rating_color_class = 'rating-color-positive' %}
+          {% elif rating == 3 %}
+            {% set rating_bg_class = 'rating-bg-neutral' %}
+            {% set rating_border_class = 'rating-border-neutral' %}
+            {% set rating_color_class = 'rating-color-neutral' %}
+          {% endif %}
+          <div class="{{ rating_bg_class }} {{ rating_border_class }}" style="padding: 16px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div style="color: #D7B35B; font-size: 18px;">
+                {% for i in range(rating) %}⭐{% endfor %}
+              </div>
+              <div class="{{ rating_color_class }}" style="font-size: 24px; font-weight: 700;">
+                {{ count }}
+              </div>
+            </div>
+            <div style="font-size: 12px; color: #666;">{{ percentage }}% of ratings</div>
+          </div>
+        {% endfor %}
+        <div style="background: rgba(107, 114, 128, 0.08); padding: 16px; border-radius: 8px; border: 2px solid rgba(107, 114, 128, 0.2);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="color: #666; font-size: 14px; font-weight: 600;">No Rating</div>
+            <div style="font-size: 24px; font-weight: 700; color: #4b5563;">{{ stats.rating_dist['no_rating'] }}</div>
+          </div>
+          <div style="font-size: 12px; color: #666;">No rating given</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="section__header">
+        <h3>📋 All Feedback <span style="font-size: 14px; font-weight: normal; color: #666;">({{ feedbacks|length }} shown)</span></h3>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
+          <a href="{{ url_for('admin.export_feedbacks') }}" class="btn btn--ghost btn--sm">📊 Export CSV</a>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px;">
+        <div>
+          <label class="label">🔍 Search</label>
+          <input type="text" class="input" id="searchInput" placeholder="Tenant, unit, comments..." value="{{ request.args.get('search', '') }}">
+        </div>
+
+        <div>
+          <label class="label">📂 Category</label>
+          <select class="input" id="categoryFilter">
+            <option value="">All Categories</option>
+            {% for category in categories %}
+              <option value="{{ category }}" {% if request.args.get('category') == category %}selected{% endif %}>{{ category|replace('_', ' ')|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="label">⭐ Rating</label>
+          <select class="input" id="ratingFilter">
+            <option value="">All Ratings</option>
+            <option value="5" {% if request.args.get('rating') == '5' %}selected{% endif %}>⭐⭐⭐⭐⭐ (5)</option>
+            <option value="4" {% if request.args.get('rating') == '4' %}selected{% endif %}>⭐⭐⭐⭐ (4)</option>
+            <option value="3" {% if request.args.get('rating') == '3' %}selected{% endif %}>⭐⭐⭐ (3)</option>
+            <option value="2" {% if request.args.get('rating') == '2' %}selected{% endif %}>⭐⭐ (2)</option>
+            <option value="1" {% if request.args.get('rating') == '1' %}selected{% endif %}>⭐ (1)</option>
+            <option value="no_rating" {% if request.args.get('rating') == 'no_rating' %}selected{% endif %}>No Rating</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label">📊 Status</label>
+          <select class="input" id="statusFilter">
+            <option value="">All Status</option>
+            <option value="submitted" {% if request.args.get('status') == 'submitted' %}selected{% endif %}>📝 Submitted</option>
+            <option value="reviewed" {% if request.args.get('status') == 'reviewed' %}selected{% endif %}>✓ Reviewed</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label">🏢 Building</label>
+          <select class="input" id="buildingFilter">
+            <option value="">All Buildings</option>
+            {% for building in buildings %}
+              <option value="{{ building.id }}" {% if request.args.get('building') == building.id|string %}selected{% endif %}>{{ building.code }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="label">🔄 Sort By</label>
+          <select class="input" id="sortFilter">
+            <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+            <option value="rating_high" {% if request.args.get('sort') == 'rating_high' %}selected{% endif %}>Rating (High-Low)</option>
+            <option value="rating_low" {% if request.args.get('sort') == 'rating_low' %}selected{% endif %}>Rating (Low-High)</option>
+            <option value="tenant_az" {% if request.args.get('sort') == 'tenant_az' %}selected{% endif %}>Tenant (A-Z)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback Cards -->
+    {% if feedbacks %}
+      <div style="display: grid; gap: 16px;">
+        {% for feedback in feedbacks %}
+          {% set sentiment = 'positive' if feedback.rating and feedback.rating >= 4 else ('neutral' if feedback.rating and feedback.rating == 3 else 'negative') %}
+          {% set card_low_rating_class = '' %}
+          {% if feedback.rating and feedback.rating <= 2 %}
+            {% set card_low_rating_class = 'card-low-rating' %}
+          {% endif %}
+          <div class="card {{ card_low_rating_class }}" style="padding: 24px;">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                  <h4 style="margin: 0; font-size: 18px; font-weight: 700; color: #1a1a1a;">{{ feedback.tenant_profile.user.full_name }}</h4>
+                  {% if feedback.rating and feedback.rating <= 2 %}
+                    <span style="background: rgba(239, 68, 68, 0.15); color: #991b1b; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">
+                      ⚠️ LOW RATING
+                    </span>
+                  {% endif %}
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <span class="chip" style="background: rgba(215, 179, 91, 0.15); color: #92400e; font-weight: 700;">
+                    {{ feedback.tenant_profile.unit.building.code }}-{{ feedback.tenant_profile.unit.unit_number }}
+                  </span>
+                  <span style="font-size: 13px; color: #666;">
+                    📅 {{ feedback.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                  </span>
+                </div>
+              </div>
+              <div>
+                {% set status_chip_class = 'rating-color-positive' %}
+                {% if feedback.status.value == 'submitted' %}
+                  {% set status_chip_class = 'rating-color-neutral' %}
+                {% endif %}
+                <span class="chip {{ status_chip_class }}" style="font-size: 13px; font-weight: 600; background: rgba(245, 158, 11, 0.15);">
+                  {% if feedback.status.value == 'submitted' %}📝 Submitted
+                  {% else %}✓ Reviewed{% endif %}
+                </span>
+              </div>
+            </div>
+
+            <!-- Category and Rating -->
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 20px; margin-bottom: 20px;">
+              <div>
+                <div style="font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 600;">CATEGORY</div>
+                <span class="chip" style="background: rgba(59, 130, 246, 0.15); color: #1e40af; font-weight: 600;">
+                  {{ feedback.category|replace('_', ' ')|title }}
+                </span>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 600;">RATING</div>
+                {% if feedback.rating %}
+                  <div style="font-size: 20px; color: #D7B35B;">
+                    {% for i in range(feedback.rating) %}⭐{% endfor %}
+                  </div>
+                  {% set rating_sentiment_class = 'rating-color-negative' %}
+                  {% if feedback.rating >= 4 %}
+                    {% set rating_sentiment_class = 'rating-color-positive' %}
+                  {% elif feedback.rating == 3 %}
+                    {% set rating_sentiment_class = 'rating-color-neutral' %}
+                  {% endif %}
+                  <div class="{{ rating_sentiment_class }}" style="font-size: 11px; font-weight: 600; margin-top: 4px;">
+                    {% if feedback.rating >= 4 %}😊 Positive
+                    {% elif feedback.rating == 3 %}😐 Neutral
+                    {% else %}😞 Negative{% endif %}
+                  </div>
+                {% else %}
+                  <div style="font-size: 13px; color: #999;">No rating</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Comments -->
+            <div style="background: rgba(59, 130, 246, 0.05); padding: 16px; border-radius: 8px; border-left: 3px solid #3b82f6; margin-bottom: 20px;">
+              <div style="font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 8px;">💬 TENANT FEEDBACK:</div>
+              <div style="font-size: 15px; color: #1a1a1a; line-height: 1.6;">{{ feedback.comments }}</div>
+            </div>
+
+            <!-- Admin Response -->
+            {% if feedback.admin_response %}
+              <div style="background: rgba(16, 185, 129, 0.05); padding: 16px; border-radius: 8px; border-left: 3px solid #10b981; margin-bottom: 20px;">
+                <div style="font-size: 12px; color: #065f46; font-weight: 600; margin-bottom: 8px;">
+                  ✓ ADMIN RESPONSE:
+                  {% if feedback.admin_response_at %}
+                    <span style="font-weight: normal;">({{ feedback.admin_response_at.strftime('%b %d, %Y at %I:%M %p') }})</span>
+                  {% endif %}
+                </div>
+                <div style="font-size: 14px; color: #065f46; line-height: 1.6;">{{ feedback.admin_response }}</div>
+              </div>
+            {% endif %}
+
+            <!-- Actions -->
+            {% if feedback.status.value == 'submitted' %}
+              <form method="post" action="{{ url_for('admin.review_feedback', feedback_id=feedback.id) }}" style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                  <label class="label">Admin Response (Optional)</label>
+                  <textarea class="input" name="admin_response" rows="3" placeholder="Add a response to this feedback (visible to tenant)..."></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                  <button class="btn btn--primary" type="submit">
+                    ✓ Mark as Reviewed
+                  </button>
+                </div>
+              </form>
+            {% else %}
+              <div style="text-align: right; font-size: 13px; color: #666;">
+                ✓ Reviewed on {{ feedback.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state" style="text-align: center; padding: 80px 20px;">
+        <div style="width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(215, 179, 91, 0.3);">
+          <span style="font-size: 64px;">✎</span>
+        </div>
+        <div class="empty-state__title" style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">No Feedback</div>
+        <div class="empty-state__text" style="font-size: 16px; color: #666; max-width: 500px; margin: 0 auto; line-height: 1.6;">
+          {% if request.args.get('search') or request.args.get('category') or request.args.get('rating') or request.args.get('status') or request.args.get('building') %}
+            No feedback matches your filters. Try adjusting your search criteria.
+          {% else %}
+            No feedback has been submitted yet. Tenants can submit feedback from their portal.
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <style>
+    .stat-card {
+      padding: 24px;
+      border-radius: 12px;
+      color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .stat-card__value {
+      font-size: 36px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .stat-card__label {
+      font-size: 14px;
+      opacity: 0.95;
+      font-weight: 500;
+    }
+    .rating-bg-positive { background: rgba(16, 185, 129, 0.08); }
+    .rating-bg-neutral { background: rgba(245, 158, 11, 0.08); }
+    .rating-bg-negative { background: rgba(239, 68, 68, 0.08); }
+    .rating-border-positive { border: 2px solid rgba(16, 185, 129, 0.2); }
+    .rating-border-neutral { border: 2px solid rgba(245, 158, 11, 0.2); }
+    .rating-border-negative { border: 2px solid rgba(239, 68, 68, 0.2); }
+    .rating-color-positive { color: #065f46; }
+    .rating-color-neutral { color: #92400e; }
+    .rating-color-negative { color: #991b1b; }
+    .card-low-rating { border-left: 4px solid #ef4444; }
+  </style>
+
+  <script>
+    // Real-time filters
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const ratingFilter = document.getElementById('ratingFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const buildingFilter = document.getElementById('buildingFilter');
+    const sortFilter = document.getElementById('sortFilter');
+
+    function applyFilters() {
+      const params = new URLSearchParams();
+      
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (categoryFilter.value) params.set('category', categoryFilter.value);
+      if (ratingFilter.value) params.set('rating', ratingFilter.value);
+      if (statusFilter.value) params.set('status', statusFilter.value);
+      if (buildingFilter.value) params.set('building', buildingFilter.value);
+      if (sortFilter.value) params.set('sort', sortFilter.value);
+      
+      window.location.href = '{{ url_for("admin.feedbacks") }}?' + params.toString();
+    }
+
+    // Debounce search input
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+
+    // Instant filter on select change
+    categoryFilter.addEventListener('change', applyFilters);
+    ratingFilter.addEventListener('change', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    buildingFilter.addEventListener('change', applyFilters);
+    sortFilter.addEventListener('change', applyFilters);
+
+    function clearFilters() {
+      window.location.href = '{{ url_for("admin.feedbacks") }}';
+    }
+  </script>
+{% endblock %}

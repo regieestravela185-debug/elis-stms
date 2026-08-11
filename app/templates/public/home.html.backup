@@ -1,0 +1,1084 @@
+{% extends "base.html" %}
+{% block body_attrs %}class="page-home"{% endblock %}
+{% block title %}Home | STMS{% endblock %}
+
+{% block head %}
+  <script defer src="{{ url_for('static', filename='js/home.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+  <section id="home" class="hero hero--split reveal">
+    <div class="hero__splitCard">
+      <div class="hero__text">
+        <div class="pill">SMART TENANT MANAGEMENT SYSTEM</div>
+        <h1 class="hero__title">
+          Welcome to<br/>
+          <span class="accent">The Elis Center</span>
+        </h1>
+        <p class="lead">Commercial and Residences — units for rent along the highway, CCTV-protected, near key landmarks.</p>
+        <div class="hero__cta">
+          {% if current_user.is_authenticated %}
+            <a class="btn btn--primary" href="#units">Browse units</a>
+            <a class="btn btn--ghost" href="#contact">Contact</a>
+          {% else %}
+            <button type="button" class="btn btn--primary js-open-register">Register Now</button>
+            <button type="button" class="btn btn--ghost js-open-login">Login</button>
+          {% endif %}
+        </div>
+      </div>
+      <figure class="hero__figure">
+        <img
+          src="{{ url_for('static', filename='img/elis-building.jpg') }}"
+          alt="The Elis Center building"
+          class="hero__img"
+          loading="eager"
+          width="600"
+          height="400"
+        />
+      </figure>
+    </div>
+  </section>
+
+  <section id="units" class="section section--tight reveal">
+    <div class="section__header">
+      <h2>Units</h2>
+    </div>
+
+    <div class="units-by-building">
+      {% for building in buildings %}
+        <div class="building-row">
+          <div class="building-header">
+            <h3>{{ building.code }} — {{ building.name }}</h3>
+          </div>
+          <div class="building-units">
+            <!-- 1st Floor -->
+            <div class="floor-section">
+              <h4 class="floor-header">1st Floor</h4>
+              {% if units_by_building.get(building.id, {}).get('floor_1', []) %}
+                <div class="units-grid">
+                  {% for u in units_by_building.get(building.id, {}).get('floor_1', []) %}
+                    <div
+                      class="card card--media card--lift unit-card{% if not current_user.is_authenticated %} js-unit-card{% endif %}"
+                      data-unit-id="{{ u.id }}"
+                      data-unit-code="{{ u.unit_code }}"
+                      data-unit-type="{{ u.type_label }}"
+                      data-unit-price="{{ "{:,.2f}".format(u.price_monthly) }}"
+                      data-unit-status="{{ u.status }}"
+                      data-unit-inclusion="{{ u.inclusion }}"
+                      data-unit-contract="{{ u.contract_note }}"
+                      data-unit-description="{{ u.description }}"
+                      data-unit-image-1="{{ url_for('static', filename=u.images[0]) }}"
+                      data-unit-image-2="{{ url_for('static', filename=u.images[1]) }}"
+                      data-unit-image-3="{{ url_for('static', filename=u.images[2]) }}"
+                      data-unit-image-4="{{ url_for('static', filename=u.images[3]) }}"
+                      data-unit-floor="{{ u.floor }}"
+                      data-unit-rating="{{ u.rating }}"
+                      data-unit-rating-count="{{ u.rating_count }}"
+                      role="button"
+                      tabindex="0"
+                      aria-label="{{ u.unit_code }} — view and reserve"
+                    >
+                      <div class="media media--{% if loop.index0 % 3 == 0 %}gold{% elif loop.index0 % 3 == 1 %}dark{% else %}light{% endif %}"><img src="{{ url_for('static', filename=u.images[0]) }}" alt="{{ u.unit_code }}" style="width: 100%; height: 100%; object-fit: cover;" /></div>
+                      <div class="card__body">
+                        <div class="kicker">{{ u.type_label }}</div>
+                        {% if can_view_details %}
+                          <h3 class="mono">{{ u.unit_code }}</h3>
+                          <p class="muted">₱{{ "{:,.2f}".format(u.price_monthly) }} / month</p>
+                          {% if u.rating_count > 0 %}
+                            <div style="display: flex; align-items: center; gap: 6px; margin: 8px 0;">
+                              <div style="color: #D7B35B; font-size: 15px; line-height: 1;">
+                                {% for i in range(5) %}
+                                  {% if i < u.rating|int %}⭐{% else %}☆{% endif %}
+                                {% endfor %}
+                              </div>
+                              <span style="font-size: 13px; color: #666; font-weight: 600;">{{ u.rating }}</span>
+                              <span style="font-size: 11px; color: #999;">({{ u.rating_count }})</span>
+                            </div>
+                          {% endif %}
+                          <p><span class="badge badge--{{ u.status }}">{{ u.status }}</span></p>
+                        {% else %}
+                          <h3>Unit Preview</h3>
+                          <p class="muted">Sign in to view full unit details and status.</p>
+                        {% endif %}
+
+                        <button type="button" class="btn btn--sm btn--ghost js-open-unit-details mt-12">Details</button>
+                        {% if can_reserve and u.status == "available" %}
+                          <button
+                            type="button"
+                            class="btn btn--sm btn--primary js-open-reserve"
+                            data-unit-id="{{ u.id }}"
+                            data-unit-code="{{ u.unit_code }}"
+                          >Reserve</button>
+                        {% elif can_reserve %}
+                          <p class="unit-card__hint muted">Currently {{ u.status }}</p>
+                        {% elif not current_user.is_authenticated %}
+                          <p class="unit-card__hint muted">Login/Register to view details and reserve.</p>
+                        {% else %}
+                          <p class="unit-card__hint muted">Reservation is for customer accounts only.</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="card">
+                  <p class="muted">No units on 1st floor.</p>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- 2nd Floor -->
+            <div class="floor-section mt-16">
+              <h4 class="floor-header">2nd Floor</h4>
+              {% if units_by_building.get(building.id, {}).get('floor_2', []) %}
+                <div class="units-grid">
+                  {% for u in units_by_building.get(building.id, {}).get('floor_2', []) %}
+                    <div
+                      class="card card--media card--lift unit-card{% if not current_user.is_authenticated %} js-unit-card{% endif %}"
+                      data-unit-id="{{ u.id }}"
+                      data-unit-code="{{ u.unit_code }}"
+                      data-unit-type="{{ u.type_label }}"
+                      data-unit-price="{{ "{:,.2f}".format(u.price_monthly) }}"
+                      data-unit-status="{{ u.status }}"
+                      data-unit-inclusion="{{ u.inclusion }}"
+                      data-unit-contract="{{ u.contract_note }}"
+                      data-unit-description="{{ u.description }}"
+                      data-unit-image-1="{{ url_for('static', filename=u.images[0]) }}"
+                      data-unit-image-2="{{ url_for('static', filename=u.images[1]) }}"
+                      data-unit-image-3="{{ url_for('static', filename=u.images[2]) }}"
+                      data-unit-image-4="{{ url_for('static', filename=u.images[3]) }}"
+                      data-unit-floor="{{ u.floor }}"
+                      data-unit-rating="{{ u.rating }}"
+                      data-unit-rating-count="{{ u.rating_count }}"
+                      role="button"
+                      tabindex="0"
+                      aria-label="{{ u.unit_code }} — view and reserve"
+                    >
+                      <div class="media media--{% if loop.index0 % 3 == 0 %}gold{% elif loop.index0 % 3 == 1 %}dark{% else %}light{% endif %}"><img src="{{ url_for('static', filename=u.images[0]) }}" alt="{{ u.unit_code }}" style="width: 100%; height: 100%; object-fit: cover;" /></div>
+                      <div class="card__body">
+                        <div class="kicker">{{ u.type_label }}</div>
+                        {% if can_view_details %}
+                          <h3 class="mono">{{ u.unit_code }}</h3>
+                          <p class="muted">₱{{ "{:,.2f}".format(u.price_monthly) }} / month</p>
+                          {% if u.rating_count > 0 %}
+                            <div style="display: flex; align-items: center; gap: 6px; margin: 8px 0;">
+                              <div style="color: #D7B35B; font-size: 15px; line-height: 1;">
+                                {% for i in range(5) %}
+                                  {% if i < u.rating|int %}⭐{% else %}☆{% endif %}
+                                {% endfor %}
+                              </div>
+                              <span style="font-size: 13px; color: #666; font-weight: 600;">{{ u.rating }}</span>
+                              <span style="font-size: 11px; color: #999;">({{ u.rating_count }})</span>
+                            </div>
+                          {% endif %}
+                          <p><span class="badge badge--{{ u.status }}">{{ u.status }}</span></p>
+                        {% else %}
+                          <h3>Unit Preview</h3>
+                          <p class="muted">Sign in to view full unit details and status.</p>
+                        {% endif %}
+
+                        <button type="button" class="btn btn--sm btn--ghost js-open-unit-details mt-12">Details</button>
+                        {% if can_reserve and u.status == "available" %}
+                          <button
+                            type="button"
+                            class="btn btn--sm btn--primary js-open-reserve"
+                            data-unit-id="{{ u.id }}"
+                            data-unit-code="{{ u.unit_code }}"
+                          >Reserve</button>
+                        {% elif can_reserve %}
+                          <p class="unit-card__hint muted">Currently {{ u.status }}</p>
+                        {% elif not current_user.is_authenticated %}
+                          <p class="unit-card__hint muted">Login/Register to view details and reserve.</p>
+                        {% else %}
+                          <p class="unit-card__hint muted">Reservation is for customer accounts only.</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="card">
+                  <p class="muted">No units on 2nd floor.</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <p class="muted">No buildings found.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section section--tight reveal">
+    <div class="feature-strip">
+      <div class="feature">
+        <div class="feature__ico">⌂</div>
+        <div>
+          <div class="feature__title">Browse units</div>
+          <div class="muted">View types and sample rates.</div>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature__ico">✦</div>
+        <div>
+          <div class="feature__title">Reserve</div>
+          <div class="muted">Submit with valid ID.</div>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature__ico">▦</div>
+        <div>
+          <div class="feature__title">Tenancy</div>
+          <div class="muted">Contract, payments, concerns.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="section reveal">
+    <div class="section__header">
+      <h2>How STMS works</h2>
+    </div>
+    <div class="how-steps">
+      <div class="how-step card card--lift">
+        <div class="how-step__n">1</div>
+        <h3>Register & verify</h3>
+        <p class="muted">Create an account and complete OTP email verification.</p>
+      </div>
+      <div class="how-step card card--lift">
+        <div class="how-step__n">2</div>
+        <h3>Pick a unit</h3>
+        <p class="muted">Browse available units, submit a reservation, and upload your ID.</p>
+      </div>
+      <div class="how-step card card--lift">
+        <div class="how-step__n">3</div>
+        <h3>Admin review</h3>
+        <p class="muted">Staff reviews your request; status updates sync across dashboards.</p>
+      </div>
+      <div class="how-step card card--lift">
+        <div class="how-step__n">4</div>
+        <h3>Tenant portal</h3>
+        <p class="muted">After approval: contract, payments, concerns, and history in one place.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tenant Satisfaction Section -->
+  {% if avg_rating > 0 %}
+  <section class="section reveal" style="background: linear-gradient(135deg, rgba(215, 179, 91, 0.08) 0%, rgba(215, 179, 91, 0.02) 100%);">
+    <div class="section__header">
+      <h2>⭐ Tenant Satisfaction</h2>
+      <p class="muted">Real feedback from our tenants</p>
+    </div>
+    
+    <div class="grid grid--3" style="gap: 20px; margin-top: 32px;">
+      <div class="card card--lift" style="text-align: center; padding: 32px; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">⭐</div>
+        <div style="font-size: 56px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ avg_rating }}</div>
+        <div style="font-size: 24px; margin-bottom: 8px; position: relative; z-index: 1;">
+          {% for i in range(5) %}
+            {% if i < avg_rating|int %}⭐{% else %}☆{% endif %}
+          {% endfor %}
+        </div>
+        <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Average Rating</div>
+        <div style="font-size: 12px; opacity: 0.85; margin-top: 4px; position: relative; z-index: 1;">Based on {{ total_feedbacks }} reviews</div>
+      </div>
+      
+      <div class="card card--lift" style="text-align: center; padding: 32px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">😊</div>
+        <div style="font-size: 56px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ satisfaction_score }}%</div>
+        <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Satisfaction Score</div>
+        <div style="font-size: 12px; opacity: 0.85; margin-top: 4px; position: relative; z-index: 1;">Tenants rated 4-5 stars</div>
+      </div>
+      
+      <div class="card card--lift" style="padding: 24px;">
+        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #D7B35B;">What Tenants Say</h3>
+        <div style="font-size: 14px; line-height: 1.8; color: var(--text);">
+          <p style="margin-bottom: 12px;">✓ Professional management</p>
+          <p style="margin-bottom: 12px;">✓ Responsive to concerns</p>
+          <p style="margin-bottom: 12px;">✓ Well-maintained facilities</p>
+          <p style="margin-bottom: 12px;">✓ Safe and secure location</p>
+          <p style="margin-bottom: 0;">✓ Great value for money</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card card--lift" style="margin-top: 24px; padding: 24px; text-align: center; background: rgba(215, 179, 91, 0.05);">
+      <p class="muted" style="font-size: 14px; margin: 0;">
+        <strong>Note:</strong> Only verified tenants can submit feedback and ratings. 
+        {% if not current_user.is_authenticated %}
+        <button type="button" class="link-btn js-open-register" style="color: #D7B35B; font-weight: 600;">Register now</button> to become a tenant and share your experience.
+        {% endif %}
+      </p>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Testimonials Carousel -->
+  {% if testimonials %}
+  <section class="section reveal">
+    <div class="section__header">
+      <h2>💬 What Our Tenants Say</h2>
+      <p class="muted">Real reviews from real tenants</p>
+    </div>
+    
+    <div class="testimonials-carousel" id="testimonialsCarousel">
+      <div class="testimonials-track">
+        {% for testimonial in testimonials %}
+          <div class="testimonial-card">
+            <div class="testimonial-header">
+              <div class="testimonial-avatar">
+                {{ testimonial.tenant_profile.user.full_name[0]|upper }}
+              </div>
+              <div>
+                <div class="testimonial-name">{{ testimonial.tenant_profile.user.full_name }}</div>
+                <div class="testimonial-unit">{{ testimonial.unit.unit_code if testimonial.unit else 'Tenant' }}</div>
+              </div>
+              <div class="testimonial-rating">
+                {% for i in range(testimonial.rating) %}⭐{% endfor %}
+              </div>
+            </div>
+            <div class="testimonial-comment">
+              "{{ testimonial.comments[:150] }}{% if testimonial.comments|length > 150 %}...{% endif %}"
+            </div>
+            <div class="testimonial-category">
+              {{ testimonial.category|replace('_', ' ')|title }}
+            </div>
+          </div>
+        {% endfor %}
+        <!-- Duplicate for seamless loop -->
+        {% for testimonial in testimonials %}
+          <div class="testimonial-card">
+            <div class="testimonial-header">
+              <div class="testimonial-avatar">
+                {{ testimonial.tenant_profile.user.full_name[0]|upper }}
+              </div>
+              <div>
+                <div class="testimonial-name">{{ testimonial.tenant_profile.user.full_name }}</div>
+                <div class="testimonial-unit">{{ testimonial.unit.unit_code if testimonial.unit else 'Tenant' }}</div>
+              </div>
+              <div class="testimonial-rating">
+                {% for i in range(testimonial.rating) %}⭐{% endfor %}
+              </div>
+            </div>
+            <div class="testimonial-comment">
+              "{{ testimonial.comments[:150] }}{% if testimonial.comments|length > 150 %}...{% endif %}"
+            </div>
+            <div class="testimonial-category">
+              {{ testimonial.category|replace('_', ' ')|title }}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <style>
+      .testimonials-carousel {
+        overflow: hidden;
+        position: relative;
+        margin-top: 32px;
+        padding: 20px 0;
+      }
+      
+      .testimonials-track {
+        display: flex;
+        gap: 20px;
+        animation: scroll 60s linear infinite;
+      }
+      
+      .testimonials-track:hover {
+        animation-play-state: paused;
+      }
+      
+      @keyframes scroll {
+        0% {
+          transform: translateX(0);
+        }
+        100% {
+          transform: translateX(-50%);
+        }
+      }
+      
+      .testimonial-card {
+        min-width: 350px;
+        max-width: 350px;
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e5e7eb;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      
+      .testimonial-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+      }
+      
+      .testimonial-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      
+      .testimonial-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      
+      .testimonial-name {
+        font-weight: 700;
+        font-size: 15px;
+        color: #1a1a1a;
+      }
+      
+      .testimonial-unit {
+        font-size: 12px;
+        color: #666;
+        font-weight: 600;
+      }
+      
+      .testimonial-rating {
+        margin-left: auto;
+        font-size: 14px;
+        color: #D7B35B;
+      }
+      
+      .testimonial-comment {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #374151;
+        margin-bottom: 12px;
+        font-style: italic;
+      }
+      
+      .testimonial-category {
+        font-size: 11px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+      }
+    </style>
+  </section>
+  {% endif %}
+
+  <!-- Announcements Section -->
+  {% if announcements %}
+  <section id="announcements" class="section reveal" style="background: linear-gradient(135deg, rgba(215, 179, 91, 0.05) 0%, rgba(215, 179, 91, 0.02) 100%);">
+    <div class="section__header">
+      <h2>📢 Latest Announcements</h2>
+      <p class="muted">Important updates and news from The Elis Center</p>
+    </div>
+    
+    <div class="grid grid--3" style="gap: 20px; margin-top: 32px;">
+      {% for announcement in announcements %}
+        <div class="card card--lift" style="border-left: 4px solid {% if announcement.is_pinned %}#ef4444{% elif announcement.category == 'emergency' %}#ef4444{% elif announcement.category == 'maintenance' %}#eab308{% elif announcement.category == 'event' %}#a855f7{% else %}#D7B35B{% endif %}; position: relative;">
+          {% if announcement.is_pinned %}
+            <span style="position: absolute; top: 12px; right: 12px; background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;">📌 PINNED</span>
+          {% endif %}
+          
+          <div style="margin-bottom: 12px;">
+            {% if announcement.category %}
+              <span class="badge" style="
+                {% if announcement.category == 'emergency' %}background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);
+                {% elif announcement.category == 'maintenance' %}background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3);
+                {% elif announcement.category == 'event' %}background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3);
+                {% elif announcement.category == 'rule_update' %}background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);
+                {% else %}background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3);
+                {% endif %}
+                font-size: 11px; padding: 4px 8px;">
+                {% if announcement.category == 'emergency' %}🚨 Emergency
+                {% elif announcement.category == 'maintenance' %}🔧 Maintenance
+                {% elif announcement.category == 'event' %}🎉 Event
+                {% elif announcement.category == 'rule_update' %}📜 Rule Update
+                {% else %}📋 {{ announcement.category|title }}
+                {% endif %}
+              </span>
+            {% endif %}
+          </div>
+          
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ announcement.title }}</h3>
+          
+          <p class="muted" style="font-size: 13px; margin-bottom: 12px;">
+            📅 {{ announcement.created_at.strftime('%B %d, %Y') }}
+          </p>
+          
+          <p style="font-size: 14px; line-height: 1.6; color: var(--text);">
+            {{ announcement.content[:200] }}{% if announcement.content|length > 200 %}...{% endif %}
+          </p>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="about" class="section section--footer reveal">
+    <div class="section__header">
+      <h2>About</h2>
+    </div>
+    <div class="about-prose card card--lift">
+      <p class="muted">
+        <strong>The Elis Center Commercial and Residences</strong> is positioned along the highway with CCTV coverage
+        for safety and security. The site is close to key landmarks including LPU Laguna, NU Laguna, WalterMart, and SM, making it
+        practical for businesses and residents who value accessibility and visibility.
+      </p>
+      <p class="muted">
+        The <strong>Smart Tenant Management System (STMS)</strong> is our online way to browse units, reserve, and
+        manage your tenancy documents in one place—so you spend less time on follow-ups and more time on your business
+        or home life.
+      </p>
+      <p class="muted">
+        Whether you need a commercial space or a residential unit, our team guides you through viewing, requirements,
+        and next steps. For the latest availability and rates, create an account and sign in—our staff will assist you
+        through the process.
+      </p>
+      <p class="muted">
+        <strong>Residential units are all studio type.</strong> Commercial units are available under contract terms
+        (minimum <strong>1 year</strong>). Power and water bills are <strong>exclusive</strong> (paid separately).
+        Payment methods: <strong>cash</strong> and <strong>bank transfer</strong>. For contract processing, we require a
+        <strong>valid ID of the tenants who will stay</strong>.
+      </p>
+    </div>
+    <div class="grid grid--3 mt-16">
+      <div class="card card--lift">
+        <h3>Digital-first</h3>
+        <p class="muted">Submit requirements online, track your reservation status, and keep your tenancy documents organized.</p>
+      </div>
+      <div class="card card--lift">
+        <h3>Along the highway</h3>
+        <p class="muted">Accessible location with CCTV for safety. Near schools, malls, and daily needs—ideal for business and living.</p>
+      </div>
+      <div class="card card--lift">
+        <h3>Secure sign-in</h3>
+        <p class="muted">Account verification helps protect your information. Use only official contact numbers listed on this site.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="section section--footer reveal">
+    <div class="section__header">
+      <h2>FAQ</h2>
+    </div>
+    <div class="accordion">
+      <details class="acc">
+        <summary>What is STMS and how does it help me?</summary>
+        <div class="faq-a muted">
+          STMS (Smart Tenant Management System) is the online portal of The Elis Center for browsing sample units,
+          creating an account, and submitting a reservation. It helps you complete requirements digitally and follow
+          updates faster than back-and-forth messages alone. After you sign in, you can see more details about
+          availability and next steps with our team.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>How do reservations work from start to finish?</summary>
+        <div class="faq-a muted">
+          Create an account (with email verification), sign in, then choose an available unit and submit your
+          information. You will typically provide contact details, move-in date, and a valid ID. Your request is
+          reviewed by our staff. If approved, you will be guided on the contract and move-in requirements. If you need
+          changes, contact us using the official numbers on this website.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>What documents or information do I need to reserve?</summary>
+        <div class="faq-a muted">
+          For the contract, we require a <strong>valid ID of the tenants who will stay</strong>. Please upload clear,
+          readable ID images to avoid delays. Our staff will advise if additional documents are needed depending on your
+          application.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>Can I visit or inspect the property before deciding?</summary>
+        <div class="faq-a muted">
+          Yes—many applicants want to see the location and unit layout first. Call or message us during office hours
+          (see Contact) so we can schedule a viewing that fits your schedule. For safety and building security, we
+          recommend setting an appointment instead of walking in unannounced.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>What happens if I do not complete requirements on time?</summary>
+        <div class="faq-a muted">
+          If a reservation cannot move forward or required follow-ups are not completed within the time window given by
+          our team, the unit may be released to other applicants. This keeps the process fair for everyone waiting in
+          line. If you have an emergency, contact us as early as possible so we can advise you.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>How do I pay? What methods are accepted?</summary>
+        <div class="faq-a muted">
+          We accept <strong>cash</strong> and <strong>bank transfer</strong>. Power and water bills are
+          <strong>exclusive</strong> (paid separately). After your application progresses, our office staff will provide
+          official instructions (where to pay, deadlines, and official receipts). Please avoid sending money to personal
+          accounts—only follow guidance from verified Elis Center contacts.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>Is the building safe? Is there CCTV?</summary>
+        <div class="faq-a muted">
+          The property promotes safety with CCTV coverage in common areas. For your own security, always lock your unit,
+          avoid sharing access codes, and report unusual incidents to the management office during business hours.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>How long does it take to get a response after I submit?</summary>
+        <div class="faq-a muted">
+          Response time depends on office hours and the completeness of your documents. If your files are clear and your
+          contact details are correct, our team can usually follow up sooner. If you do not hear back within a
+          reasonable time, please call the numbers listed in Contact.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>Is my personal information safe?</summary>
+        <div class="faq-a muted">
+          We use account verification and secure practices to protect your information. Keep your password private, and
+          only use official contact numbers listed on this site. If someone asks for payments or personal details
+          outside official channels, please verify with us first.
+        </div>
+      </details>
+      <details class="acc">
+        <summary>How can I reach the property team?</summary>
+        <div class="faq-a muted">
+          Use the phone numbers listed in the Contact section: <strong>0918-912-6340</strong> and
+          <strong>0918-920-5645</strong>. Hours are typically Monday–Saturday, 9:00 AM–6:00 PM. For urgent on-site
+          concerns after you become a tenant, please follow the instructions provided in your tenancy process.
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section id="contact" class="section section--footer reveal">
+    <div class="section__header">
+      <h2>Contact</h2>
+    </div>
+    <div class="grid grid--4">
+      <div class="card card--lift">
+        <h3>Phone</h3>
+        <p class="muted">0918-912-6340<br/>0918-920-5645</p>
+      </div>
+      <div class="card card--lift">
+        <h3>Hours</h3>
+        <p class="muted">Mon–Sat • 9:00 AM – 6:00 PM</p>
+      </div>
+      <div class="card card--lift">
+        <h3>Address</h3>
+        <p class="muted">The Elis Center, #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</p>
+      </div>
+      <div class="card card--lift">
+        <h3>Facebook</h3>
+        <p class="muted">
+          <a href="https://www.facebook.com/profile.php?id=100063700727817" target="_blank" rel="noopener noreferrer">
+            ELIS Business Center | Calamba
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="card card--lift mt-16">
+      <div class="section__header" style="margin-bottom:10px">
+        <h3>Map</h3>
+        <a
+          class="btn btn--sm btn--ghost"
+          href="https://www.google.com/maps/search/?api=1&query=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Open in Google Maps</a>
+      </div>
+      <a
+        class="map-link"
+        href="https://www.google.com/maps/search/?api=1&query=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Open The Elis Center location in Google Maps"
+      >
+        <div class="map-embed" aria-hidden="true">
+          <iframe
+            title="The Elis Center (Calamba) map preview"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            src="https://www.google.com/maps?q=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna&output=embed"
+          ></iframe>
+          <div class="map-cta">
+            <span class="map-cta__badge">Click to open Google Maps</span>
+          </div>
+        </div>
+      </a>
+      <p class="muted" style="margin:10px 0 0">Tip: click the map preview to open Google Maps with a pinned search.</p>
+    </div>
+  </section>
+
+  <div class="chat-fab" id="chatFab" aria-label="Open chat">
+    <span class="chat-fab__icon">💬</span>
+  </div>
+  <div class="chat-panel" id="chatPanel" hidden>
+    <div class="chat-panel__head">
+      <span>Assistant</span>
+      <button type="button" class="chat-panel__close" id="chatClose" aria-label="Close">×</button>
+    </div>
+    <div class="chat-panel__log" id="chatLog"></div>
+    <div class="chat-panel__row">
+      <input class="input" id="chatInput" placeholder="English o Tagalog…" autocomplete="off" />
+      <button class="btn btn--primary" type="button" id="chatSend">Send</button>
+    </div>
+  </div>
+
+  {% if not current_user.is_authenticated %}
+  <div class="modal" id="modalLogin" hidden aria-modal="true" role="dialog">
+    <div class="modal__backdrop js-modal-close"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x js-modal-close" aria-label="Close">×</button>
+      <h3 class="modal__title">Login</h3>
+      <p class="modal__hint">Sign in to view the full unit list, reserve, and access your dashboard.</p>
+      <form method="post" action="{{ url_for('auth.login_post') }}" class="form" id="homeLoginForm">
+        <input type="hidden" name="source" value="home" />
+        <label class="label">Email</label>
+        <input class="input" type="email" name="email" id="home_login_email" required oninput="validateHomeEmail(this)" />
+        <div id="home_login_email_error" class="error-message" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Email must end with @gmail.com</div>
+
+        <label class="label" style="margin-top: 16px;">Password</label>
+        <div style="position: relative;">
+          <input class="input" type="password" name="password" id="login_password" data-password-input required style="padding-right: 40px;" oninput="validateHomePassword(this)" />
+          <button type="button" onclick="document.getElementById('login_password').type = document.getElementById('login_password').type === 'password' ? 'text' : 'password'" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; padding: 4px; color: #D7B35B; font-size: 20px; line-height: 1; z-index: 10;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <div id="home_login_password_error" class="error-message" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Password must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char</div>
+
+        <button class="btn btn--primary w-full" type="submit" style="margin-top: 16px;">Login</button>
+      </form>
+      <p class="muted mt-12">No account? <button type="button" class="link-btn js-switch-register">Register</button></p>
+    </div>
+  </div>
+
+  <div class="modal" id="modalRegister" hidden aria-modal="true" role="dialog">
+    <div class="modal__backdrop js-modal-close"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x js-modal-close" aria-label="Close">×</button>
+      <h3 class="modal__title">Register</h3>
+      <p class="modal__hint">Create an account to verify OTP, browse units, and submit reservations.</p>
+      <form method="post" action="{{ url_for('auth.register_post') }}" class="form" id="homeRegisterForm">
+        <input type="hidden" name="source" value="home" />
+        <label class="label">Full name</label>
+        <input class="input" name="full_name" required />
+
+        <label class="label" style="margin-top: 16px;">Email</label>
+        <input class="input" type="email" name="email" id="home_register_email" required oninput="validateHomeRegisterEmail(this)" />
+        <div id="home_register_email_error" class="error-message" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Email must end with @gmail.com</div>
+
+        <label class="label" style="margin-top: 16px;">Password</label>
+        <div style="position: relative;">
+          <input class="input" type="password" name="password" id="register_password" data-password-input required style="padding-right: 40px;" oninput="validateHomeRegisterPassword(this)" />
+          <button type="button" onclick="document.getElementById('register_password').type = document.getElementById('register_password').type === 'password' ? 'text' : 'password'" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; padding: 4px; color: #D7B35B; font-size: 20px; line-height: 1; z-index: 10;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <div id="home_register_password_error" class="error-message" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Password must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char</div>
+
+        <button class="btn btn--primary w-full" type="submit" style="margin-top: 16px;">Create account</button>
+      </form>
+      <p class="muted mt-12">Have an account? <button type="button" class="link-btn js-switch-login">Login</button></p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if otp_target_email %}
+  <div class="modal" id="modalVerifyOtp" hidden aria-modal="true" role="dialog">
+    <div class="modal__backdrop js-modal-close"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x js-modal-close" aria-label="Close">×</button>
+      <h3 class="modal__title">Verify email</h3>
+      <p class="modal__hint">Enter the 6-digit OTP sent to <strong>{{ otp_target_email }}</strong>.</p>
+
+      <div class="hint">
+        <div class="hint__title">No OTP yet?</div>
+        <div class="muted">Check spam or promotions, then tap <strong>Resend OTP</strong>.</div>
+      </div>
+
+      <form method="post" action="{{ url_for('auth.verify_otp_post') }}" class="form">
+        <label class="label">OTP</label>
+        <input class="input" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required />
+        <button class="btn btn--primary w-full" type="submit">Verify</button>
+      </form>
+
+      <form method="post" action="{{ url_for('auth.resend_otp') }}" class="mt-12">
+        <button class="btn btn--ghost w-full" type="submit">Resend OTP</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if can_reserve %}
+  <div class="modal" id="modalReserve" hidden aria-modal="true" role="dialog">
+    <div class="modal__backdrop js-modal-close"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x js-modal-close" aria-label="Close">×</button>
+      <h3 class="modal__title">Reserve unit</h3>
+      <p class="modal__hint">Fill up and submit. Status becomes pending for admin review.</p>
+      <form method="post" action="{{ url_for('user.reserve_post', unit_id=0) }}" enctype="multipart/form-data" class="form" id="reserveForm">
+        <input type="hidden" id="reserveUnitId" value="" />
+        <label class="label">Selected unit</label>
+        <input class="input" id="reserveUnitCode" type="text" readonly />
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Floor</label>
+            <input class="input" id="reserveUnitFloor" type="text" readonly />
+          </div>
+          <div>
+            <label class="label">Price</label>
+            <input class="input" id="reserveUnitPrice" type="text" readonly />
+          </div>
+        </div>
+
+        <div class="card mt-16" style="background: rgba(215,179,91,0.1); border: 1px solid rgba(215,179,91,0.3);">
+          <h4 style="color: var(--gold2); margin-bottom: 12px;">Payment Breakdown</h4>
+          <div class="grid grid--2">
+            <div>
+              <label class="label">Monthly Price</label>
+              <input class="input" id="reserveMonthlyPrice" type="text" readonly />
+            </div>
+            <div>
+              <label class="label">Reservation Deposit</label>
+              <input class="input" value="₱5,000.00" type="text" readonly style="background: rgba(215,179,91,0.2);" />
+            </div>
+          </div>
+          <div style="margin-top: 12px;">
+            <label class="label">Total to Pay</label>
+            <input class="input" id="reserveTotalPayment" type="text" readonly style="font-weight: 700; color: var(--gold2); font-size: 18px;" />
+          </div>
+          <p class="muted" style="font-size: 12px; margin-top: 8px;">
+            <strong>Deposit Terms:</strong> ₱5,000 deposit required. Refundable after contract ends minus damages and unpaid bills.
+          </p>
+        </div>
+
+        <div class="grid grid--2 mt-16">
+          <div>
+            <label class="label">Name</label>
+            <input class="input" name="full_name" value="{{ current_user.full_name }}" required />
+          </div>
+          <div>
+            <label class="label">Email</label>
+            <input class="input" type="email" name="email" value="{{ current_user.email }}" required />
+          </div>
+        </div>
+
+        <div class="grid grid--2">
+          <div>
+            <label class="label">Contact</label>
+            <input class="input" name="contact" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" required />
+          </div>
+          <div>
+            <label class="label">Move-in date</label>
+            <input class="input" type="date" name="move_in_date" required />
+          </div>
+        </div>
+
+        <div>
+          <label class="label">Move-out date</label>
+          <input class="input" type="date" name="move_out_date" required />
+          <p class="muted" style="font-size: 12px; margin-top: 4px;">Select your expected move-out date</p>
+        </div>
+
+        <div class="grid grid--2">
+          <div>
+            <label class="label">ID Type</label>
+            <input class="input" name="id_type" id="reserveIdType" placeholder="National ID / PhilHealth / etc." required />
+          </div>
+          <div>
+            <label class="label">ID Number</label>
+            <input class="input" name="id_number" id="reserveIdNumber" placeholder="Auto-fill from OCR or type manually" required />
+          </div>
+        </div>
+
+        <label class="label">Upload ID (image/PDF)</label>
+        <input class="input" type="file" name="id_upload" id="reserveIdUpload" accept="image/*,.pdf" />
+        <p class="muted" id="ocrStatus">Tip: OCR tries to detect ID Type and ID Number after upload. You can edit manually.</p>
+
+        <button class="btn btn--primary w-full" type="submit">Submit reservation</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="modal" id="modalUnitDetails" hidden aria-modal="true" role="dialog">
+    <div class="modal__backdrop js-modal-close"></div>
+    <div class="modal__card modal__card--wide">
+      <button type="button" class="modal__x js-modal-close" aria-label="Close">×</button>
+      <h3 class="modal__title" id="unitDetailsTitle">Unit details</h3>
+      <p class="modal__hint" id="unitDetailsMeta"></p>
+      <div class="unit-gallery">
+        <img id="unitImageMain" class="unit-gallery__main" alt="Unit image preview" />
+        <div class="unit-gallery__thumbs">
+          <button type="button" class="unit-gallery__thumb-btn"><img id="unitImageThumb2" class="unit-gallery__thumb" alt="Unit image 2" /></button>
+          <button type="button" class="unit-gallery__thumb-btn"><img id="unitImageThumb3" class="unit-gallery__thumb" alt="Unit image 3" /></button>
+          <button type="button" class="unit-gallery__thumb-btn"><img id="unitImageThumb4" class="unit-gallery__thumb" alt="Unit image 4" /></button>
+        </div>
+      </div>
+      <div class="card mt-12">
+        <p class="muted"><strong>Inclusion:</strong> <span id="unitDetailsInclusion"></span></p>
+        <p class="muted"><strong>Contract note:</strong> <span id="unitDetailsContract"></span></p>
+        <p class="muted"><strong>Utilities:</strong> Exclusive of power and water bills.</p>
+        <p class="muted"><strong>Description:</strong> <span id="unitDetailsDescription"></span></p>
+        <div class="card mt-12" style="background: rgba(215,179,91,0.1); border: 1px solid rgba(215,179,91,0.3);">
+          <h4 style="color: var(--gold2); margin-bottom: 8px;">Reservation Deposit Required</h4>
+          <p class="muted" style="font-size: 14px;"><strong>₱5,000.00</strong> - Refundable after contract ends minus damages and unpaid bills.</p>
+          <p class="muted" style="font-size: 12px; margin-top: 4px;">Total payment on reservation: Monthly Price + ₱5,000 Deposit</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+<script>
+function validateHomeEmail(input) {
+  const value = input.value;
+  const errorDiv = document.getElementById('home_login_email_error');
+  if (value && !value.endsWith('@gmail.com')) {
+    input.style.borderColor = 'red';
+    errorDiv.style.display = 'block';
+  } else if (value) {
+    input.style.borderColor = '#D7B35B';
+    errorDiv.style.display = 'none';
+  } else {
+    input.style.borderColor = '';
+    errorDiv.style.display = 'none';
+  }
+}
+
+function validateHomePassword(input) {
+  const value = input.value;
+  const errorDiv = document.getElementById('home_login_password_error');
+  const hasUpper = /[A-Z]/.test(value);
+  const hasLower = /[a-z]/.test(value);
+  const hasNumber = /[0-9]/.test(value);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(value);
+  const hasMinLength = value.length >= 8;
+
+  if (value && (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength)) {
+    input.style.borderColor = 'red';
+    errorDiv.style.display = 'block';
+  } else if (value) {
+    input.style.borderColor = '#D7B35B';
+    errorDiv.style.display = 'none';
+  } else {
+    input.style.borderColor = '';
+    errorDiv.style.display = 'none';
+  }
+}
+
+function validateHomeRegisterEmail(input) {
+  const value = input.value;
+  const errorDiv = document.getElementById('home_register_email_error');
+  if (value && !value.endsWith('@gmail.com')) {
+    input.style.borderColor = 'red';
+    errorDiv.style.display = 'block';
+  } else if (value) {
+    input.style.borderColor = '#D7B35B';
+    errorDiv.style.display = 'none';
+  } else {
+    input.style.borderColor = '';
+    errorDiv.style.display = 'none';
+  }
+}
+
+function validateHomeRegisterPassword(input) {
+  const value = input.value;
+  const errorDiv = document.getElementById('home_register_password_error');
+  const hasUpper = /[A-Z]/.test(value);
+  const hasLower = /[a-z]/.test(value);
+  const hasNumber = /[0-9]/.test(value);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(value);
+  const hasMinLength = value.length >= 8;
+
+  if (value && (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength)) {
+    input.style.borderColor = 'red';
+    errorDiv.style.display = 'block';
+  } else if (value) {
+    input.style.borderColor = '#D7B35B';
+    errorDiv.style.display = 'none';
+  } else {
+    input.style.borderColor = '';
+    errorDiv.style.display = 'none';
+  }
+}
+
+const homeLoginForm = document.getElementById('homeLoginForm');
+if (homeLoginForm) {
+  homeLoginForm.addEventListener('submit', function(e) {
+    const email = document.getElementById('home_login_email');
+    const password = document.getElementById('login_password');
+    let valid = true;
+
+    if (!email.value.endsWith('@gmail.com')) {
+      email.style.borderColor = 'red';
+      document.getElementById('home_login_email_error').style.display = 'block';
+      valid = false;
+    }
+
+    const hasUpper = /[A-Z]/.test(password.value);
+    const hasLower = /[a-z]/.test(password.value);
+    const hasNumber = /[0-9]/.test(password.value);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password.value);
+    const hasMinLength = password.value.length >= 8;
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength) {
+      password.style.borderColor = 'red';
+      document.getElementById('home_login_password_error').style.display = 'block';
+      valid = false;
+    }
+
+    if (!valid) {
+      e.preventDefault();
+    }
+  });
+}
+
+const homeRegisterForm = document.getElementById('homeRegisterForm');
+if (homeRegisterForm) {
+  homeRegisterForm.addEventListener('submit', function(e) {
+    const email = document.getElementById('home_register_email');
+    const password = document.getElementById('register_password');
+    let valid = true;
+
+    if (!email.value.endsWith('@gmail.com')) {
+      email.style.borderColor = 'red';
+      document.getElementById('home_register_email_error').style.display = 'block';
+      valid = false;
+    }
+
+    const hasUpper = /[A-Z]/.test(password.value);
+    const hasLower = /[a-z]/.test(password.value);
+    const hasNumber = /[0-9]/.test(password.value);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password.value);
+    const hasMinLength = password.value.length >= 8;
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength) {
+      password.style.borderColor = 'red';
+      document.getElementById('home_register_password_error').style.display = 'block';
+      valid = false;
+    }
+
+    if (!valid) {
+      e.preventDefault();
+    }
+  });
+}
+</script>
+

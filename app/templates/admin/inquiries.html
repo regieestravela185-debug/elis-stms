@@ -1,0 +1,202 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Inquiries | STMS Admin{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Customer Inquiries</div>
+{% endblock %}
+
+{% block content %}
+  <style>
+    .inquiry-border-pending { border-left: 4px solid #eab308; }
+    .inquiry-border-responded { border-left: 4px solid #10b981; }
+    .inquiry-border-contacted { border-left: 4px solid #3b82f6; }
+    .badge-pending { background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
+    .badge-responded { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-contacted { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+  </style>
+  <section class="dash-panel">
+    <!-- Statistics Dashboard -->
+    <div class="grid grid--4" style="gap: 16px; margin-bottom: 24px;">
+      <div class="card card--lift" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">📧</div>
+        <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.total }}</div>
+        <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Total Inquiries</div>
+      </div>
+      
+      <div class="card card--lift" style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">⏳</div>
+        <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.pending }}</div>
+        <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Pending</div>
+      </div>
+      
+      <div class="card card--lift" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">✓</div>
+        <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.responded }}</div>
+        <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Responded</div>
+      </div>
+      
+      <div class="card card--lift" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">📞</div>
+        <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.contacted }}</div>
+        <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Contacted</div>
+      </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="section__header">
+        <h3>All Inquiries</h3>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
+          <a href="{{ url_for('admin.export_inquiries') }}" class="btn btn--ghost btn--sm">📊 Export CSV</a>
+        </div>
+      </div>
+
+      <div class="grid grid--4" style="gap: 12px; margin-top: 16px;">
+        <input
+          type="text"
+          id="searchInput"
+          class="input"
+          placeholder="🔍 Search name, email, or subject..."
+          value="{{ request.args.get('search', '') }}"
+        />
+
+        <select id="statusFilter" class="input">
+          <option value="">All Status</option>
+          <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="responded" {% if request.args.get('status') == 'responded' %}selected{% endif %}>Responded</option>
+          <option value="contacted" {% if request.args.get('status') == 'contacted' %}selected{% endif %}>Contacted</option>
+        </select>
+
+        <select id="dateFilter" class="input">
+          <option value="">All Time</option>
+          <option value="today" {% if request.args.get('date') == 'today' %}selected{% endif %}>Today</option>
+          <option value="week" {% if request.args.get('date') == 'week' %}selected{% endif %}>This Week</option>
+          <option value="month" {% if request.args.get('date') == 'month' %}selected{% endif %}>This Month</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Inquiries List -->
+    {% if inquiries %}
+      <div id="inquiriesList">
+        {% for inquiry in inquiries %}
+          {% set inquiry_border_class = 'inquiry-border-contacted' %}
+          {% if inquiry.status.value == 'pending' %}
+            {% set inquiry_border_class = 'inquiry-border-pending' %}
+          {% elif inquiry.status.value == 'responded' %}
+            {% set inquiry_border_class = 'inquiry-border-responded' %}
+          {% endif %}
+          <div class="card inquiry-card {{ inquiry_border_class }}" style="margin-bottom: 16px; padding: 20px;">
+            
+            <!-- Header -->
+            <div class="grid grid--2" style="align-items: center; margin-bottom: 16px;">
+              <div>
+                <strong style="font-size: 16px;">{{ inquiry.full_name }}</strong>
+                <div class="muted" style="font-size: 13px; margin-top: 4px;">
+                  📧 {{ inquiry.email }}
+                  {% if inquiry.phone %}
+                    <span style="margin-left: 12px;">📞 {{ inquiry.phone }}</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div style="text-align: right; display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                <!-- Status Badge -->
+                {% set badge_class = 'badge-contacted' %}
+                {% if inquiry.status.value == 'pending' %}
+                  {% set badge_class = 'badge-pending' %}
+                {% elif inquiry.status.value == 'responded' %}
+                  {% set badge_class = 'badge-responded' %}
+                {% endif %}
+                <span class="badge {{ badge_class }}">
+                  {% if inquiry.status.value == 'pending' %}⏳ Pending
+                  {% elif inquiry.status.value == 'responded' %}✓ Responded
+                  {% else %}📞 Contacted{% endif %}
+                </span>
+                
+                <!-- Date -->
+                <span class="muted" style="font-size: 13px;">
+                  {{ inquiry.created_at.strftime('%b %d, %Y %I:%M %p') if inquiry.created_at else 'N/A' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Subject -->
+            <div style="margin-bottom: 12px;">
+              <div class="kicker" style="margin-bottom: 4px;">Subject</div>
+              <strong style="font-size: 15px;">{{ inquiry.subject }}</strong>
+            </div>
+
+            <!-- Message Preview -->
+            <div style="margin-bottom: 16px;">
+              <div class="kicker" style="margin-bottom: 4px;">Message</div>
+              <p class="muted" style="margin: 0; line-height: 1.6;">
+                {% if inquiry.message|length > 200 %}
+                  {{ inquiry.message[:200] }}...
+                {% else %}
+                  {{ inquiry.message }}
+                {% endif %}
+              </p>
+            </div>
+
+            <!-- Reply Count -->
+            {% if inquiry.replies %}
+              <div style="margin-bottom: 16px;">
+                <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2);">
+                  💬 {{ inquiry.replies|length }} {{ 'reply' if inquiry.replies|length == 1 else 'replies' }}
+                </span>
+              </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+              <a href="{{ url_for('admin.inquiry_details', inquiry_id=inquiry.id) }}" class="btn btn--sm btn--primary">
+                View Details & Reply
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card" style="text-align: center; padding: 60px 20px;">
+        <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">📧</div>
+        <h3 style="margin-bottom: 8px;">No Inquiries Found</h3>
+        <p class="muted">No customer inquiries match your current filters.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <script>
+    function applyFilters() {
+      const search = document.getElementById('searchInput').value;
+      const status = document.getElementById('statusFilter').value;
+      const date = document.getElementById('dateFilter').value;
+
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (status) params.append('status', status);
+      if (date) params.append('date', date);
+
+      window.location.href = '{{ url_for("admin.inquiries") }}' + (params.toString() ? '?' + params.toString() : '');
+    }
+
+    function clearFilters() {
+      window.location.href = '{{ url_for("admin.inquiries") }}';
+    }
+
+    // Debounce search input
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 400);
+    });
+
+    // Auto-filter on select change
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('dateFilter').addEventListener('change', applyFilters);
+  </script>
+{% endblock %}

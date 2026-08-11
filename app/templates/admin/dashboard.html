@@ -1,0 +1,933 @@
+{% extends "dashboard_base.html" %}
+{% block body_attrs %}class="page-admin-dashboard"{% endblock %}
+{% block title %}Admin Dashboard | STMS{% endblock %}
+
+{% block head %}
+  <script defer src="{{ url_for('static', filename='js/admin_polling.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="application/json" id="revenue-trend-data">
+    {{ revenue_trend|tojson|safe if revenue_trend else '[]'|safe }}
+  </script>
+  <script defer src="{{ url_for('static', filename='js/admin_charts.js') }}"></script>
+  <style>
+    /* Modern Admin Dashboard Styles */
+    .alert-card {
+      animation: pulse 2s ease-in-out infinite;
+      opacity: 1 !important;
+      visibility: visible !important;
+      display: block !important;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.01); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .fade-in-row {
+      animation: fadeInUp 0.4s ease forwards;
+      opacity: 0;
+    }
+    .fade-in-item {
+      animation: fadeInUp 0.4s ease forwards;
+      opacity: 0;
+    }
+    .card--action {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 16px;
+    }
+    .card--action:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 20px 40px rgba(215, 179, 91, 0.25);
+    }
+    .card--action:active {
+      transform: translateY(-2px) scale(0.98);
+    }
+    /* Smooth scroll animations */
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    .metric:nth-child(6) { animation-delay: 0.6s; }
+    .metric:nth-child(7) { animation-delay: 0.7s; }
+    .metric:nth-child(8) { animation-delay: 0.8s; }
+    .metric:nth-child(9) { animation-delay: 0.9s; }
+    .metric:nth-child(10) { animation-delay: 1.0s; }
+    
+    /* Modern Stats Cards */
+    .metric {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .metric:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(215, 179, 91, 0.15);
+      border-color: rgba(215, 179, 91, 0.3);
+    }
+
+    .metric__value {
+      font-size: 32px;
+      font-weight: 800;
+      color: #D7B35B;
+      margin-bottom: 8px;
+    }
+
+    .metric__label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .mb-24 { margin-bottom: 24px; }
+    .mt-24 { margin-top: 32px !important; }
+    .mt-32 { margin-top: 40px !important; }
+    
+    /* Modern Chart Containers */
+    .chart-container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .chart-container:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-container h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+    }
+
+    /* Modern Analytics Cards */
+    .analytics-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .analytics-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(215, 179, 91, 0.15);
+      border-color: rgba(215, 179, 91, 0.3);
+    }
+
+    .analytics-card__title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .analytics-card__value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #D7B35B;
+      margin-bottom: 8px;
+    }
+
+    .analytics-card__change {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .analytics-card__change--positive {
+      color: #10b981;
+    }
+
+    .analytics-card__change--negative {
+      color: #ef4444;
+    }
+
+    /* Modern Action Cards */
+    .action-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .action-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(215, 179, 91, 0.15);
+      border-color: rgba(215, 179, 91, 0.3);
+    }
+
+    /* Remove top space from dash-cards when it's first element */
+    .dash-panel > .dash-cards:first-child {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
+    
+    /* Remove top padding from dash-panel on admin dashboard */
+    .page-admin-dashboard .dash-panel {
+      padding-top: 0 !important;
+      margin-top: 0 !important;
+    }
+    
+    /* Override animation transform that creates space */
+    .page-admin-dashboard .dash-panel {
+      transform: none !important;
+    }
+    
+    .page-admin-dashboard section.dash-panel {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
+    
+    /* Remove top padding from dash__content on admin dashboard */
+    .page-admin-dashboard .dash__content {
+      padding-top: 0 !important;
+    }
+    
+    /* Ensure dash-cards has no top margin when there's no alert */
+    .page-admin-dashboard .dash-cards {
+      margin-top: 0 !important;
+    }
+    
+    /* Extra spacing for dashboard cards */
+    .page-admin-dashboard .card {
+      padding: 24px !important;
+      margin-bottom: 32px;
+    }
+    .page-admin-dashboard .section__header {
+      margin-bottom: 20px !important;
+    }
+    .page-admin-dashboard .grid {
+      gap: 20px !important;
+    }
+    .page-admin-dashboard .grid--2 {
+      gap: 24px !important;
+    }
+  </style>
+  <script>
+    // Apply animation delays after page load
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.fade-in-row, .fade-in-item').forEach(function(el) {
+        var delay = el.getAttribute('data-delay');
+        if (delay) {
+          el.style.animationDelay = delay + 's';
+        }
+      });
+    });
+  </script>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Admin Dashboard</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <!-- AI Tools Panel -->
+    <div class="card" style="background: linear-gradient(135deg, #f0f9ff, #ffffff); border: 2px solid #c7a85a; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="margin: 0; color: #1a365d; font-size: 1.1rem; font-weight: 800;">🤖 AI Tools</h3>
+          <p style="margin: 4px 0 0 0; color: #475569; font-size: 0.875rem;">Run predictive analytics and generate smart notifications for tenants.</p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <form action="{{ url_for('admin.update_risk_profiles') }}" method="post" style="display: inline;">
+            <button type="submit" class="btn btn--primary" style="background: linear-gradient(135deg, #c7a85a, #a8893f); border-color: #a8893f; font-weight: 700;">
+              📊 Update Risk Profiles
+            </button>
+          </form>
+          <form action="{{ url_for('admin.generate_automated_notifications') }}" method="post" style="display: inline;">
+            <button type="submit" class="btn btn--primary" style="background: linear-gradient(135deg, #1a365d, #0f2347); border-color: #0f2347; font-weight: 700;">
+              🔔 Generate Smart Notifications
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Debug: Check blockchain status -->
+    <!-- blockchain_status: {{ blockchain_status }}, valid: {{ blockchain_status.valid if blockchain_status else 'None' }}, hide_alert: {{ session.get('hide_blockchain_alert') }} -->
+    
+    {% if blockchain_status and not blockchain_status.valid and not session.get('hide_blockchain_alert') %}
+      <!-- Blockchain Warning with Non-Stop Alarm -->
+      <div class="card alert-card" id="blockchainAlert" data-alarm-dismissed="{{ alarm_dismissed|tojson }}" data-dismiss-url="{{ url_for('admin.dismiss_blockchain_alarm') }}" style="background: rgba(255, 80, 80, 0.1); border: 2px solid #ff5050; border-radius: 18px; padding: 20px; box-shadow: 0 8px 24px rgba(255, 80, 80, 0.2); margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
+            <span style="font-size: 48px; animation: shake 0.5s ease-in-out infinite;">🚨</span>
+            <div>
+              <h3 style="color: #ff5050; margin: 0; font-size: 1.25rem; font-weight: 900;">⚠️ SECURITY ALERT: Blockchain Integrity Compromised</h3>
+              <p style="margin: 8px 0 0 0; font-size: 0.95rem; line-height: 1.4; color: #dc2626;">The system has detected that <strong>{{ blockchain_status.issues|length }} payment record(s)</strong> have been manually altered in the database. <strong>Immediate investigation is required.</strong></p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: center; flex-shrink: 0; flex-wrap: wrap;">
+            <button type="button" id="stopAlarmBtn" class="btn btn--ghost btn--sm" style="color: #ff5050; border: 2px solid #ff5050; font-weight: 700; display: none;">
+              🔇 Stop Alarm
+            </button>
+            <a href="{{ url_for('admin.verify_blockchain') }}" class="btn btn--primary" style="background: linear-gradient(135deg, #ff5050, #dc2626); border-color: #dc2626; color: white; font-weight: 700;">
+              🔍 View Details
+            </a>
+            <form action="{{ url_for('admin.resolve_blockchain_issue') }}" method="post" style="display: inline;">
+              <button type="submit" class="btn btn--ghost btn--sm" style="color: #ff5050; border: 1px solid #ff5050;">Dismiss Warning</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Non-Stop Alarm Sound Script -->
+      <script>
+        (function() {
+          // Create audio context for alarm sound
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          const blockchainAlert = document.getElementById('blockchainAlert');
+          if (!blockchainAlert) return;
+          
+          const audioContext = new AudioContext();
+          let alarmInterval = null;
+          let isAlarmStopped = blockchainAlert.dataset.alarmDismissed === 'true';
+          const dismissAlarmUrl = blockchainAlert.dataset.dismissUrl;
+          
+          // Play single alarm burst
+          function playAlarmBurst() {
+            if (isAlarmStopped) return;
+            
+            const now = audioContext.currentTime;
+            
+            // Create oscillator for siren effect
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Siren effect: alternating between two frequencies
+            oscillator.frequency.setValueAtTime(850, now);
+            oscillator.frequency.setValueAtTime(650, now + 0.15);
+            oscillator.frequency.setValueAtTime(850, now + 0.3);
+            oscillator.frequency.setValueAtTime(650, now + 0.45);
+            oscillator.frequency.setValueAtTime(850, now + 0.6);
+            
+            // Volume envelope - louder
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.4, now + 0.05);
+            gainNode.gain.linearRampToValueAtTime(0.4, now + 0.7);
+            gainNode.gain.linearRampToValueAtTime(0, now + 0.75);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 0.75);
+          }
+          
+          // Start non-stop alarm
+          function startAlarm() {
+            if (isAlarmStopped) return;
+            
+            // Show stop button
+            const stopBtn = document.getElementById('stopAlarmBtn');
+            if (stopBtn) stopBtn.style.display = 'inline-block';
+            
+            // Play first burst immediately
+            playAlarmBurst();
+            
+            // Continue playing every 1 second
+            alarmInterval = setInterval(() => {
+              playAlarmBurst();
+            }, 1000);
+          }
+          
+          // Stop alarm
+          function stopAlarm() {
+            isAlarmStopped = true;
+            
+            if (alarmInterval) {
+              clearInterval(alarmInterval);
+              alarmInterval = null;
+            }
+            
+            // Send request to server to save dismissal
+            fetch(dismissAlarmUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            }).then(response => response.json())
+              .then(data => {
+                console.log('Alarm dismissed:', data);
+              })
+              .catch(error => {
+                console.error('Error dismissing alarm:', error);
+              });
+            
+            // Hide stop button
+            const stopBtn = document.getElementById('stopAlarmBtn');
+            if (stopBtn) {
+              stopBtn.style.display = 'none';
+              stopBtn.textContent = '✓ Alarm Stopped';
+              stopBtn.style.background = 'rgba(16, 185, 129, 0.1)';
+              stopBtn.style.color = '#10b981';
+              stopBtn.style.borderColor = '#10b981';
+              setTimeout(() => {
+                stopBtn.style.display = 'none';
+              }, 2000);
+            }
+          }
+          
+          // Attach stop button handler
+          document.addEventListener('DOMContentLoaded', function() {
+            const stopBtn = document.getElementById('stopAlarmBtn');
+            if (stopBtn) {
+              stopBtn.addEventListener('click', stopAlarm);
+            }
+          });
+          
+          // Start alarm after short delay if not stopped
+          if (!isAlarmStopped) {
+            setTimeout(() => {
+              startAlarm();
+            }, 500);
+          }
+        })();
+      </script>
+    {% endif %}
+
+    <div class="dash-cards">
+        <div class="metric">
+          <div class="metric__num" id="m_total">{{ cards.total_units }}</div>
+          <div class="metric__label">Total units</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num" id="m_available">{{ cards.available }}</div>
+          <div class="metric__label">Available</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num" id="m_occupied">{{ cards.occupied }}</div>
+          <div class="metric__label">Occupied</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num" id="m_reserved">{{ cards.reserved }}</div>
+          <div class="metric__label">Reserved</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num">{{ cards.pending_reservations }}</div>
+          <div class="metric__label">Pending</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num">{{ cards.res_cancelled }}</div>
+          <div class="metric__label">Cancelled</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num">{{ cards.total_tenants }}</div>
+          <div class="metric__label">Tenants</div>
+        </div>
+
+        <!-- Data for JS Charts -->
+        <input type="hidden" id="data_res_pending" value="{{ cards.res_pending }}">
+        <input type="hidden" id="data_res_approved" value="{{ cards.res_approved }}">
+        <input type="hidden" id="data_res_rejected" value="{{ cards.res_rejected }}">
+        <input type="hidden" id="data_res_cancelled" value="{{ cards.res_cancelled }}">
+        <div class="metric">
+          <div class="metric__num">{{ cards.total_payments }}</div>
+          <div class="metric__label">Payments</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num">₱{{ '{:,.2f}'.format(cards.total_revenue|float) }}</div>
+          <div class="metric__label">Revenue</div>
+        </div>
+        <div class="metric">
+          <div class="metric__num">₱{{ '{:,.2f}'.format(cards.total_deposits|float) }}</div>
+          <div class="metric__label">Deposits Held</div>
+        </div>
+      </div>
+
+      <!-- NEW: This Month's Summary -->
+      <div class="card mt-32 card--gold" style="animation-delay: 0.6s;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 280px;">
+            <div class="kicker" style="margin-bottom: 12px;">📊 THIS MONTH'S SUMMARY</div>
+            <h3 style="margin: 0 0 8px 0; font-size: 1.2rem;">₱{{ '{:,.2f}'.format(this_month_revenue|default(0)|float) }} Revenue</h3>
+            <p class="muted" style="margin: 0; font-size: 0.9rem; line-height: 1.6;">
+              {% if last_month_revenue > 0 %}
+                {% set change = ((this_month_revenue - last_month_revenue) / last_month_revenue * 100) %}
+                {% if change > 0 %}
+                  <span style="color: #40c978; font-weight: 700;">↑ {{ '{:,.1f}'.format(change) }}%</span> vs last month
+                {% elif change < 0 %}
+                  <span style="color: #ff5050; font-weight: 700;">↓ {{ '{:,.1f}'.format(change|abs) }}%</span> vs last month
+                {% else %}
+                  <span style="font-weight: 700;">→ No change</span> vs last month
+                {% endif %}
+              {% else %}
+                First month of operations
+              {% endif %}
+            </p>
+          </div>
+          <div style="display: flex; gap: 40px; flex-wrap: wrap; align-items: center;">
+            <div style="text-align: center;">
+              <div style="font-size: 32px; font-weight: 900; color: var(--gold2); line-height: 1;">{{ new_tenants_this_month }}</div>
+              <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px;">New Tenants</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 32px; font-weight: 900; color: var(--gold2); line-height: 1;">{{ payments_this_month }}</div>
+              <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px;">Payments</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 32px; font-weight: 900; color: var(--gold2); line-height: 1;">{{ avg_rating }}</div>
+              <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px;">Avg Rating ⭐</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Renewal Reminders Action Card (Always Visible) -->
+      <div class="card mt-32" style="background: rgba(215, 179, 91, 0.08); border: 2px solid rgba(215, 179, 91, 0.35); animation-delay: 0.65s;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 280px;">
+            <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+              <span style="font-size: 32px;">📧</span>
+              <h3 style="margin: 0; font-size: 1.15rem; color: var(--gold2);">Contract Renewal Reminders</h3>
+            </div>
+            <p class="muted" style="margin: 0; font-size: 0.9rem; line-height: 1.6;">
+              Send automated email reminders to all tenants with contracts expiring in 7 days or less.
+              {% if expiring_soon %}
+                <strong style="color: #f59e0b;">{{ expiring_soon|length }} tenant(s) need reminders.</strong>
+              {% else %}
+                No tenants with expiring contracts at the moment.
+              {% endif %}
+            </p>
+          </div>
+          <div style="flex-shrink: 0;">
+            <form action="{{ url_for('admin.send_renewal_reminders') }}" method="post" style="display: inline;">
+              <button type="submit" class="btn btn--primary" style="white-space: nowrap; padding: 12px 24px; font-size: 0.95rem;">
+                📧 Send Renewal Reminders
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW: Pending Actions Summary -->
+      <div class="card mt-32" style="animation-delay: 0.7s;">
+        <div class="section__header" style="margin-bottom:24px">
+          <div>
+            <h3 style="font-size: 1.15rem;">⚡ Quick Actions</h3>
+            <p class="muted" style="margin: 6px 0 0 0; font-size: 0.9rem;">Pending items requiring attention</p>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+          <a href="{{ url_for('admin.concerns') }}" class="card card--action" style="text-decoration: none; padding: 24px; border: 2px solid var(--border); margin: 0;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(255, 160, 80, 0.15); border: 1px solid rgba(255, 160, 80, 0.3); display: grid; place-items: center; font-size: 28px; flex-shrink: 0;">
+                🔔
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 36px; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 8px;">{{ pending_concerns }}</div>
+                <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Concerns</div>
+              </div>
+            </div>
+          </a>
+          <a href="{{ url_for('admin.renewals') }}" class="card card--action" style="text-decoration: none; padding: 24px; border: 2px solid var(--border); margin: 0;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(80, 160, 255, 0.15); border: 1px solid rgba(80, 160, 255, 0.3); display: grid; place-items: center; font-size: 28px; flex-shrink: 0;">
+                🔄
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 36px; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 8px;">{{ pending_renewals }}</div>
+                <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Renewals</div>
+              </div>
+            </div>
+          </a>
+          <a href="{{ url_for('admin.feedbacks') }}" class="card card--action" style="text-decoration: none; padding: 24px; border: 2px solid var(--border); margin: 0;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(215, 179, 91, 0.15); border: 1px solid rgba(215, 179, 91, 0.3); display: grid; place-items: center; font-size: 28px; flex-shrink: 0;">
+                💬
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 36px; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 8px;">{{ pending_feedbacks }}</div>
+                <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Feedbacks</div>
+              </div>
+            </div>
+          </a>
+          <a href="{{ url_for('admin.reservations') }}" class="card card--action" style="text-decoration: none; padding: 24px; border: 2px solid var(--border); margin: 0;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(64, 201, 120, 0.15); border: 1px solid rgba(64, 201, 120, 0.3); display: grid; place-items: center; font-size: 28px; flex-shrink: 0;">
+                📋
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 36px; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 8px;">{{ cards.pending_reservations }}</div>
+                <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Reservations</div>
+              </div>
+            </div>
+          </a>
+          <a href="{{ url_for('admin.inquiries') }}" class="card card--action" style="text-decoration: none; padding: 24px; border: 2px solid var(--border); margin: 0;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(147, 51, 234, 0.15); border: 1px solid rgba(147, 51, 234, 0.3); display: grid; place-items: center; font-size: 28px; flex-shrink: 0;">
+                ✉️
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 36px; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 8px;">{{ pending_inquiries }}</div>
+                <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Inquiries</div>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- NEW: Expiring Contracts Widget -->
+      {% if expiring_soon %}
+      <div class="card mt-24" style="background: rgba(255, 200, 80, 0.08); border: 2px solid rgba(255, 200, 80, 0.35); animation-delay: 0.8s; padding: 20px;">
+        <div class="section__header" style="margin-bottom:16px">
+          <div>
+            <h3 style="color: #f59e0b;">⚠️ Contracts Expiring Soon</h3>
+            <p class="muted" style="margin: 4px 0 0 0; font-size: 0.875rem;">{{ expiring_soon|length }} tenant(s) with contracts expiring in 7 days or less</p>
+          </div>
+          <form action="{{ url_for('admin.send_renewal_reminders') }}" method="post" style="display: inline;">
+            <button type="submit" class="btn btn--primary btn--sm">Send Reminders</button>
+          </form>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Tenant</th>
+                <th>Unit</th>
+                <th>Contract End</th>
+                <th>Days Left</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for profile in expiring_soon %}
+                {% set days_left = (profile.contract_end - today).days if profile.contract_end else 0 %}
+                {% set delay_value = loop.index * 0.05 %}
+                <tr class="fade-in-row" data-delay="{{ delay_value }}">
+                  <td><strong>{{ profile.user.full_name if profile.user else 'N/A' }}</strong></td>
+                  <td class="mono">{{ profile.unit.unit_code if profile.unit else 'N/A' }}</td>
+                  <td>{{ profile.contract_end.strftime('%b %d, %Y') if profile.contract_end else 'N/A' }}</td>
+                  <td>
+                    {% if days_left <= 3 %}
+                      <span style="font-weight: 700; color: #ff5050;">
+                    {% elif days_left <= 7 %}
+                      <span style="font-weight: 700; color: #f59e0b;">
+                    {% else %}
+                      <span style="font-weight: 700; color: #40c978;">
+                    {% endif %}
+                      {{ days_left }} day{{ 's' if days_left != 1 else '' }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if days_left <= 3 %}
+                      <span class="badge badge--rejected">urgent</span>
+                    {% elif days_left <= 7 %}
+                      <span class="badge badge--pending">warning</span>
+                    {% else %}
+                      <span class="badge badge--available">normal</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="grid grid--2 mt-24">
+        <div class="card" style="animation-delay: 0.9s; padding: 20px;">
+          <div class="section__header" style="margin-bottom:14px">
+            <h3>Unit Occupancy</h3>
+            <p class="muted">Current status</p>
+          </div>
+          <div style="height: 250px;">
+            <canvas id="occupancyChart"></canvas>
+          </div>
+        </div>
+        <div class="card" style="animation-delay: 1.0s; padding: 20px;">
+          <div class="section__header" style="margin-bottom:14px">
+            <h3>Reservations by Status</h3>
+            <p class="muted">Distribution</p>
+          </div>
+          <div style="height: 250px;">
+            <canvas id="reservationChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- KEY PERFORMANCE INDICATORS -->
+      <div class="card mt-24" style="animation-delay: 1.05s; padding: 20px;">
+        <div class="section__header" style="margin-bottom:16px">
+          <h3>📈 Key Performance Indicators</h3>
+          <p class="muted">Real-time business metrics</p>
+        </div>
+        <div class="grid grid--4" style="gap: 16px;">
+          <!-- Occupancy Rate -->
+          <div style="padding: 18px; background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02)); border: 2px solid rgba(59,130,246,0.25); border-radius: 12px;">
+            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Occupancy Rate</div>
+            <div style="font-size: 28px; font-weight: 900; color: #3b82f6; margin-top: 6px;">{{ occupancy_rate }}%</div>
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">{{ cards.occupied }} of {{ cards.total_units }} units</div>
+          </div>
+          <!-- Revenue Growth -->
+          <div style="padding: 18px; background: linear-gradient(135deg, rgba(64,201,120,0.08), rgba(64,201,120,0.02)); border: 2px solid rgba(64,201,120,0.25); border-radius: 12px;">
+            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Revenue Growth</div>
+            {% if revenue_growth_pct > 0 %}
+              <div style="font-size: 28px; font-weight: 900; margin-top: 6px; color: #40c978;">↑ {{ revenue_growth_pct|abs }}%</div>
+            {% elif revenue_growth_pct < 0 %}
+              <div style="font-size: 28px; font-weight: 900; margin-top: 6px; color: #ef4444;">↓ {{ revenue_growth_pct|abs }}%</div>
+            {% else %}
+              <div style="font-size: 28px; font-weight: 900; margin-top: 6px; color: #6b7280;">{{ revenue_growth_pct|abs }}%</div>
+            {% endif %}
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">vs last month</div>
+          </div>
+          <!-- Resolution Rate -->
+          <div style="padding: 18px; background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(168,85,247,0.02)); border: 2px solid rgba(168,85,247,0.25); border-radius: 12px;">
+            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Concern Resolution</div>
+            <div style="font-size: 28px; font-weight: 900; color: #a855f7; margin-top: 6px;">{{ resolution_rate }}%</div>
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">resolved on time</div>
+          </div>
+          <!-- Satisfaction -->
+          <div style="padding: 18px; background: linear-gradient(135deg, rgba(215,179,91,0.08), rgba(215,179,91,0.02)); border: 2px solid rgba(215,179,91,0.25); border-radius: 12px;">
+            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Tenant Satisfaction</div>
+            <div style="font-size: 28px; font-weight: 900; color: #D7B35B; margin-top: 6px;">{{ avg_rating }} ⭐</div>
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">average rating</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW: Revenue Trend Chart -->
+      <div class="card mt-24" style="animation-delay: 1.1s; padding: 20px;">
+        <div class="section__header" style="margin-bottom:16px">
+          <h3>💰 Revenue Trend</h3>
+          <p class="muted">Last 6 months performance (including current month)</p>
+        </div>
+        <div style="height: 280px;">
+          <canvas id="revenueTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- BUILDING OCCUPANCY CHART -->
+      {% if building_occupancy %}
+      <div class="card mt-24" style="animation-delay: 1.15s; padding: 20px;">
+        <div class="section__header" style="margin-bottom:16px">
+          <h3>🏢 Building Occupancy</h3>
+          <p class="muted">Per-building occupancy rates</p>
+        </div>
+        <script type="application/json" id="building-occupancy-data">{{ building_occupancy|tojson|safe }}</script>
+        <div style="height: 280px;">
+          <canvas id="buildingOccupancyChart"></canvas>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- NEW: Recent Activities Feed -->
+      <div class="grid grid--2 mt-24">
+        <div class="card" style="animation-delay: 1.2s; padding: 20px;">
+          <div class="section__header" style="margin-bottom:16px">
+            <h3>💵 Recent Payments</h3>
+            <a href="{{ url_for('admin.payments') }}" class="btn btn--ghost btn--sm">View all</a>
+          </div>
+          <div style="max-height: 320px; overflow-y: auto;">
+            {% if recent_payments %}
+              {% for payment in recent_payments %}
+                {% set delay_value = loop.index * 0.05 %}
+                <div class="fade-in-item" data-delay="{{ delay_value }}" style="padding: 14px; border-bottom: 1px solid var(--border);">
+                  <div style="display: flex; justify-content: space-between; align-items: start; gap: 14px;">
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-weight: 700; font-size: 0.95rem;">
+                        {{ payment.tenant_profile.user.full_name if payment.tenant_profile and payment.tenant_profile.user else 'N/A' }}
+                      </div>
+                      <div class="muted" style="font-size: 0.8rem; margin-top: 3px;">
+                        {{ payment.tenant_profile.unit.unit_code if payment.tenant_profile and payment.tenant_profile.unit else 'N/A' }}
+                      </div>
+                      <div class="muted" style="font-size: 0.75rem; margin-top: 5px;">
+                        {{ payment.paid_at.strftime('%b %d, %Y %I:%M %p') if payment.paid_at else 'N/A' }}
+                      </div>
+                    </div>
+                    <div style="text-align: right; flex-shrink: 0;">
+                      <div style="font-weight: 900; font-size: 1.1rem; color: #40c978;">
+                        ₱{{ '{:,.2f}'.format(payment.amount|float) }}
+                      </div>
+                      {% if payment.reference %}
+                        <div class="muted mono" style="font-size: 0.7rem; margin-top: 3px;">{{ payment.reference }}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state" style="padding: 40px 20px;">
+                <div class="empty-state__icon">💵</div>
+                <div class="empty-state__text">No recent payments</div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card" style="animation-delay: 1.3s; padding: 20px;">
+          <div class="section__header" style="margin-bottom:16px">
+            <h3>🔔 Active Concerns</h3>
+            <a href="{{ url_for('admin.concerns') }}" class="btn btn--ghost btn--sm">View all</a>
+          </div>
+          <div style="max-height: 320px; overflow-y: auto;">
+            {% if recent_concerns %}
+              {% for concern in recent_concerns %}
+                {% set delay_value = loop.index * 0.05 %}
+                <div class="fade-in-item" data-delay="{{ delay_value }}" style="padding: 14px; border-bottom: 1px solid var(--border);">
+                  <div style="display: flex; justify-content: space-between; align-items: start; gap: 14px;">
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-weight: 700; font-size: 0.95rem;">{{ concern.subject }}</div>
+                      <div class="muted" style="font-size: 0.8rem; margin-top: 3px;">
+                        {{ concern.tenant_profile.user.full_name if concern.tenant_profile and concern.tenant_profile.user else 'N/A' }}
+                      </div>
+                      <div class="muted" style="font-size: 0.75rem; margin-top: 5px;">
+                        {{ concern.created_at.strftime('%b %d, %Y') if concern.created_at else 'N/A' }}
+                      </div>
+                    </div>
+                    {% if concern.status.value == 'pending' %}
+                      <span class="badge badge--pending" style="flex-shrink: 0;">pending</span>
+                    {% elif concern.status.value == 'in_progress' %}
+                      <span class="badge badge--in_progress" style="flex-shrink: 0;">in_progress</span>
+                    {% else %}
+                      <span class="badge badge--resolved" style="flex-shrink: 0;">resolved</span>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state" style="padding: 40px 20px;">
+                <div class="empty-state__icon">🔔</div>
+                <div class="empty-state__text">No active concerns</div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-24" style="animation-delay: 1.4s; padding: 20px;">
+        <div class="section__header" style="margin-bottom:16px">
+          <h3>⭐ Recent Feedback</h3>
+          <a href="{{ url_for('admin.feedbacks') }}" class="btn btn--ghost btn--sm">View all</a>
+        </div>
+        <div style="max-height: 280px; overflow-y: auto;">
+          {% if recent_feedbacks %}
+            {% for feedback in recent_feedbacks %}
+              {% set delay_value = loop.index * 0.05 %}
+              <div class="fade-in-item" data-delay="{{ delay_value }}" style="padding: 14px; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 14px;">
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                      <div style="font-weight: 700; font-size: 0.95rem;">
+                        {{ feedback.tenant_profile.user.full_name if feedback.tenant_profile and feedback.tenant_profile.user else 'N/A' }}
+                      </div>
+                      {% if feedback.rating %}
+                        <div style="color: #f59e0b; font-size: 0.85rem;">
+                          {% for i in range(feedback.rating) %}⭐{% endfor %}
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div class="muted" style="font-size: 0.85rem; margin-top: 6px; line-height: 1.5;">
+                      {{ feedback.comments[:80] }}{% if feedback.comments|length > 80 %}...{% endif %}
+                    </div>
+                    <div class="muted" style="font-size: 0.75rem; margin-top: 8px;">
+                      {{ feedback.category }} • {{ feedback.created_at.strftime('%b %d, %Y') if feedback.created_at else 'N/A' }}
+                    </div>
+                  </div>
+                  {% if feedback.status.value == 'submitted' %}
+                    <span class="badge badge--pending" style="flex-shrink: 0;">submitted</span>
+                  {% else %}
+                    <span class="badge badge--available" style="flex-shrink: 0;">{{ feedback.status.value }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state" style="padding: 40px 20px;">
+              <div class="empty-state__icon">⭐</div>
+              <div class="empty-state__text">No recent feedback</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Reservations Section -->
+      <div class="card mt-32" style="animation-delay: 1.5s;">
+        <div class="section__header" style="margin-bottom:20px">
+          <h3 style="font-size: 1.15rem;">📋 Recent Reservations</h3>
+          <a href="{{ url_for('admin.reservations') }}" class="btn btn--ghost btn--sm">View all</a>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+          {% if recent_reservations %}
+            {% for r in recent_reservations %}
+              {% set delay_value = loop.index * 0.05 %}
+              <div class="fade-in-item" data-delay="{{ delay_value }}" style="padding: 16px; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
+                  <div style="flex: 1; min-width: 200px;">
+                    <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 4px;">
+                      {{ r.full_name }}
+                    </div>
+                    <div class="muted" style="font-size: 0.8rem; margin-bottom: 6px;">
+                      {{ r.email }}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                      <span class="mono" style="font-size: 0.85rem; font-weight: 600; color: var(--gold2);">
+                        {{ r.unit.unit_code if r.unit else 'N/A' }}
+                      </span>
+                      <span class="muted" style="font-size: 0.75rem;">
+                        {{ r.created_at.strftime('%b %d, %Y') if r.created_at else 'N/A' }}
+                      </span>
+                    </div>
+                  </div>
+                  <div style="flex-shrink: 0;">
+                    {% if r.status.value == 'approved' %}
+                      <span class="badge badge--available">approved</span>
+                    {% elif r.status.value == 'pending' %}
+                      <span class="badge badge--pending">pending</span>
+                    {% elif r.status.value == 'rejected' %}
+                      <span class="badge badge--rejected">rejected</span>
+                    {% else %}
+                      <span class="badge badge--muted">{{ r.status.value }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state" style="padding: 40px 20px;">
+              <div class="empty-state__icon">📋</div>
+              <div class="empty-state__text">No recent reservations</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+{% endblock %}

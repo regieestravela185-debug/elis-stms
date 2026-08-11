@@ -1,0 +1,287 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Announcements | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Announcements</div>
+{% endblock %}
+
+{% block content %}
+  <!-- Statistics -->
+  <div class="grid grid--3" style="gap: 16px; margin-bottom: 24px;">
+    <div class="card card--lift" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white;">
+      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.total }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Total Announcements</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.unread }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Unread</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+      <div style="font-size: 14px; font-weight: 900; margin-bottom: 4px;">
+        {% if stats.latest %}
+          {{ stats.latest.created_at.strftime('%b %d, %Y') }}
+        {% else %}
+          No announcements
+        {% endif %}
+      </div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Latest</div>
+    </div>
+  </div>
+
+  <!-- Search & Filter -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="section__header">
+      <h3>Search & Filter</h3>
+    </div>
+    
+    <div class="grid grid--2" style="gap: 12px; margin-top: 16px;">
+      <input 
+        type="text" 
+        id="searchInput" 
+        class="input" 
+        placeholder="🔍 Search announcements..."
+        value="{{ request.args.get('search', '') }}"
+      />
+      
+      <select id="categoryFilter" class="input">
+        <option value="">All Categories</option>
+        {% for cat in stats.available_categories %}
+          <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>
+            {% if cat == 'rule_update' %}📜 Rule Update
+            {% elif cat == 'maintenance' %}🔧 Maintenance
+            {% elif cat == 'general' %}📢 General
+            {% elif cat == 'emergency' %}🚨 Emergency
+            {% elif cat == 'event' %}🎉 Event
+            {% else %}{{ cat|title }}{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    
+    <div style="margin-top: 12px;">
+      <button type="button" class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- Announcements -->
+  <div id="announcementsBaseUrl" data-base-url="{{ url_for('tenant.announcements') }}" style="display: none;"></div>
+  <section class="dash-panel">
+    <div class="card">
+      <div class="section__header">
+        <h3>Building Announcements</h3>
+        <p class="muted">{{ announcements|length }} announcements</p>
+      </div>
+
+      {% if announcements %}
+        <div class="mt-16">
+          {% for announcement in announcements %}
+            {% set announcement_border_class = 'announcement-border-default' %}
+            {% set announcement_bg_class = '' %}
+            {% if announcement.is_pinned %}
+              {% set announcement_border_class = 'announcement-border-pinned' %}
+              {% set announcement_bg_class = 'announcement-bg-pinned' %}
+            {% endif %}
+            <div class="card announcement-card {{ announcement_border_class }} {{ announcement_bg_class }}" 
+                 style="margin-bottom: 16px; position: relative;">
+              
+              <!-- Pinned Badge -->
+              {% if announcement.is_pinned %}
+                <div style="position: absolute; top: 12px; right: 12px;">
+                  <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+                    📌 Pinned
+                  </span>
+                </div>
+              {% endif %}
+
+              <!-- Unread Indicator -->
+              {% if announcement.id not in read_ids %}
+                <div style="position: absolute; top: 12px; left: 12px;">
+                  <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
+                    🔵 New
+                  </span>
+                </div>
+              {% endif %}
+
+              <!-- Header -->
+              {% set header_margin_class = '' %}
+              {% if announcement.is_pinned or announcement.id not in read_ids %}
+                {% set header_margin_class = 'announcement-header-margin' %}
+              {% endif %}
+              <div class="grid grid--2 {{ header_margin_class }}" style="align-items: center;">
+                <div>
+                  {% set title_weight_class = '' %}
+                  {% if announcement.id not in read_ids %}
+                    {% set title_weight_class = 'announcement-title-bold' %}
+                  {% endif %}
+                  <h4 class="{{ title_weight_class }}">
+                    {{ announcement.title }}
+                  </h4>
+                  {% if announcement.category %}
+                    <span class="chip" style="margin-top: 8px; display: inline-block;">
+                      {% if announcement.category == 'rule_update' %}📜 Rule Update
+                      {% elif announcement.category == 'maintenance' %}🔧 Maintenance
+                      {% elif announcement.category == 'general' %}📢 General
+                      {% elif announcement.category == 'emergency' %}🚨 Emergency
+                      {% elif announcement.category == 'event' %}🎉 Event
+                      {% else %}{{ announcement.category|title }}{% endif %}
+                    </span>
+                  {% endif %}
+                </div>
+                <div class="muted" style="text-align: right; font-size: 0.875rem;">
+                  {{ announcement.created_at.strftime('%B %d, %Y') }}
+                  <div style="font-size: 0.75rem; margin-top: 4px;">
+                    {{ announcement.created_at.strftime('%I:%M %p') }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content -->
+              <p class="mt-8" style="white-space: pre-wrap; line-height: 1.6;">{{ announcement.content }}</p>
+
+              <!-- Actions -->
+              <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 16px; display: flex; gap: 8px;">
+                <button type="button" class="btn btn--ghost btn--sm" data-announcement-id="{{ announcement.id }}" onclick="printAnnouncement(this.dataset.announcementId)">
+                  🖨️ Print
+                </button>
+                
+                {% if announcement.id not in read_ids %}
+                  <form method="post" action="{{ url_for('tenant.mark_announcement_read', announcement_id=announcement.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn--ghost btn--sm">
+                      ✓ Mark as Read
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="muted" style="font-size: 12px; display: flex; align-items: center;">
+                    ✓ Read
+                  </span>
+                {% endif %}
+              </div>
+
+              <!-- Hidden print content -->
+              <div id="print-{{ announcement.id }}" style="display: none;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <h1 style="color: #D7B35B;">STMS Announcement</h1>
+                  <p style="color: #666;">Student Tenant Management System</p>
+                </div>
+                <hr style="border: 1px solid #D7B35B; margin: 20px 0;">
+                <h2>{{ announcement.title }}</h2>
+                <p style="color: #666; margin: 10px 0;">
+                  <strong>Date:</strong> {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}<br>
+                  {% if announcement.category %}
+                    <strong>Category:</strong> {{ announcement.category|title }}<br>
+                  {% endif %}
+                  {% if announcement.is_pinned %}
+                    <strong>Priority:</strong> IMPORTANT (Pinned)<br>
+                  {% endif %}
+                </p>
+                <hr style="border: 1px solid #eee; margin: 20px 0;">
+                <div style="white-space: pre-wrap; line-height: 1.8;">{{ announcement.content }}</div>
+                <hr style="border: 1px solid #eee; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                  This is an official announcement from STMS<br>
+                  Printed on <script>document.write(new Date().toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}));</script>
+                </p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state mt-16">
+          <div class="empty-state__icon">📢</div>
+          <div class="empty-state__title">No Announcements Found</div>
+          <div class="empty-state__text">
+            {% if request.args %}
+              Try adjusting your filters.
+            {% else %}
+              No announcements available at this time.
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <style>
+    .card--lift {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card--lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .announcement-card {
+      transition: all 0.2s ease;
+    }
+
+    .announcement-card:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .announcement-border-pinned { border-left: 4px solid #ef4444; }
+    .announcement-border-default { border-left: 4px solid #D7B35B; }
+    .announcement-bg-pinned { background: linear-gradient(to right, rgba(239, 68, 68, 0.03), transparent); }
+    .announcement-header-margin { margin-top: 32px; }
+    .announcement-title-bold { font-weight: 900; }
+  </style>
+
+  <script>
+    // Filter functionality
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (categoryFilter.value) params.set('category', categoryFilter.value);
+      
+      const baseUrl = document.getElementById('announcementsBaseUrl').dataset.baseUrl;
+      window.location.href = `${baseUrl}?${params.toString()}`;
+    }
+    
+    function clearFilters() {
+      window.location.href = document.getElementById('announcementsBaseUrl').dataset.baseUrl;
+    }
+    
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    
+    categoryFilter.addEventListener('change', applyFilters);
+
+    // Print announcement
+    function printAnnouncement(announcementId) {
+      const printContent = document.getElementById('print-' + announcementId);
+      const originalContent = document.body.innerHTML;
+      
+      // Create a new window for printing
+      const printWindow = window.open('', '', 'height=600,width=800');
+      printWindow.document.write('<html><head><title>Print Announcement</title>');
+      printWindow.document.write('<style>');
+      printWindow.document.write('body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }');
+      printWindow.document.write('h1 { color: #D7B35B; }');
+      printWindow.document.write('h2 { color: #333; margin-top: 20px; }');
+      printWindow.document.write('hr { border: 1px solid #D7B35B; margin: 20px 0; }');
+      printWindow.document.write('</style>');
+      printWindow.document.write('</head><body>');
+      printWindow.document.write(printContent.innerHTML);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      
+      // Wait for content to load then print
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+  </script>
+{% endblock %}

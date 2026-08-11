@@ -1,0 +1,627 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Settings | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Settings</div>
+{% endblock %}
+
+{% block content %}
+  <style>
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .profile-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 24px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 0 auto 16px;
+      border: 4px solid rgba(255,255,255,0.5);
+    }
+    .avatar-color-0 { background: #667eea; }
+    .avatar-color-1 { background: #f093fb; }
+    .avatar-color-2 { background: #4facfe; }
+    .avatar-color-3 { background: #43e97b; }
+    .avatar-color-4 { background: #fa709a; }
+    .profile-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .profile-email {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-bottom: 4px;
+    }
+    .profile-role {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      font-size: 0.75rem;
+      margin-top: 8px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .info-item {
+      background: rgba(255,255,255,0.1);
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .info-label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-bottom: 4px;
+    }
+    .info-value {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .activity-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .activity-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .activity-card:hover {
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .activity-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+    .activity-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+    .activity-label {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    .password-strength {
+      margin-top: 8px;
+    }
+    .strength-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .strength-fill {
+      height: 100%;
+      transition: all 0.3s;
+      border-radius: 4px;
+    }
+    .strength-label {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .requirements-list {
+      margin-top: 8px;
+      font-size: 0.875rem;
+    }
+    .requirement {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      color: #6b7280;
+    }
+    .requirement.met {
+      color: #10b981;
+    }
+    .requirement-icon {
+      font-size: 1rem;
+    }
+    .security-card {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    .security-score {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .score-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .security-tips {
+      background: rgba(255,255,255,0.1);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 0.875rem;
+    }
+    .security-tips ul {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+    .security-tips li {
+      margin-bottom: 4px;
+    }
+    .email-prefs {
+      background: #f9fafb;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+    .pref-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .pref-item:last-child {
+      margin-bottom: 0;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+      background-color: #10b981;
+    }
+    input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+    .pref-info {
+      flex: 1;
+    }
+    .pref-title {
+      font-weight: 500;
+      color: #1f2937;
+      margin-bottom: 2px;
+    }
+    .pref-desc {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    @media (max-width: 1024px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+      .activity-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 640px) {
+      .activity-grid {
+        grid-template-columns: 1fr;
+      }
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <div class="settings-grid">
+    <!-- Profile Sidebar -->
+    <div>
+      <div class="profile-card">
+        {% set avatar_color_index = current_user.id % 5 %}
+        <div class="avatar avatar-color-{{ avatar_color_index }}">
+          {{ current_user.full_name.split()[0][0] }}{{ current_user.full_name.split()[-1][0] if current_user.full_name.split()|length > 1 else '' }}
+        </div>
+        <div class="profile-name">{{ current_user.full_name }}</div>
+        <div class="profile-email">{{ current_user.email }}</div>
+        <div class="profile-role">🏠 TENANT</div>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Member Since</div>
+            <div class="info-value">{{ current_user.created_at.strftime('%b %Y') }}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Last Login</div>
+            <div class="info-value">{{ (current_user.last_login_at|to_ph).strftime('%b %d') if current_user.last_login_at else 'N/A' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div>
+      <!-- Activity Summary -->
+      <div class="activity-grid">
+        <div class="activity-card">
+          <div class="activity-icon">📝</div>
+          <div class="activity-value">{{ activity_stats.concerns }}</div>
+          <div class="activity-label">Concerns</div>
+        </div>
+        <div class="activity-card">
+          <div class="activity-icon">💬</div>
+          <div class="activity-value">{{ activity_stats.feedback }}</div>
+          <div class="activity-label">Feedback</div>
+        </div>
+        <div class="activity-card">
+          <div class="activity-icon">💰</div>
+          <div class="activity-value">{{ activity_stats.payments }}</div>
+          <div class="activity-label">Payments</div>
+        </div>
+        <div class="activity-card">
+          <div class="activity-icon">🔄</div>
+          <div class="activity-value">{{ activity_stats.renewals }}</div>
+          <div class="activity-label">Renewals</div>
+        </div>
+      </div>
+
+      <!-- Security Information -->
+      <div class="security-card">
+        <h3 style="margin: 0 0 8px 0;">🔒 Account Security</h3>
+        <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Your account security status and recommendations</p>
+        
+        <div class="security-score">
+          <div class="score-circle">
+            {% if days_since_password_change is none %}
+              ?
+            {% elif days_since_password_change < 90 %}
+              ✓
+            {% elif days_since_password_change < 180 %}
+              ⚠
+            {% else %}
+              !
+            {% endif %}
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; margin-bottom: 4px;">
+              {% if days_since_password_change is none %}
+                Password Not Changed Yet
+              {% elif days_since_password_change < 90 %}
+                Good Security
+              {% elif days_since_password_change < 180 %}
+                Consider Updating
+              {% else %}
+                Update Recommended
+              {% endif %}
+            </div>
+            <div style="font-size: 0.875rem; opacity: 0.9;">
+              {% if days_since_password_change is none %}
+                Set a new password to improve security
+              {% else %}
+                Password last changed {{ days_since_password_change }} days ago
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="security-tips">
+          <strong>Security Tips:</strong>
+          <ul>
+            <li>Change your password every 90 days</li>
+            <li>Use a unique password for this account</li>
+            <li>Enable email notifications for important updates</li>
+            <li>Never share your password with anyone</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Account Settings Form -->
+      <div class="card card--gold">
+        <div class="section__header">
+          <h3>Account Settings</h3>
+          <p class="muted">Update your profile information and password</p>
+        </div>
+
+        <form method="post" action="{{ url_for('tenant.update_settings') }}" class="form mt-16">
+          <div>
+            <label class="label">Full Name</label>
+            <input class="input" name="full_name" value="{{ current_user.full_name }}" required style="border-color: rgba(215,179,91,.3);" />
+          </div>
+
+          <!-- Email Preferences -->
+          <div class="mt-24">
+            <div class="section__header">
+              <h4 style="color: #D7B35B;">📧 Email Preferences</h4>
+              <p class="muted">Choose which email notifications you want to receive</p>
+            </div>
+          </div>
+
+          <div class="email-prefs">
+            <div class="pref-item">
+              <label class="toggle-switch">
+                <input type="checkbox" name="email_announcements" {% if profile.email_announcements %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+              </label>
+              <div class="pref-info">
+                <div class="pref-title">📢 Announcements</div>
+                <div class="pref-desc">Receive notifications about new announcements</div>
+              </div>
+            </div>
+
+            <div class="pref-item">
+              <label class="toggle-switch">
+                <input type="checkbox" name="email_payment_reminders" {% if profile.email_payment_reminders %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+              </label>
+              <div class="pref-info">
+                <div class="pref-title">💰 Payment Reminders</div>
+                <div class="pref-desc">Get reminders about upcoming payments</div>
+              </div>
+            </div>
+
+            <div class="pref-item">
+              <label class="toggle-switch">
+                <input type="checkbox" name="email_concern_updates" {% if profile.email_concern_updates %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+              </label>
+              <div class="pref-info">
+                <div class="pref-title">📝 Concern Updates</div>
+                <div class="pref-desc">Receive updates on your submitted concerns</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-24">
+            <div class="section__header">
+              <h4 style="color: #D7B35B;">🔐 Change Password</h4>
+              <p class="muted">Leave blank to keep current password</p>
+            </div>
+          </div>
+
+          <div class="mt-16">
+            <label class="label">Current Password</label>
+            <div style="position: relative;">
+              <input class="input" type="password" name="current_password" id="current_password" placeholder="Enter current password" style="border-color: rgba(215,179,91,.3); padding-right: 40px;" />
+              <button type="button" onclick="togglePassword('current_password')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; padding: 4px; color: #D7B35B; font-size: 20px; line-height: 1; z-index: 10;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-16">
+            <label class="label">New Password</label>
+            <div style="position: relative;">
+              <input class="input" type="password" name="new_password" id="new_password" placeholder="Enter new password" style="border-color: rgba(215,179,91,.3); padding-right: 40px;" oninput="checkPasswordStrength(this.value)" />
+              <button type="button" onclick="togglePassword('new_password')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; padding: 4px; color: #D7B35B; font-size: 20px; line-height: 1; z-index: 10;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Password Strength Indicator -->
+            <div class="password-strength" id="passwordStrength" style="display: none;">
+              <div class="strength-bar">
+                <div class="strength-fill" id="strengthFill"></div>
+              </div>
+              <div class="strength-label" id="strengthLabel"></div>
+              
+              <div class="requirements-list">
+                <div class="requirement" id="req-length">
+                  <span class="requirement-icon">○</span>
+                  <span>At least 8 characters</span>
+                </div>
+                <div class="requirement" id="req-upper">
+                  <span class="requirement-icon">○</span>
+                  <span>One uppercase letter</span>
+                </div>
+                <div class="requirement" id="req-lower">
+                  <span class="requirement-icon">○</span>
+                  <span>One lowercase letter</span>
+                </div>
+                <div class="requirement" id="req-number">
+                  <span class="requirement-icon">○</span>
+                  <span>One number</span>
+                </div>
+                <div class="requirement" id="req-special">
+                  <span class="requirement-icon">○</span>
+                  <span>One special character</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-16">
+            <label class="label">Confirm New Password</label>
+            <div style="position: relative;">
+              <input class="input" type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" style="border-color: rgba(215,179,91,.3); padding-right: 40px;" oninput="checkPasswordMatch()" />
+              <button type="button" onclick="togglePassword('confirm_password')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; padding: 4px; color: #D7B35B; font-size: 20px; line-height: 1; z-index: 10;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <div id="confirm_password_error" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Passwords do not match</div>
+          </div>
+
+          <button class="btn btn--primary mt-24" type="submit" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-color: #D7B35B;">💾 Save Changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePassword(fieldId) {
+  const field = document.getElementById(fieldId);
+  field.type = field.type === 'password' ? 'text' : 'password';
+}
+
+function checkPasswordStrength(password) {
+  const strengthDiv = document.getElementById('passwordStrength');
+  const strengthFill = document.getElementById('strengthFill');
+  const strengthLabel = document.getElementById('strengthLabel');
+  
+  if (!password) {
+    strengthDiv.style.display = 'none';
+    return;
+  }
+  
+  strengthDiv.style.display = 'block';
+  
+  // Check requirements
+  const hasLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  // Update requirement indicators
+  updateRequirement('req-length', hasLength);
+  updateRequirement('req-upper', hasUpper);
+  updateRequirement('req-lower', hasLower);
+  updateRequirement('req-number', hasNumber);
+  updateRequirement('req-special', hasSpecial);
+  
+  // Calculate strength
+  let strength = 0;
+  if (hasLength) strength++;
+  if (hasUpper) strength++;
+  if (hasLower) strength++;
+  if (hasNumber) strength++;
+  if (hasSpecial) strength++;
+  
+  // Update strength bar
+  const percentage = (strength / 5) * 100;
+  strengthFill.style.width = percentage + '%';
+  
+  if (strength <= 2) {
+    strengthFill.style.background = '#ef4444';
+    strengthLabel.textContent = '❌ Weak Password';
+    strengthLabel.style.color = '#ef4444';
+  } else if (strength <= 4) {
+    strengthFill.style.background = '#fbbf24';
+    strengthLabel.textContent = '⚠️ Medium Password';
+    strengthLabel.style.color = '#fbbf24';
+  } else {
+    strengthFill.style.background = '#10b981';
+    strengthLabel.textContent = '✅ Strong Password';
+    strengthLabel.style.color = '#10b981';
+  }
+}
+
+function updateRequirement(id, met) {
+  const element = document.getElementById(id);
+  if (met) {
+    element.classList.add('met');
+    element.querySelector('.requirement-icon').textContent = '✓';
+  } else {
+    element.classList.remove('met');
+    element.querySelector('.requirement-icon').textContent = '○';
+  }
+}
+
+function checkPasswordMatch() {
+  const newPassword = document.getElementById('new_password').value;
+  const confirmPassword = document.getElementById('confirm_password').value;
+  const errorDiv = document.getElementById('confirm_password_error');
+  
+  if (confirmPassword && newPassword !== confirmPassword) {
+    errorDiv.style.display = 'block';
+  } else {
+    errorDiv.style.display = 'none';
+  }
+}
+
+document.querySelector('form').addEventListener('submit', function(e) {
+  const newPassword = document.getElementById('new_password');
+  const confirmPassword = document.getElementById('confirm_password');
+  
+  if (newPassword.value) {
+    const hasUpper = /[A-Z]/.test(newPassword.value);
+    const hasLower = /[a-z]/.test(newPassword.value);
+    const hasNumber = /[0-9]/.test(newPassword.value);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword.value);
+    const hasMinLength = newPassword.value.length >= 8;
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength) {
+      alert('Please ensure your password meets all requirements.');
+      e.preventDefault();
+      return;
+    }
+
+    if (confirmPassword.value !== newPassword.value) {
+      alert('Passwords do not match.');
+      e.preventDefault();
+      return;
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,507 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Renewal Request | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Renewal Request</div>
+{% endblock %}
+
+{% block content %}
+  <style>
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stat-card.green {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    .stat-card.yellow {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .stat-card.red {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+    .stat-card.blue {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .stat-label {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .stat-subtitle {
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+    .expiry-alert {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .expiry-alert.urgent {
+      background: #fee;
+      border: 2px solid #f44;
+      color: #c00;
+    }
+    .expiry-alert.soon {
+      background: #fffbeb;
+      border: 2px solid #fbbf24;
+      color: #92400e;
+    }
+    .expiry-alert.safe {
+      background: #f0fdf4;
+      border: 2px solid #22c55e;
+      color: #166534;
+    }
+    .expiry-icon {
+      font-size: 2rem;
+    }
+    .filter-bar {
+      background: var(--color-bg-light);
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .filter-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .status-badge.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .status-badge.approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status-badge.rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .request-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: all 0.2s;
+    }
+    .request-card:hover {
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .request-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .request-date {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .request-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-icon {
+      padding: 6px 12px;
+      font-size: 0.875rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-print {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-print:hover {
+      background: #2563eb;
+    }
+    .btn-cancel {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-cancel:hover {
+      background: #dc2626;
+    }
+    .request-timeline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    .timeline-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d1d5db;
+    }
+    .timeline-dot.active {
+      background: #10b981;
+    }
+    @media (max-width: 768px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <div class="dash-grid">
+    <section class="dash-panel">
+      <!-- Statistics Dashboard -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Requests</div>
+          <div class="stat-value">{{ stats.total }}</div>
+          <div class="stat-subtitle">All time</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-label">Pending</div>
+          <div class="stat-value">{{ stats.pending }}</div>
+          <div class="stat-subtitle">Awaiting approval</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Approved</div>
+          <div class="stat-value">{{ stats.approved }}</div>
+          <div class="stat-subtitle">Successfully approved</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Rejected</div>
+          <div class="stat-value">{{ stats.rejected }}</div>
+          <div class="stat-subtitle">Not approved</div>
+        </div>
+      </div>
+
+      <!-- Contract Expiry Alert -->
+      {% if stats.days_until_expiry is not none %}
+        <div class="expiry-alert {{ stats.expiry_status }}">
+          <div class="expiry-icon">
+            {% if stats.expiry_status == 'urgent' %}⚠️
+            {% elif stats.expiry_status == 'soon' %}⏰
+            {% else %}✅{% endif %}
+          </div>
+          <div style="flex: 1;">
+            <strong>
+              {% if stats.expiry_status == 'urgent' %}
+                URGENT: Contract expires in {{ stats.days_until_expiry }} days!
+              {% elif stats.expiry_status == 'soon' %}
+                Contract expires in {{ stats.days_until_expiry }} days
+              {% else %}
+                Contract expires in {{ stats.days_until_expiry }} days
+              {% endif %}
+            </strong>
+            <div style="font-size: 0.875rem; margin-top: 4px;">
+              {% if stats.expiry_status == 'urgent' %}
+                Please submit a renewal request immediately.
+              {% elif stats.expiry_status == 'soon' %}
+                Consider submitting a renewal request soon.
+              {% else %}
+                You have plenty of time before contract expiry.
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="section__header">
+          <h3>Request Contract Renewal</h3>
+          <p class="muted">Submit a renewal request before your contract expires</p>
+        </div>
+
+        <div class="grid grid--2 mt-16" style="background: var(--color-bg-light); padding: 16px; border-radius: 8px;">
+          <div>
+            <div class="kicker">Current Contract</div>
+            <strong>{{ profile.contract_start.strftime('%B %d, %Y') }}</strong>
+          </div>
+          <div>
+            <div class="kicker">Contract End</div>
+            <strong>{{ profile.contract_end.strftime('%B %d, %Y') if profile.contract_end else '—' }}</strong>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('tenant.create_renewal_request') }}" class="form mt-16">
+          <div>
+            <label class="label">Requested End Date</label>
+            <input class="input" type="date" name="requested_end_date" min="{{ profile.contract_end.strftime('%Y-%m-%d') if profile.contract_end else '' }}" required />
+            <div class="muted" style="font-size: 0.875rem; margin-top: 4px;">Must be after current contract end date</div>
+          </div>
+
+          <div class="mt-16">
+            <label class="label">Notes (optional)</label>
+            <textarea class="input" name="notes" rows="4" placeholder="Any special requests or notes..."></textarea>
+          </div>
+
+          <button class="btn btn--primary mt-16" type="submit">Submit Renewal Request</button>
+        </form>
+      </div>
+    </section>
+
+    <aside class="dash-panel dash-panel--side">
+      <div class="card">
+        <div class="section__header">
+          <h3>My Requests</h3>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="filter-bar mt-16">
+          <form method="get" action="{{ url_for('tenant.renewal') }}">
+            <div class="filter-row">
+              <div>
+                <label class="label" style="font-size: 0.875rem;">Search</label>
+                <input class="input" type="text" name="search" placeholder="Search requests..." value="{{ request.args.get('search', '') }}" />
+              </div>
+              <div>
+                <label class="label" style="font-size: 0.875rem;">Status</label>
+                <select class="input" name="status">
+                  <option value="">All Status</option>
+                  <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
+                  <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>Approved</option>
+                  <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label class="label" style="font-size: 0.875rem;">Sort By</label>
+                <select class="input" name="sort">
+                  <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>Newest First</option>
+                  <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+                </select>
+              </div>
+              <div>
+                <button class="btn btn--primary" type="submit" style="width: 100%;">Filter</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {% if renewal_requests %}
+          <div class="mt-16">
+            {% for request in renewal_requests %}
+              <div class="request-card">
+                <div class="request-header">
+                  <div class="request-date">{{ request.requested_end_date.strftime('%B %d, %Y') }}</div>
+                  <span class="status-badge {{ request.status.value }}">{{ request.status.value|title }}</span>
+                </div>
+                
+                {% if request.notes %}
+                  <p class="muted" style="font-size: 0.875rem; margin-bottom: 8px;">{{ request.notes }}</p>
+                {% endif %}
+
+                <div class="request-actions">
+                  <button class="btn-icon btn-print" data-request-id="{{ request.id }}" data-end-date="{{ request.requested_end_date.strftime('%B %d, %Y') }}" data-status="{{ request.status.value|title }}" data-notes="{{ request.notes or '' }}" data-created-date="{{ request.created_at.strftime('%B %d, %Y') }}" onclick="printRequest(this.dataset.requestId, this.dataset.endDate, this.dataset.status, this.dataset.notes, this.dataset.createdDate)">
+                    🖨️ Print
+                  </button>
+                  {% if request.status.value == 'pending' %}
+                    <form method="post" action="{{ url_for('tenant.cancel_renewal_request', renewal_id=request.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this renewal request?');">
+                      <button class="btn-icon btn-cancel" type="submit">❌ Cancel</button>
+                    </form>
+                  {% endif %}
+                </div>
+
+                <div class="request-timeline">
+                  <div class="timeline-dot active"></div>
+                  <span>Submitted: {{ request.created_at.strftime('%b %d, %Y') }}</span>
+                  {% if request.updated_at and request.updated_at != request.created_at %}
+                    <div class="timeline-dot active"></div>
+                    <span>Updated: {{ request.updated_at.strftime('%b %d, %Y') }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state mt-16">
+            <div class="empty-state__icon">↻</div>
+            <div class="empty-state__title">No Renewal Requests</div>
+            <div class="empty-state__text">
+              {% if request.args.get('search') or request.args.get('status') %}
+                No requests match your filters.
+              {% else %}
+                You haven't requested any contract renewals yet.
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    function printRequest(id, requestedDate, status, notes, createdDate) {
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Renewal Request #${id}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 40px;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 40px;
+              border-bottom: 3px solid #D7B35B;
+              padding-bottom: 20px;
+            }
+            .header h1 {
+              color: #D7B35B;
+              margin: 0;
+              font-size: 28px;
+            }
+            .header p {
+              color: #666;
+              margin: 5px 0 0 0;
+            }
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 15px;
+              padding: 10px;
+              background: #f9f9f9;
+              border-radius: 4px;
+            }
+            .info-label {
+              font-weight: bold;
+              color: #333;
+            }
+            .info-value {
+              color: #666;
+            }
+            .status {
+              display: inline-block;
+              padding: 4px 12px;
+              border-radius: 12px;
+              font-size: 14px;
+              font-weight: 500;
+            }
+            .status.pending {
+              background: #fef3c7;
+              color: #92400e;
+            }
+            .status.approved {
+              background: #d1fae5;
+              color: #065f46;
+            }
+            .status.rejected {
+              background: #fee2e2;
+              color: #991b1b;
+            }
+            .notes-section {
+              margin-top: 30px;
+              padding: 20px;
+              background: #f9f9f9;
+              border-radius: 8px;
+            }
+            .notes-section h3 {
+              margin-top: 0;
+              color: #333;
+            }
+            .footer {
+              margin-top: 50px;
+              text-align: center;
+              color: #999;
+              font-size: 12px;
+              border-top: 1px solid #ddd;
+              padding-top: 20px;
+            }
+            @media print {
+              body {
+                padding: 20px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>RENEWAL REQUEST</h1>
+            <p>Student Tenant Management System</p>
+          </div>
+
+          <div class="info-row">
+            <span class="info-label">Request ID:</span>
+            <span class="info-value">#${id}</span>
+          </div>
+
+          <div class="info-row">
+            <span class="info-label">Requested End Date:</span>
+            <span class="info-value">${requestedDate}</span>
+          </div>
+
+          <div class="info-row">
+            <span class="info-label">Status:</span>
+            <span class="status ${status.toLowerCase()}">${status}</span>
+          </div>
+
+          <div class="info-row">
+            <span class="info-label">Submitted Date:</span>
+            <span class="info-value">${createdDate}</span>
+          </div>
+
+          ${notes ? `
+            <div class="notes-section">
+              <h3>Notes:</h3>
+              <p>${notes}</p>
+            </div>
+          ` : ''}
+
+          <div class="footer">
+            <p>Printed on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p>This is a computer-generated document.</p>
+            <p>STMS - Student Tenant Management System</p>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  </script>
+{% endblock %}

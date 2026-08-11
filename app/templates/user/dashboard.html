@@ -1,0 +1,155 @@
+{% extends "dashboard_base.html" %}
+{% block title %}User Dashboard | STMS{% endblock %}
+
+{% block head %}
+  <script defer src="{{ url_for('static', filename='js/polling.js') }}"></script>
+  <style>
+    /* Modern Tenant Dashboard Styles */
+    .welcome {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .welcome h2 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #D7B35B;
+    }
+
+    .building-header {
+      background: white;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .building-header h3 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    /* Modern Unit Cards */
+    .unit-card {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .unit-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 32px rgba(215, 179, 91, 0.15);
+      border-color: rgba(215, 179, 91, 0.3);
+    }
+
+    .unit-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_user.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Customer Dashboard</div>
+{% endblock %}
+
+{% block content %}
+  <div class="dash-grid">
+    <section class="dash-panel">
+      <div class="welcome">
+        <div>
+          <div class="kicker">Welcome</div>
+          <h2 style="margin-top:6px">{{ current_user.full_name }}</h2>
+          <div class="muted">Reserve first as customer. After admin approval, your account becomes tenant portal.</div>
+        </div>
+        <div class="welcome__art"></div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="section__header" style="margin-bottom:10px">
+          <h3>Units</h3>
+          <p class="muted">Homepage featured units (real-time status)</p>
+        </div>
+        <div class="units-by-building">
+          {% for building in buildings %}
+            <div class="building-row">
+              <div class="building-header">
+                <h3>{{ building.code }} — {{ building.name }}</h3>
+              </div>
+              <div class="building-units">
+                {% for u in units_by_building.get(building.id, []) %}
+                  <div class="card card--media card--lift unit-card">
+                    <div class="media media--{% if loop.index0 % 3 == 0 %}gold{% elif loop.index0 % 3 == 1 %}dark{% else %}light{% endif %}"></div>
+                    <div class="card__body">
+                      <div class="kicker">Unit</div>
+                      <h3 class="mono">{{ u.unit_code }}</h3>
+                      <p class="muted">₱{{ "{:,.2f}".format(u.price_monthly|float) }} / month</p>
+                      <p><span class="badge badge--{{ u.status.value }}">{{ u.status.value }}</span></p>
+                      {% if u.status.value == "available" %}
+                        <a class="btn btn--sm btn--primary mt-12" href="{{ url_for('user.reserve', unit_id=u.id) }}">Reserve</a>
+                      {% else %}
+                        <p class="unit-card__hint muted mt-12">Currently {{ u.status.value }}</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="card">
+                    <p class="muted">No units in this building.</p>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% else %}
+            <div class="card">
+              <p class="muted">No buildings found.</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <aside class="dash-panel dash-panel--side">
+      <div class="card">
+        <div class="section__header" style="margin-bottom:10px">
+          <h3>Reservation Status</h3>
+          <p class="muted">Latest first</p>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Unit</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in reservations %}
+                <tr>
+                  <td class="muted">{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                  <td><span class="mono">{{ r.unit.unit_code }}</span></td>
+                  <td><span class="badge badge--{{ r.status.value }}">{{ r.status.value }}</span></td>
+                </tr>
+              {% else %}
+                <tr><td colspan="3" class="muted">No reservations yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </aside>
+  </div>
+{% endblock %}
+

@@ -1,0 +1,186 @@
+<nav class="side-nav">
+  {% if is_expired %}
+  <div class="sidebar-expired-badge">
+    <span>⚠️</span> CONTRACT EXPIRED
+  </div>
+  {% endif %}
+  <a class="side-link side-link--dashboard {% if request.path.startswith('/tenant/dashboard') %}is-active{% endif %}" href="{{ url_for('tenant.dashboard') }}">
+    <span class="side-ico">▦</span> Dashboard
+  </a>
+  {% if is_expired %}
+  <a class="side-link side-link--concerns side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired">
+    <span class="side-ico">🔒</span> Concerns
+  </a>
+  {% else %}
+  <a class="side-link side-link--concerns {% if request.path.startswith('/tenant/concerns') %}is-active{% endif %}" href="{{ url_for('tenant.concerns') }}">
+    <span class="side-ico">⌁</span> Concerns
+  </a>
+  {% endif %}
+  <a class="side-link side-link--payments {% if request.path.startswith('/tenant/payments') %}is-active{% endif %}" href="{{ url_for('tenant.payments') }}">
+    <span class="side-ico">₱</span> Payment History
+  </a>
+  <a class="side-link side-link--announcements {% if request.path.startswith('/tenant/announcements') %}is-active{% endif %}" href="{{ url_for('tenant.announcements') }}" style="position: relative;">
+    <span class="side-ico">◎</span> Announcements
+    {% if unread_announcements_count and unread_announcements_count > 0 %}
+      <span class="notification-badge">{{ unread_announcements_count }}</span>
+    {% endif %}
+  </a>
+  <a class="side-link side-link--documents {% if request.path.startswith('/tenant/documents') %}is-active{% endif %}" href="{{ url_for('tenant.documents') }}" style="position: relative;">
+    <span class="side-ico">◉</span> Documents
+    {% if unread_documents_count and unread_documents_count > 0 %}
+      <span class="notification-badge">{{ unread_documents_count }}</span>
+    {% endif %}
+  </a>
+  <a class="side-link side-link--renewal {% if request.path.startswith('/tenant/renewal') %}is-active{% endif %} {% if is_expired %}side-link--urgent{% endif %}" href="{{ url_for('tenant.renewal') }}" style="position: relative;">
+    <span class="side-ico">↻</span> Renewal Request
+    {% if is_expired %}
+      <span class="notification-badge">!</span>
+    {% endif %}
+  </a>
+  {% if is_expired %}
+  <a class="side-link side-link--feedback side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired">
+    <span class="side-ico">🔒</span> Feedback
+  </a>
+  {% else %}
+  <a href="{{ url_for('tenant.feedback') }}" class="side-link side-link--feedback {% if request.path.startswith('/tenant/feedback') %}is-active{% endif %}">
+    <span class="side-ico">✎</span> Feedback
+  </a>
+  {% endif %}
+  <a href="{{ url_for('tenant.settings') }}" class="side-link side-link--settings {% if request.path.startswith('/tenant/settings') %}is-active{% endif %}">
+    <span class="side-ico">⚙</span> Settings
+  </a>
+  <form method="post" action="{{ url_for('auth.logout') }}" style="display:contents">
+    <button class="side-link side-link--logout" type="submit">
+      <span class="side-ico">→</span> Logout
+    </button>
+  </form>
+</nav>
+
+<style>
+/* Keep sidebar white background, only active items get colorful gradients */
+
+/* Colorful gradient backgrounds for ACTIVE menu items only */
+.side-link--dashboard.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+.side-link--concerns.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+.side-link--payments.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+.side-link--announcements.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+.side-link--documents.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+.side-link--renewal.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+.side-link--feedback.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+.side-link--settings.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+/* Expired contract badge in sidebar */
+.sidebar-expired-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  margin: 0 12px 8px;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1.5px solid #fca5a5;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  animation: pulse 2s infinite;
+}
+
+/* Disabled sidebar links for expired tenants */
+.side-link--disabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  pointer-events: auto;
+}
+
+.side-link--disabled:hover {
+  background: rgba(239, 68, 68, 0.06) !important;
+  border-left: 3px solid #ef4444 !important;
+  transform: none !important;
+}
+
+/* Urgent highlight for renewal link */
+.side-link--urgent {
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.side-link--logout:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+}
+
+/* Hover effects - subtle gold tint */
+.side-link:hover:not(.is-active) {
+  background: rgba(215, 179, 91, 0.08);
+  border-left: 3px solid #D7B35B;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 7px;
+  border-radius: 12px;
+  min-width: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+  }
+}
+</style>
+
+

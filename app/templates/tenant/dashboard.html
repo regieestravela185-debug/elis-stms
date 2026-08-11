@@ -1,0 +1,860 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Tenant Dashboard | STMS{% endblock %}
+
+{% block head %}
+<style>
+/* Notification Badge */
+.notification-badge-inline {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  animation: pulse 2s infinite;
+}
+
+/* Spacing Utilities */
+.mt-24 { margin-top: 24px !important; }
+.mt-32 { margin-top: 32px !important; }
+.mb-24 { margin-bottom: 24px !important; }
+.mb-32 { margin-bottom: 32px !important; }
+.gap-24 { gap: 24px !important; }
+
+/* Card Spacing */
+.card {
+  margin-bottom: 0 !important;
+}
+
+.section-spacing {
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+/* Grid Improvements */
+.grid {
+  gap: 20px;
+}
+
+.grid--2 {
+  gap: 24px;
+}
+
+.grid--4 {
+  gap: 20px;
+}
+
+/* Pulse Animation */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+  }
+}
+
+/* Contract Status Borders */
+.card-border-expired { border-left: 4px solid #ef4444; }
+.card-border-normal { border-left: 4px solid #D7B35B; }
+
+/* Concern Status Borders */
+.concern-border-pending { border-left: 4px solid #eab308; }
+.concern-border-in-progress { border-left: 4px solid #3b82f6; }
+.concern-border-resolved { border-left: 4px solid #10b981; }
+
+/* Concern Status Badges */
+.badge-status-pending { background: rgba(234, 179, 8, 0.15); color: #eab308; }
+.badge-status-in-progress { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.badge-status-resolved { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+
+/* Announcement Borders */
+.announcement-border-pinned { border-left: 3px solid #ef4444; }
+.announcement-border-normal { border-left: 3px solid #D7B35B; }
+
+/* Slide In Animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scale In Animation */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Card Hover Effect */
+.card--hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card--hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  border-color: #D7B35B !important;
+}
+
+/* Card Action Hover */
+.card--action {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.card--action:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(215, 179, 91, 0.25);
+  border-color: #D7B35B !important;
+}
+
+.card--action:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+/* Smooth Transitions */
+.card, .btn {
+  transition: all 0.3s ease;
+}
+
+/* Progress Bar Animation */
+.progress-bar {
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Stagger Animation for Cards */
+.grid > * {
+  animation: fadeIn 0.5s ease forwards;
+  opacity: 0;
+}
+
+.grid > *:nth-child(1) { animation-delay: 0.1s; }
+.grid > *:nth-child(2) { animation-delay: 0.2s; }
+.grid > *:nth-child(3) { animation-delay: 0.3s; }
+.grid > *:nth-child(4) { animation-delay: 0.4s; }
+
+/* Button Hover Effects */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Loading State */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Badge Animations */
+.badge {
+  animation: scaleIn 0.3s ease;
+}
+
+/* Emergency Contact Hover */
+a[href^="tel:"] {
+  transition: all 0.2s ease;
+}
+
+a[href^="tel:"]:hover {
+  transform: translateX(4px);
+}
+
+/* Glow Effect for Important Items */
+.glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(215, 179, 91, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(215, 179, 91, 0.8);
+  }
+}
+
+/* Content Spacing */
+.dash-panel > * + * {
+  margin-top: 32px;
+}
+
+/* Responsive Animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Tenant Dashboard</div>
+{% endblock %}
+
+{% block content %}
+  {% if is_expired %}
+  <!-- EXPIRED CONTRACT BANNER -->
+  <div style="margin-bottom: 32px; animation: slideIn 0.5s ease;">
+    <div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 2px solid #ef4444; border-radius: 12px; padding: 32px; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+      <h2 style="color: #dc2626; margin: 0 0 8px 0; font-size: 22px;">Contract Expired</h2>
+      <p style="color: #991b1b; margin: 0 0 4px 0; font-size: 15px;">
+        Your lease contract ended on <strong>{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>.
+      </p>
+      <p style="color: #7f1d1d; margin: 0 0 20px 0; font-size: 13px;">
+        Your access is now limited. You can view your payment history, documents, and announcements,
+        but you cannot submit new concerns or feedback until your contract is renewed.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('tenant.renewal') }}" style="display: inline-flex; align-items: center; gap: 6px; padding: 12px 28px; background: linear-gradient(135deg, #D7B35B, #C9A84A); color: #fff; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 14px; box-shadow: 0 4px 12px rgba(215,179,91,0.3);">
+          ↻ Submit Renewal Request
+        </a>
+        <a href="{{ url_for('tenant.payments') }}" style="display: inline-flex; align-items: center; gap: 6px; padding: 12px 28px; background: #fff; color: #374151; border: 2px solid #d1d5db; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 14px;">
+          ₱ View Payment History
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Welcome Section -->
+  <div class="welcome" style="margin-bottom: 32px;">
+    <div>
+      <div class="kicker">Welcome</div>
+      <h2 style="margin-top:6px">{{ current_user.full_name }}</h2>
+      <div class="muted">Commercial and Residences • your tenant portal{% if is_expired %} <span style="color:#ef4444; font-weight:600;">(CONTRACT EXPIRED)</span>{% endif %}</div>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="grid grid--4" style="margin-bottom: 32px;">
+    <div class="card card--lift" style="border-left: 4px solid #D7B35B;">
+      <div class="kicker">Total Payments</div>
+      <h3 class="mono">{{ total_payments }}</h3>
+      <p class="muted">All time</p>
+    </div>
+    <div class="card card--lift" style="border-left: 4px solid #D7B35B;">
+      <div class="kicker">Active Concerns</div>
+      <h3 class="mono">{{ active_concerns }}</h3>
+      <p class="muted">Open tickets</p>
+    </div>
+    {% set contract_border_class = 'card-border-normal' %}
+    {% if is_expired %}
+      {% set contract_border_class = 'card-border-expired' %}
+    {% endif %}
+    <div class="card card--lift {{ contract_border_class }}">
+      <div class="kicker">Contract Status</div>
+      {% if is_expired %}
+      <h3 class="mono" style="color: #ef4444;">EXPIRED</h3>
+      <p class="muted" style="color: #ef4444;">Ended {{ contract_end_date }}</p>
+      {% else %}
+      <h3 class="mono">{{ contract_end_date }}</h3>
+      <p class="muted">Contract end date</p>
+      {% endif %}
+    </div>
+    <div class="card card--lift {{ contract_border_class }}">
+      <div class="kicker">Next Payment</div>
+      {% if is_expired %}
+      <h3 class="mono" style="color: #ef4444;">N/A</h3>
+      <p class="muted">No active contract</p>
+      {% else %}
+      <h3 class="mono">{{ days_until_payment }} days</h3>
+      <p class="muted">Until due date</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Contract Monitoring -->
+  {% if profile.contract_start and profile.contract_end %}
+  <div style="margin-bottom: 32px;">
+    <div class="card" style="background: rgba(215,179,91,0.05); border: 2px solid rgba(215,179,91,0.3);">
+      <div class="section__header">
+        <h3>Contract Monitoring</h3>
+        <p class="muted">Your lease duration and renewal status</p>
+      </div>
+
+      <div class="grid grid--3 mt-16">
+        <div>
+          <div class="kicker">Contract Start</div>
+          <strong>{{ profile.contract_start.strftime('%B %d, %Y') }}</strong>
+        </div>
+        <div>
+          <div class="kicker">Contract End</div>
+          <strong>{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>
+        </div>
+        <div>
+          <div class="kicker">Time Remaining</div>
+          {% if is_expired %}
+          <strong class="mono" style="color: #ef4444;">EXPIRED ({{ (days_remaining|abs) }} days ago)</strong>
+          {% else %}
+          <strong class="mono">{{ days_remaining }} days</strong>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="mt-16">
+        <div class="kicker">Contract Progress</div>
+        {% if is_expired %}
+        <div style="background: rgba(239,68,68,0.1); border-radius: 8px; height: 24px; overflow: hidden; margin-top: 8px;">
+          <div style="background: linear-gradient(90deg, #ef4444, #dc2626); height: 100%; width: 100%;"></div>
+        </div>
+        <div class="row row--gap mt-8" style="font-size: 0.875rem;">
+          <span style="color: #ef4444; font-weight: 600;">100% — Contract has ended</span>
+        </div>
+        {% else %}
+        <div style="background: rgba(0,0,0,0.05); border-radius: 8px; height: 24px; overflow: hidden; margin-top: 8px;">
+          <div data-width="{{ contract_progress }}" style="background: linear-gradient(90deg, #D7B35B, #C9A84A); height: 100%; transition: width 0.3s ease;"></div>
+        </div>
+        <script>
+          (function() {
+            var progressBar = document.querySelector('[data-width]');
+            if (progressBar) {
+              progressBar.style.width = progressBar.getAttribute('data-width') + '%';
+            }
+          })();
+        </script>
+        <div class="row row--gap mt-8" style="font-size: 0.875rem;">
+          <span class="muted">{{ contract_progress }}% completed</span>
+          <span class="muted">{{ 100 - contract_progress }}% remaining</span>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if is_expired %}
+      <div class="mt-16" style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; border-radius: 8px;">
+        <strong style="color: #ef4444; font-size: 16px;">⚠️ Contract Expired</strong>
+        <p class="muted" style="margin-top: 8px; font-size: 14px;">Your contract ended on <strong style="color: #ef4444;">{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>. Submit a renewal request to continue your stay, or contact the office for assistance.</p>
+        <a href="{{ url_for('tenant.renewal') }}" class="btn btn--primary btn--sm mt-8">Request Renewal Now</a>
+      </div>
+      {% elif days_remaining is not none and days_remaining <= 7 %}
+      <div class="mt-16" style="padding: 16px; background: rgba(255, 80, 80, 0.1); border-left: 4px solid #ff5050; border-radius: 8px; animation: pulse 2s infinite;">
+        <strong style="color: #ff5050; font-size: 16px;">⚠️ Contract Expiring Soon!</strong>
+        <p class="muted" style="margin-top: 8px; font-size: 14px;">Your contract ends in <strong style="color: #ff5050;">{{ days_remaining }} day{{ 's' if days_remaining != 1 else '' }}</strong>. Please submit a renewal request immediately to continue your stay.</p>
+        <a href="{{ url_for('tenant.renewal') }}" class="btn btn--primary btn--sm mt-8">Request Renewal Now</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Payment Reminder Widget -->
+  {% if days_until_payment and days_until_payment <= 3 %}
+  <div style="margin-bottom: 32px;">
+    <div class="card" style="background: rgba(255, 193, 7, 0.1); border: 2px solid rgba(255, 193, 7, 0.4); animation: pulse 2s infinite;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="font-size: 48px;">⏰</div>
+        <div style="flex: 1;">
+          <strong style="color: #f59e0b; font-size: 18px;">Payment Reminder</strong>
+          <p style="margin-top: 4px; font-size: 14px;">Your rent payment is due in <strong style="color: #f59e0b;">{{ days_until_payment }} day{{ 's' if days_until_payment != 1 else '' }}</strong></p>
+          <p class="muted" style="margin-top: 4px; font-size: 13px;">Amount: <strong>₱{{ "{:,.2f}".format(unit.price_monthly) if unit else "0.00" }}</strong></p>
+        </div>
+        <a href="{{ url_for('tenant.payments') }}" class="btn btn--primary">Pay Now</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Payment Methods & Emergency Contacts -->
+  <div class="grid grid--2" style="margin-bottom: 32px; gap: 24px;">
+    <!-- Payment Methods -->
+    <div class="card">
+      <div class="section__header">
+        <h3>💳 Payment Methods</h3>
+        <p class="muted">How to pay your rent</p>
+      </div>
+      <div class="mt-16">
+        <div style="padding: 16px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <span style="font-size: 24px;">🏦</span>
+            <strong style="font-size: 16px;">Bank Transfer</strong>
+          </div>
+          <p class="muted" style="font-size: 13px; margin-bottom: 4px;">Transfer to our bank account</p>
+          <p style="font-size: 14px; margin-top: 8px;"><strong>Account Details:</strong></p>
+          <p class="muted" style="font-size: 13px;">Contact office for bank details</p>
+          <p class="muted" style="font-size: 13px;">📞 0918-912-6340 or 0918-920-5645</p>
+        </div>
+        
+        <div style="padding: 16px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <span style="font-size: 24px;">💵</span>
+            <strong style="font-size: 16px;">Cash Payment</strong>
+          </div>
+          <p class="muted" style="font-size: 13px; margin-bottom: 4px;">Pay directly at our office</p>
+          <p style="font-size: 14px; margin-top: 8px;"><strong>Office Hours:</strong></p>
+          <p class="muted" style="font-size: 13px;">Monday - Saturday</p>
+          <p class="muted" style="font-size: 13px;">9:00 AM - 6:00 PM</p>
+          <p class="muted" style="font-size: 13px; margin-top: 4px;">📍 The Elis Center, #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</p>
+        </div>
+        
+        <div style="margin-top: 12px; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: 8px;">
+          <p style="font-size: 12px; color: #3b82f6;">
+            <strong>Note:</strong> After payment, please inform the admin and provide proof of payment for faster processing.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Emergency Contacts -->
+    <div class="card">
+      <div class="section__header">
+        <h3>🚨 Emergency Contacts</h3>
+        <p class="muted">Important numbers</p>
+      </div>
+      <div class="mt-16">
+        <div style="display: grid; gap: 12px;">
+          <a href="tel:09189126340" style="padding: 12px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(215, 179, 91, 0.1)'" onmouseout="this.style.background='rgba(215, 179, 91, 0.05)'">
+            <span style="font-size: 24px;">🏢</span>
+            <div>
+              <strong style="color: var(--text); font-size: 14px;">Admin Office</strong>
+              <p class="muted" style="font-size: 13px; margin-top: 2px;">0918-912-6340</p>
+            </div>
+          </a>
+          
+          <a href="tel:09189205645" style="padding: 12px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(215, 179, 91, 0.1)'" onmouseout="this.style.background='rgba(215, 179, 91, 0.05)'">
+            <span style="font-size: 24px;">🔒</span>
+            <div>
+              <strong style="color: var(--text); font-size: 14px;">Security / Admin</strong>
+              <p class="muted" style="font-size: 13px; margin-top: 2px;">0918-920-5645</p>
+            </div>
+          </a>
+          
+          <a href="tel:911" style="padding: 12px; background: rgba(239, 68, 68, 0.05); border-left: 4px solid #ef4444; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'">
+            <span style="font-size: 24px;">🚒</span>
+            <div>
+              <strong style="color: var(--text); font-size: 14px;">Fire Department</strong>
+              <p class="muted" style="font-size: 13px; margin-top: 2px;">911</p>
+            </div>
+          </a>
+          
+          <a href="tel:911" style="padding: 12px; background: rgba(239, 68, 68, 0.05); border-left: 4px solid #ef4444; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'">
+            <span style="font-size: 24px;">🚓</span>
+            <div>
+              <strong style="color: var(--text); font-size: 14px;">Police Station</strong>
+              <p class="muted" style="font-size: 13px; margin-top: 2px;">911</p>
+            </div>
+          </a>
+        </div>
+        
+        <div style="margin-top: 12px; padding: 12px; background: rgba(239, 68, 68, 0.05); border-radius: 8px;">
+          <p style="font-size: 12px; color: #ef4444;">
+            <strong>Emergency:</strong> For life-threatening situations, call 911 immediately.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div style="margin-bottom: 32px;">
+    <div class="card">
+      <div class="section__header">
+        <h3>Quick Actions</h3>
+        <p class="muted">Common tasks</p>
+      </div>
+      <div class="grid grid--4 mt-16" style="gap: 16px;">
+        <a href="{{ url_for('tenant.payments') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
+          <span style="font-size: 32px; color: #D7B35B;">₱</span>
+          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Pay Rent</div>
+        </a>
+        <a href="{{ url_for('tenant.concerns') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
+          <span style="font-size: 32px; color: #D7B35B;">⌁</span>
+          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Submit Concern</div>
+        </a>
+        <a href="{{ url_for('tenant.renewal') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
+          <span style="font-size: 32px; color: #D7B35B;">↻</span>
+          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Renew Contract</div>
+        </a>
+        <a href="{{ url_for('tenant.feedback') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
+          <span style="font-size: 32px; color: #D7B35B;">☺</span>
+          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Send Feedback</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maintenance Status & Recent Payments -->
+  <div class="grid grid--2" style="margin-bottom: 32px; gap: 24px;">
+    <!-- Maintenance Status -->
+    <div class="card">
+      <div class="section__header">
+        <h3>🔧 Maintenance Status</h3>
+        <p class="muted">Your recent concerns</p>
+      </div>
+      {% if recent_concerns %}
+        <div class="mt-16">
+          {% for concern in recent_concerns[:3] %}
+            {% set concern_border_class = 'concern-border-resolved' %}
+            {% if concern.status.value == 'pending' %}
+              {% set concern_border_class = 'concern-border-pending' %}
+            {% elif concern.status.value == 'in_progress' %}
+              {% set concern_border_class = 'concern-border-in-progress' %}
+            {% endif %}
+            <div class="card {{ concern_border_class }}" style="margin-bottom: 12px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <strong style="font-size: 15px;">{{ concern.subject }}</strong>
+                {% set concern_badge_class = 'badge-status-resolved' %}
+                {% if concern.status.value == 'pending' %}
+                  {% set concern_badge_class = 'badge-status-pending' %}
+                {% elif concern.status.value == 'in_progress' %}
+                  {% set concern_badge_class = 'badge-status-in-progress' %}
+                {% endif %}
+                <span class="badge {{ concern_badge_class }}">
+                  {% if concern.status.value == 'pending' %}⏳ Pending
+                  {% elif concern.status.value == 'in_progress' %}🔄 In Progress
+                  {% else %}✓ Resolved{% endif %}
+                </span>
+              </div>
+              <p class="muted" style="font-size: 13px;">{{ concern.description[:80] }}{% if concern.description|length > 80 %}...{% endif %}</p>
+              <p class="muted" style="font-size: 12px; margin-top: 8px;">📅 {{ concern.created_at.strftime('%b %d, %Y') }}</p>
+              {% if concern.admin_response %}
+                <div style="margin-top: 8px; padding: 8px; background: rgba(59, 130, 246, 0.05); border-radius: 4px;">
+                  <p style="font-size: 12px; color: #3b82f6;"><strong>Admin:</strong> {{ concern.admin_response[:60] }}{% if concern.admin_response|length > 60 %}...{% endif %}</p>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <a href="{{ url_for('tenant.concerns') }}" class="btn btn--ghost w-full mt-12">View All Concerns</a>
+      {% else %}
+        <div class="empty-state mt-16">
+          <div class="empty-state__icon">🔧</div>
+          <div class="empty-state__title">No Concerns</div>
+          <div class="empty-state__text">You haven't submitted any maintenance requests yet.</div>
+          <a href="{{ url_for('tenant.concerns') }}" class="btn btn--primary btn--sm mt-8">Submit Concern</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="card">
+      <div class="section__header">
+        <h3>💰 Recent Payments</h3>
+        <p class="muted">Your payment history</p>
+      </div>
+      {% if recent_payments %}
+        <div class="mt-16">
+          {% for payment in recent_payments[:5] %}
+            <div style="padding: 12px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #10b981; border-radius: 8px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="font-size: 16px; color: #10b981;">₱{{ "{:,.2f}".format(payment.amount) }}</strong>
+                  <p class="muted" style="font-size: 12px; margin-top: 2px;">
+                    📅 {{ (payment.paid_at|to_ph).strftime('%B %d, %Y') if payment.paid_at else 'N/A' }}
+                  </p>
+                  {% if payment.reference %}
+                    <p class="muted" style="font-size: 11px; margin-top: 2px;">Ref: {{ payment.reference }}</p>
+                  {% endif %}
+                </div>
+                <span style="font-size: 24px;">✓</span>
+              </div>
+              {% if payment.notes %}
+                <p class="muted" style="font-size: 12px; margin-top: 4px;">{{ payment.notes }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <a href="{{ url_for('tenant.payments') }}" class="btn btn--ghost w-full mt-12">View All Payments</a>
+      {% else %}
+        <div class="empty-state mt-16">
+          <div class="empty-state__icon">💰</div>
+          <div class="empty-state__title">No Payments Yet</div>
+          <div class="empty-state__text">Your payment history will appear here.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Announcements & Activity Timeline -->
+  <div class="grid grid--2" style="margin-bottom: 32px; gap: 24px;">
+    <!-- Recent Announcements -->
+    <div class="card">
+      <div class="section__header">
+        <div>
+          <h3>📢 Recent Announcements</h3>
+          <p class="muted">Latest updates from admin</p>
+        </div>
+        {% if unread_announcements_count and unread_announcements_count > 0 %}
+          <span class="notification-badge-inline">{{ unread_announcements_count }} unread</span>
+        {% endif %}
+      </div>
+      {% if recent_announcements %}
+        <div class="mt-16">
+          {% for announcement in recent_announcements %}
+            {% set announcement_border_class = 'announcement-border-normal' %}
+            {% if announcement.is_pinned %}
+              {% set announcement_border_class = 'announcement-border-pinned' %}
+            {% endif %}
+            <div class="card {{ announcement_border_class }}" style="margin-bottom: 12px; padding: 16px; position: relative;">
+              {% if announcement.is_pinned %}
+                <span style="position: absolute; top: 12px; right: 12px; background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;">📌 PINNED</span>
+              {% endif %}
+              <strong style="font-size: 15px;">{{ announcement.title }}</strong>
+              {% if announcement.category %}
+                <span class="chip" style="margin-left: 8px; font-size: 10px;">
+                  {% if announcement.category == 'emergency' %}🚨{% elif announcement.category == 'maintenance' %}🔧{% elif announcement.category == 'event' %}🎉{% elif announcement.category == 'rule_update' %}📜{% endif %}
+                  {{ announcement.category|replace('_', ' ')|title }}
+                </span>
+              {% endif %}
+              <p class="muted mt-8" style="font-size: 0.875rem;">📅 {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+              <p style="margin-top: 8px; font-size: 0.875rem; line-height: 1.6;">{{ announcement.content[:150] }}{% if announcement.content|length > 150 %}...{% endif %}</p>
+              <a href="{{ url_for('tenant.announcements') }}" class="btn btn--ghost btn--sm mt-8">Read More →</a>
+            </div>
+          {% endfor %}
+        </div>
+        <a href="{{ url_for('tenant.announcements') }}" class="btn btn--primary w-full mt-16">View All Announcements</a>
+      {% else %}
+        <div class="empty-state mt-16">
+          <div class="empty-state__icon">◎</div>
+          <div class="empty-state__title">No Announcements</div>
+          <div class="empty-state__text">Check back later for updates from the admin.</div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="card">
+      <div class="section__header">
+        <h3>Recent Activity</h3>
+        <p class="muted">Your recent actions</p>
+      </div>
+      <div class="mt-16">
+        {% for concern in recent_concerns %}
+          <div style="margin-bottom: 12px; padding-left: 16px; border-left: 2px solid #D7B35B;">
+            <strong>Concern Submitted</strong>
+            <p class="muted" style="font-size: 0.875rem;">{{ concern.subject }}</p>
+            <p class="muted" style="font-size: 0.75rem;">{{ concern.created_at.strftime('%B %d, %Y') }}</p>
+          </div>
+        {% endfor %}
+        {% for feedback in recent_feedbacks %}
+          <div style="margin-bottom: 12px; padding-left: 16px; border-left: 2px solid #D7B35B;">
+            <strong>Feedback Sent</strong>
+            <p class="muted" style="font-size: 0.875rem;">{{ feedback.category|title }}</p>
+            <p class="muted" style="font-size: 0.75rem;">{{ feedback.created_at.strftime('%B %d, %Y') }}</p>
+          </div>
+        {% endfor %}
+        {% for renewal in recent_renewals %}
+          <div style="margin-bottom: 12px; padding-left: 16px; border-left: 2px solid #D7B35B;">
+            <strong>Renewal Requested</strong>
+            <p class="muted" style="font-size: 0.875rem;">{{ renewal.requested_end_date.strftime('%B %d, %Y') }}</p>
+            <p class="muted" style="font-size: 0.75rem;">{{ renewal.created_at.strftime('%B %d, %Y') }}</p>
+          </div>
+        {% endfor %}
+        {% if not recent_concerns and not recent_feedbacks and not recent_renewals %}
+          <div class="empty-state">
+            <div class="empty-state__icon">📋</div>
+            <div class="empty-state__title">No Recent Activity</div>
+            <div class="empty-state__text">Start using the portal to see your activity here.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Documents Widget -->
+  <div style="margin-bottom: 32px;">
+    <div class="card">
+      <div class="section__header">
+        <div>
+          <h3>📄 Recent Documents</h3>
+          <p class="muted">Latest documents from admin</p>
+        </div>
+        {% if unread_documents_count and unread_documents_count > 0 %}
+          <span class="notification-badge-inline">{{ unread_documents_count }} new</span>
+        {% endif %}
+      </div>
+      
+      <div class="mt-16">
+        {% if unread_documents_count and unread_documents_count > 0 %}
+          <!-- New Documents Alert -->
+          <div style="padding: 20px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%); border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 12px; margin-bottom: 16px; animation: slideIn 0.5s ease;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="width: 64px; height: 64px; border-radius: 16px; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0;">
+                🔔
+              </div>
+              <div style="flex: 1;">
+                <strong style="color: #991b1b; font-size: 18px; display: block; margin-bottom: 4px;">{{ unread_documents_count }} New Document{{ 's' if unread_documents_count > 1 else '' }}</strong>
+                <p style="font-size: 14px; margin: 0; color: #991b1b;">You have unread documents waiting for you</p>
+              </div>
+              <a href="{{ url_for('tenant.documents') }}" class="btn btn--primary" style="flex-shrink: 0;">View Now</a>
+            </div>
+          </div>
+        {% endif %}
+        
+        <!-- Document Access Card -->
+        <a href="{{ url_for('tenant.documents') }}" class="card card--hover" style="padding: 20px; text-decoration: none; border: 2px solid #e5e7eb; display: block; transition: all 0.3s ease;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;">
+              📄
+            </div>
+            <div style="flex: 1;">
+              <strong style="color: #1a1a1a; font-size: 16px; display: block; margin-bottom: 4px;">All Documents</strong>
+              <p class="muted" style="font-size: 13px; margin: 0;">Access your contracts, receipts, and other files</p>
+            </div>
+            <span style="color: #D7B35B; font-size: 24px; flex-shrink: 0;">→</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unit Details -->
+  <div style="margin-bottom: 32px;">
+    <div class="card">
+      <div class="section__header">
+        <h3>My Unit Details</h3>
+        <p class="muted">Information about your rented unit</p>
+      </div>
+
+      <div class="grid grid--2 mt-16">
+        <div>
+          {% if unit_images %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+              {% for img in unit_images %}
+                <img src="{{ img }}" alt="Unit Image" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.1); image-rendering: -webkit-optimize-contrast; image-rendering: high-quality; -webkit-font-smoothing: antialiased;" />
+              {% endfor %}
+            </div>
+          {% else %}
+            <img src="{{ url_for('static', filename='img/elis-building.jpg') }}" alt="Unit Image" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.1); image-rendering: -webkit-optimize-contrast; image-rendering: high-quality; -webkit-font-smoothing: antialiased;" />
+          {% endif %}
+        </div>
+        <div>
+          <div class="grid grid--2">
+            <div>
+              <div class="kicker">Unit Code</div>
+              <strong>{{ unit.unit_code }}</strong>
+            </div>
+            <div>
+              <div class="kicker">Building</div>
+              <strong>{{ unit.building.name }}</strong>
+            </div>
+            <div>
+              <div class="kicker">Floor</div>
+              <strong>{{ unit.floor or "—" }}</strong>
+            </div>
+            <div>
+              <div class="kicker">Type</div>
+              <strong>{{ unit.type|title if unit.type else "—" }}</strong>
+            </div>
+          </div>
+          {% if unit.description %}
+            <div class="mt-16">
+              <div class="kicker">Description</div>
+              <p>{{ unit.description }}</p>
+            </div>
+          {% endif %}
+          <div class="mt-16">
+            <div class="kicker">Inclusions</div>
+            <p>{{ "Bedframe, CR" if "residential" in (unit.type or "").lower() else "Commercial space" }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deposit Information -->
+  {% if deposit_info %}
+  <div style="margin-bottom: 32px;">
+    <div class="card" style="background: rgba(215,179,91,0.05); border: 2px solid rgba(215,179,91,0.3);">
+      <div class="section__header">
+        <h3>Reservation Deposit</h3>
+        <p class="muted">Your ₱5,000 deposit status</p>
+      </div>
+
+      <div class="grid grid--4 mt-16">
+        <div>
+          <div class="kicker">Deposit Amount</div>
+          <h3 class="mono">₱{{ "{:,.2f}".format(deposit_info.amount) }}</h3>
+        </div>
+        <div>
+          <div class="kicker">Status</div>
+          <span class="badge badge--{{ 'gold' if deposit_info.status == 'held' else 'green' if deposit_info.status == 'full_return' else 'orange' }}">
+            {{ deposit_info.status.replace('_', ' ').title() }}
+          </span>
+        </div>
+        <div>
+          <div class="kicker">Expected Return</div>
+          <h3 class="mono">₱{{ "{:,.2f}".format(deposit_info.return_amount) }}</h3>
+        </div>
+        <div>
+          <div class="kicker">Return Date</div>
+          <h3 class="mono">{{ deposit_info.return_date.strftime('%B %d, %Y') if deposit_info.return_date else 'Pending' }}</h3>
+        </div>
+      </div>
+
+      {% if deposit_info.deductions_list %}
+      <div class="mt-16">
+        <div class="kicker">Deductions</div>
+        <div class="card mt-8" style="background: var(--bg);">
+          {% for deduction in deposit_info.deductions_list %}
+          <div style="padding: 8px; border-left: 3px solid var(--danger); margin-bottom: 8px;">
+            <strong>₱{{ "{:,.2f}".format(deduction.amount) }}</strong> - {{ deduction.reason }}
+            <p class="muted" style="font-size: 0.75rem;">{{ deduction.date }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <p class="muted mt-16" style="font-size: 0.875rem;">
+        <strong>Note:</strong> Your deposit will be returned after your contract ends, minus any deductions for damages or unpaid bills.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}
+

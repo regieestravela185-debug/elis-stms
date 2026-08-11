@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: elis-stms
+    env: python
+    runtime: python-3.12.6
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -k eventlet -w 1 --bind 0.0.0.0:$PORT run:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DB_TYPE
+        value: postgresql
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: UPLOAD_FOLDER
+        value: app/static/uploads
+      - key: MAX_CONTENT_LENGTH_MB
+        value: 10
+      - key: MAIL_SERVER
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_USE_TLS
+        value: 1
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_DEFAULT_SENDER
+        value: "STMS <no-reply@elis.local>"
+      - key: RESERVATION_AUTO_CANCEL_HOURS
+        value: 48
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

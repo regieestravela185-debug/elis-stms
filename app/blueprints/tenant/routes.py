@@ -1,0 +1,1440 @@
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash
+from flask_login import current_user, login_required
+from datetime import date
+import json
+import re
+from ...security import hash_password
+
+from ...extensions import db
+from ...models import (
+    Announcement, AnnouncementRead, Concern, ConcernFollowUp, ConcernStatus, Document, Feedback, FeedbackStatus,
+    Payment, RenewalRequest, RenewalRequestStatus, Reservation, ReservationStatus,
+    Role, TenantProfile, Unit, UnitStatus, User,
+)
+
+bp = Blueprint("tenant", __name__, url_prefix="/tenant")
+
+
+@bp.context_processor
+def _inject_tenant_context():
+    """Make is_expired available in all tenant templates for sidebar/banner."""
+    if not current_user.is_authenticated or current_user.role != Role.TENANT:
+        return {"is_expired": False}
+    profile = db.session.query(TenantProfile).filter_by(user_id=current_user.id).first()
+    if profile and profile.contract_end and profile.contract_end < date.today():
+        return {"is_expired": True}
+    return {"is_expired": False}
+
+
+def _ensure_tenant():
+    if current_user.role != Role.TENANT:  # type: ignore[attr-defined]
+        abort(403)
+
+
+def _get_tenant_profile():
+    """Return (profile, is_expired). Auto-deactivates expired contracts."""
+    profile = db.session.query(TenantProfile).filter_by(user_id=current_user.id).first()  # type: ignore[attr-defined]
+    if not profile:
+        abort(403)
+
+    is_expired = False
+    if profile.contract_end and profile.contract_end < date.today():
+        is_expired = True
+        # Auto-mark unit as available if still occupied
+        unit = db.session.get(Unit, profile.unit_id)
+        if unit and unit.status == UnitStatus.OCCUPIED:
+            unit.status = UnitStatus.AVAILABLE
+            db.session.commit()
+
+    return profile, is_expired
+
+
+def _ensure_active_contract(profile, is_expired):
+    """Block access for expired tenants — redirect to dashboard with warning."""
+    if is_expired:
+        flash("Your contract has expired. Please submit a renewal request or contact admin.", "warning")
+        return redirect(url_for("tenant.dashboard"))
+
+
+@bp.get("/dashboard")
+@login_required
+def dashboard():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    unit = db.session.get(Unit, profile.unit_id)
+
+    # Parse unit images
+    unit_images = []
+    if unit and unit.unit_images_json:
+        try:
+            parsed_images = json.loads(unit.unit_images_json)
+            if isinstance(parsed_images, list):
+                # Strip leading slashes and create proper URLs
+                for img in parsed_images:
+                    img_str = str(img).strip()
+                    if img_str:
+                        # Remove leading slash if present
+                        img_str = img_str.lstrip('/')
+                        unit_images.append(url_for('static', filename=img_str))
+        except Exception:
+            unit_images = []
+
+    # Statistics
+    total_payments = db.session.query(Payment).filter(Payment.tenant_profile_id == profile.id).count()
+    active_concerns = db.session.query(Concern).filter(
+        Concern.tenant_profile_id == profile.id,
+        Concern.status != ConcernStatus.RESOLVED
+    ).count()
+    pending_renewals = db.session.query(RenewalRequest).filter(
+        RenewalRequest.tenant_profile_id == profile.id,
+        RenewalRequest.status == RenewalRequestStatus.PENDING
+    ).count()
+
+    # Get reservation for deposit info
+    reservation = db.session.query(Reservation).filter(
+        Reservation.user_id == current_user.id,  # type: ignore[attr-defined]
+        Reservation.unit_id == profile.unit_id,
+        Reservation.status == ReservationStatus.APPROVED
+    ).first()
+    
+    deposit_info = None
+    if reservation:
+        deductions_list = []
+        if reservation.deposit_deductions:
+            try:
+                deductions_list = json.loads(reservation.deposit_deductions)
+            except Exception:
+                deductions_list = []
+                
+        deposit_info = {
+            "amount": float(reservation.deposit_amount),
+            "status": reservation.deposit_status,
+            "deductions_list": deductions_list,
+            "return_amount": float(reservation.deposit_return_amount) if reservation.deposit_return_amount else float(reservation.deposit_amount),
+            "return_date": reservation.deposit_return_date,
+            "notes": reservation.deposit_notes
+        }
+
+    # Recent announcements (for tenants or all)
+    recent_announcements = (
+        db.session.query(Announcement)
+        .filter(Announcement.is_active == True)
+        .filter(db.or_(
+            Announcement.target_audience == 'all',
+            Announcement.target_audience == 'tenants'
+        ))
+        .order_by(Announcement.is_pinned.desc(), Announcement.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    
+    # Count unread announcements
+    read_announcement_ids = db.session.query(AnnouncementRead.announcement_id).filter(
+        AnnouncementRead.user_id == current_user.id  # type: ignore[attr-defined]
+    ).all()
+    read_ids = [r[0] for r in read_announcement_ids]
+    
+    unread_count = (
+        db.session.query(Announcement)
+        .filter(Announcement.is_active == True)
+        .filter(db.or_(
+            Announcement.target_audience == 'all',
+            Announcement.target_audience == 'tenants'
+        ))
+        .filter(~Announcement.id.in_(read_ids) if read_ids else True)
+        .count()
+    )
+    
+    # Count unread documents
+    unread_documents_count = db.session.query(Document).filter(
+        Document.tenant_profile_id == profile.id,
+        Document.is_viewed == False
+    ).count()
+
+    # Recent activities (concerns, feedback, renewal requests)
+    from datetime import datetime, timedelta
+    recent_date = datetime.utcnow() - timedelta(days=30)
+
+    recent_concerns = db.session.query(Concern).filter(
+        Concern.tenant_profile_id == profile.id,
+        Concern.created_at >= recent_date
+    ).order_by(Concern.created_at.desc()).limit(5).all()
+
+    recent_feedbacks = db.session.query(Feedback).filter(
+        Feedback.tenant_profile_id == profile.id,
+        Feedback.created_at >= recent_date
+    ).order_by(Feedback.created_at.desc()).limit(5).all()
+
+    recent_renewals = db.session.query(RenewalRequest).filter(
+        RenewalRequest.tenant_profile_id == profile.id,
+        RenewalRequest.created_at >= recent_date
+    ).order_by(RenewalRequest.created_at.desc()).limit(5).all()
+
+    # Recent payments
+    recent_payments = db.session.query(Payment).filter(
+        Payment.tenant_profile_id == profile.id
+    ).order_by(Payment.paid_at.desc()).limit(5).all()
+
+    # Calculate days until next payment (assuming monthly on contract start day)
+    from datetime import date, timedelta
+    days_until_payment = None
+    if profile.contract_start and not is_expired:
+        today = date.today()
+        contract_day = profile.contract_start.day
+        try:
+            next_payment_day = date(today.year, today.month, contract_day)
+        except ValueError:
+            next_payment_day = date(today.year, today.month, 28)
+        if next_payment_day <= today:
+            # Move to next month
+            if today.month == 12:
+                next_payment_day = date(today.year + 1, 1, contract_day)
+            else:
+                try:
+                    next_payment_day = date(today.year, today.month + 1, contract_day)
+                except ValueError:
+                    next_payment_day = date(today.year, today.month + 1, 28)
+        # Don't show next payment beyond contract end
+        if profile.contract_end and next_payment_day > profile.contract_end:
+            days_until_payment = None
+        else:
+            days_until_payment = (next_payment_day - today).days
+
+    # Calculate contract progress and days remaining
+    days_remaining = None
+    contract_progress = 0
+    if profile.contract_start and profile.contract_end:
+        today = date.today()
+        total_days = (profile.contract_end - profile.contract_start).days
+        days_elapsed = (today - profile.contract_start).days + 1  # Include current day
+        days_remaining = (profile.contract_end - today).days
+        
+        if total_days > 0:
+            contract_progress = int((days_elapsed / total_days) * 100)
+            # Ensure progress is between 0 and 100
+            contract_progress = max(0, min(100, contract_progress))
+
+    # Get contract end date from profile
+    contract_end_date = "N/A"
+    if profile.contract_end:
+        contract_end_date = profile.contract_end.strftime("%B %d, %Y")
+
+    return render_template(
+        "tenant/dashboard.html",
+        profile=profile,
+        unit=unit,
+        contract_end_date=contract_end_date,
+        days_until_payment=days_until_payment,
+        days_remaining=days_remaining,
+        contract_progress=contract_progress,
+        unit_images=unit_images,
+        total_payments=total_payments,
+        active_concerns=active_concerns,
+        pending_renewals=pending_renewals,
+        recent_announcements=recent_announcements,
+        recent_concerns=recent_concerns,
+        recent_feedbacks=recent_feedbacks,
+        recent_renewals=recent_renewals,
+        recent_payments=recent_payments,
+        deposit_info=deposit_info,
+        unread_announcements_count=unread_count,
+        unread_documents_count=unread_documents_count,
+        is_expired=is_expired,
+    )
+
+
+@bp.get("/concerns")
+@login_required
+def concerns():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    priority_filter = request.args.get('priority', '').strip()
+    category_filter = request.args.get('category', '').strip()
+    date_from = request.args.get('date_from', '').strip()
+    date_to = request.args.get('date_to', '').strip()
+
+    # Base query
+    query = db.session.query(Concern).filter(
+        Concern.tenant_profile_id == profile.id,
+        Concern.is_cancelled == False
+    )
+
+    # Apply filters
+    if search:
+        query = query.filter(
+            db.or_(
+                Concern.subject.ilike(f'%{search}%'),
+                Concern.description.ilike(f'%{search}%')
+            )
+        )
+    
+    if status_filter:
+        query = query.filter(Concern.status == ConcernStatus(status_filter))
+    
+    if priority_filter:
+        query = query.filter(Concern.priority == priority_filter)
+    
+    if category_filter:
+        query = query.filter(Concern.category == category_filter)
+    
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(Concern.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            from datetime import datetime, timedelta
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(Concern.created_at < date_to_obj)
+        except ValueError:
+            pass
+
+    concerns = query.order_by(Concern.created_at.desc()).all()
+
+    # Calculate statistics from ALL concerns (not filtered)
+    all_concerns = db.session.query(Concern).filter(
+        Concern.tenant_profile_id == profile.id,
+        Concern.is_cancelled == False
+    ).all()
+
+    from datetime import datetime, timedelta
+    total_concerns = len(all_concerns)
+    pending_concerns = sum(1 for c in all_concerns if c.status == ConcernStatus.PENDING)
+    resolved_concerns = sum(1 for c in all_concerns if c.status == ConcernStatus.RESOLVED)
+    
+    # Calculate average response time
+    response_times = []
+    for c in all_concerns:
+        if c.admin_response_at and c.created_at:
+            delta = c.admin_response_at - c.created_at
+            response_times.append(delta.total_seconds() / 3600)  # hours
+    
+    avg_response_time = sum(response_times) / len(response_times) if response_times else 0
+    
+    # Calculate resolution rate
+    resolution_rate = (resolved_concerns / total_concerns * 100) if total_concerns > 0 else 0
+    
+    # Most common category
+    from collections import Counter
+    categories = [c.category for c in all_concerns]
+    most_common_category = Counter(categories).most_common(1)[0][0] if categories else 'N/A'
+
+    stats = {
+        'total': total_concerns,
+        'pending': pending_concerns,
+        'in_progress': sum(1 for c in concerns if c.status == ConcernStatus.IN_PROGRESS),
+        'resolved': resolved_concerns,
+        'avg_response_hours': avg_response_time,
+        'resolution_rate': resolution_rate,
+        'most_common_category': most_common_category
+    }
+
+    return render_template("tenant/concerns.html", concerns=concerns, stats=stats)
+
+
+@bp.post("/concerns")
+@login_required
+def create_concern():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+
+    subject = (request.form.get("subject") or "").strip()
+    description = (request.form.get("description") or "").strip()
+    priority = (request.form.get("priority") or "medium").strip()
+    category = (request.form.get("category") or "other").strip()
+    
+    if not subject or not description:
+        flash("Please enter subject and description.", "warning")
+        return redirect(url_for("tenant.concerns"))
+    
+    # Validate priority and category
+    if priority not in ['low', 'medium', 'high', 'urgent']:
+        priority = 'medium'
+    
+    if category not in ['maintenance', 'billing', 'noise', 'security', 'cleanliness', 'facilities', 'other']:
+        category = 'other'
+    
+    # Handle file attachments
+    attachments_list = []
+    if 'attachments' in request.files:
+        files = request.files.getlist('attachments')
+        # Limit to 4 files
+        files = files[:4]
+        
+        for file in files:
+            if file and file.filename:
+                from werkzeug.utils import secure_filename
+                import os
+                from datetime import datetime
+                
+                filename = secure_filename(file.filename)
+                # Add timestamp to avoid conflicts
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{timestamp}_{filename}"
+                
+                # Save to uploads/concerns directory
+                upload_dir = os.path.join('app', 'static', 'uploads', 'concerns')
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                filepath = os.path.join(upload_dir, filename)
+                file.save(filepath)
+                
+                # Store relative path for database
+                relative_path = f"uploads/concerns/{filename}"
+                attachments_list.append(relative_path)
+    
+    # Convert attachments list to JSON
+    import json
+    attachments_json = json.dumps(attachments_list) if attachments_list else None
+
+    c = Concern(
+        tenant_profile_id=profile.id,
+        subject=subject,
+        description=description,
+        status=ConcernStatus.PENDING,
+        priority=priority,
+        category=category,
+        attachments_json=attachments_json
+    )
+    db.session.add(c)
+    db.session.commit()
+    
+    # Send email notification to admin
+    from ...email_utils import send_email
+    try:
+        admin_users = db.session.query(User).filter(User.role == Role.ADMIN).all()
+        for admin in admin_users:
+            send_email(
+                to=admin.email,
+                subject=f"New Concern Submitted: {subject}",
+                body=f"""
+                <h2>New Concern Submitted</h2>
+                <p><strong>Tenant:</strong> {profile.user.full_name}</p>
+                <p><strong>Unit:</strong> {profile.unit.unit_code}</p>
+                <p><strong>Subject:</strong> {subject}</p>
+                <p><strong>Priority:</strong> {priority.upper()}</p>
+                <p><strong>Category:</strong> {category.title()}</p>
+                <p><strong>Description:</strong></p>
+                <p>{description}</p>
+                <p><a href="http://127.0.0.1:5001/admin/concerns">View in Admin Panel</a></p>
+                """
+            )
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+    
+    flash("Concern submitted successfully.", "success")
+    return redirect(url_for("tenant.concerns"))
+
+
+@bp.post("/concerns/<int:concern_id>/follow-up")
+@login_required
+def add_concern_follow_up(concern_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+    
+    concern = db.session.get(Concern, concern_id)
+    if not concern or concern.tenant_profile_id != profile.id:
+        abort(404)
+    
+    message = (request.form.get("message") or "").strip()
+    if not message:
+        flash("Please enter a message.", "warning")
+        return redirect(url_for("tenant.concerns"))
+    
+    # Handle file attachments
+    attachments_list = []
+    if 'attachments' in request.files:
+        files = request.files.getlist('attachments')
+        files = files[:4]
+        
+        for file in files:
+            if file and file.filename:
+                from werkzeug.utils import secure_filename
+                import os
+                from datetime import datetime
+                
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{timestamp}_{filename}"
+                
+                upload_dir = os.path.join('app', 'static', 'uploads', 'concerns')
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                filepath = os.path.join(upload_dir, filename)
+                file.save(filepath)
+                
+                relative_path = f"uploads/concerns/{filename}"
+                attachments_list.append(relative_path)
+    
+    import json
+    attachments_json = json.dumps(attachments_list) if attachments_list else None
+    
+    follow_up = ConcernFollowUp(
+        concern_id=concern_id,
+        message=message,
+        attachments_json=attachments_json
+    )
+    db.session.add(follow_up)
+    db.session.commit()
+    
+    flash("Follow-up added successfully.", "success")
+    return redirect(url_for("tenant.concerns"))
+
+
+@bp.post("/concerns/<int:concern_id>/escalate")
+@login_required
+def escalate_concern(concern_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+    
+    concern = db.session.get(Concern, concern_id)
+    if not concern or concern.tenant_profile_id != profile.id:
+        abort(404)
+    
+    # Escalate priority
+    if concern.priority == 'low':
+        concern.priority = 'medium'
+    elif concern.priority == 'medium':
+        concern.priority = 'high'
+    elif concern.priority == 'high':
+        concern.priority = 'urgent'
+    
+    db.session.commit()
+    
+    # Send email notification to admin
+    from ...email_utils import send_email
+    try:
+        admin_users = db.session.query(User).filter(User.role == Role.ADMIN).all()
+        for admin in admin_users:
+            send_email(
+                to=admin.email,
+                subject=f"Concern Escalated to {concern.priority.upper()}: {concern.subject}",
+                body=f"""
+                <h2>Concern Escalated</h2>
+                <p><strong>Tenant:</strong> {profile.user.full_name}</p>
+                <p><strong>Unit:</strong> {profile.unit.unit_code}</p>
+                <p><strong>Subject:</strong> {concern.subject}</p>
+                <p><strong>New Priority:</strong> {concern.priority.upper()}</p>
+                <p><a href="http://127.0.0.1:5001/admin/concerns">View in Admin Panel</a></p>
+                """
+            )
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+    
+    flash(f"Concern escalated to {concern.priority.upper()} priority.", "success")
+    return redirect(url_for("tenant.concerns"))
+
+
+@bp.post("/concerns/<int:concern_id>/cancel")
+@login_required
+def cancel_concern(concern_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+    
+    concern = db.session.get(Concern, concern_id)
+    if not concern or concern.tenant_profile_id != profile.id:
+        abort(404)
+    
+    from datetime import datetime
+    concern.is_cancelled = True
+    concern.cancelled_at = datetime.utcnow()
+    db.session.commit()
+    
+    flash("Concern cancelled successfully.", "success")
+    return redirect(url_for("tenant.concerns"))
+
+
+@bp.post("/concerns/<int:concern_id>/rate")
+@login_required
+def rate_concern(concern_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+    
+    concern = db.session.get(Concern, concern_id)
+    if not concern or concern.tenant_profile_id != profile.id:
+        abort(404)
+    
+    rating = request.form.get("rating")
+    feedback = (request.form.get("feedback") or "").strip()
+    
+    if not rating:
+        flash("Please select a rating.", "warning")
+        return redirect(url_for("tenant.concerns"))
+    
+    concern.satisfaction_rating = int(rating)
+    concern.satisfaction_feedback = feedback if feedback else None
+    db.session.commit()
+    
+    flash("Thank you for your feedback!", "success")
+    return redirect(url_for("tenant.concerns"))
+
+
+@bp.get("/payments")
+@login_required
+def payments():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    date_from = request.args.get('date_from', '').strip()
+    date_to = request.args.get('date_to', '').strip()
+    year = request.args.get('year', '').strip()
+    month = request.args.get('month', '').strip()
+
+    # Base query
+    query = db.session.query(Payment).filter(Payment.tenant_profile_id == profile.id)
+
+    # Apply filters
+    if search:
+        query = query.filter(
+            db.or_(
+                Payment.reference.ilike(f'%{search}%'),
+                Payment.receipt_number.ilike(f'%{search}%')
+            )
+        )
+    
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(Payment.paid_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            from datetime import datetime, timedelta
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(Payment.paid_at < date_to_obj)
+        except ValueError:
+            pass
+    
+    if year:
+        try:
+            year_int = int(year)
+            query = query.filter(db.extract('year', Payment.paid_at) == year_int)
+        except ValueError:
+            pass
+    
+    if month:
+        try:
+            month_int = int(month)
+            query = query.filter(db.extract('month', Payment.paid_at) == month_int)
+        except ValueError:
+            pass
+
+    payments = query.order_by(Payment.paid_at.desc()).all()
+
+    # Calculate statistics
+    total_amount = sum(float(p.amount) for p in payments)
+    total_count = len(payments)
+    
+    # Last payment
+    last_payment = payments[0] if payments else None
+    
+    # Next payment due (assuming monthly on contract start day)
+    next_payment_due = None
+    if profile.contract_start:
+        from datetime import date
+        today = date.today()
+        contract_day = profile.contract_start.day
+        next_payment_day = date(today.year, today.month, contract_day)
+        if next_payment_day <= today:
+            # Move to next month
+            if today.month == 12:
+                next_payment_day = date(today.year + 1, 1, contract_day)
+            else:
+                try:
+                    next_payment_day = date(today.year, today.month + 1, contract_day)
+                except ValueError:
+                    # Handle months with fewer days
+                    next_payment_day = date(today.year, today.month + 1, 28)
+        next_payment_due = next_payment_day
+    
+    # Get available years for filter
+    all_payments = db.session.query(Payment).filter(Payment.tenant_profile_id == profile.id).all()
+    available_years = sorted(set(p.paid_at.year for p in all_payments), reverse=True)
+
+    stats = {
+        'total_amount': total_amount,
+        'total_count': total_count,
+        'last_payment': last_payment,
+        'next_payment_due': next_payment_due,
+        'available_years': available_years
+    }
+
+    return render_template("tenant/payments.html", payments=payments, stats=stats, profile=profile)
+
+
+@bp.get("/payments/export")
+@login_required
+def export_payments():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    payments = (
+        db.session.query(Payment)
+        .filter(Payment.tenant_profile_id == profile.id)
+        .order_by(Payment.paid_at.desc())
+        .all()
+    )
+
+    # Create CSV
+    import csv
+    from io import StringIO
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    writer.writerow(['Date', 'Receipt Number', 'Reference', 'Amount', 'Status', 'Notes'])
+    
+    # Data
+    for p in payments:
+        writer.writerow([
+            p.paid_at.strftime('%Y-%m-%d %H:%M'),
+            p.receipt_number or 'N/A',
+            p.reference or 'N/A',
+            f"₱{float(p.amount):,.2f}",
+            'Late Payment' if p.is_late else 'On Time',
+            p.notes or ''
+        ])
+    
+    output.seek(0)
+    
+    from flask import Response
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=payment_history_{profile.user.full_name.replace(" ", "_")}.csv'}
+    )
+
+
+@bp.get("/payments/<int:payment_id>/receipt")
+@login_required
+def payment_receipt(payment_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    
+    payment = db.session.get(Payment, payment_id)
+    if not payment or payment.tenant_profile_id != profile.id:
+        abort(404)
+    
+    # Generate PDF receipt
+    from flask import make_response
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    from io import BytesIO
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#D7B35B'),
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    elements.append(Paragraph("OFFICIAL RECEIPT", title_style))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Receipt info
+    receipt_data = [
+        ['Receipt Number:', payment.receipt_number or f'OR-{payment.id:06d}'],
+        ['Date:', payment.paid_at.strftime('%B %d, %Y %I:%M %p')],
+        ['', ''],
+        ['Received from:', profile.user.full_name],
+        ['Unit:', profile.unit.unit_code],
+        ['', ''],
+    ]
+    
+    # Parse breakdown if exists
+    breakdown = {}
+    if payment.breakdown_json:
+        try:
+            breakdown = json.loads(payment.breakdown_json)
+        except:
+            pass
+    
+    if breakdown:
+        receipt_data.append(['Payment Breakdown:', ''])
+        if breakdown.get('rent'):
+            receipt_data.append(['  Monthly Rent:', f"₱{float(breakdown['rent']):,.2f}"])
+        if breakdown.get('utilities'):
+            receipt_data.append(['  Utilities:', f"₱{float(breakdown['utilities']):,.2f}"])
+        if breakdown.get('late_fee'):
+            receipt_data.append(['  Late Fee:', f"₱{float(breakdown['late_fee']):,.2f}"])
+        if breakdown.get('other'):
+            receipt_data.append(['  Other Charges:', f"₱{float(breakdown['other']):,.2f}"])
+        receipt_data.append(['', ''])
+    
+    receipt_data.extend([
+        ['Total Amount:', f"₱{float(payment.amount):,.2f}"],
+        ['Payment Method:', 'Cash/Bank Transfer'],
+        ['Reference:', payment.reference or 'N/A'],
+        ['Status:', 'PAID' if payment.payment_status == 'verified' else payment.payment_status.upper()],
+    ])
+    
+    if payment.notes:
+        receipt_data.append(['Notes:', payment.notes])
+    
+    table = Table(receipt_data, colWidths=[2.5*inch, 4*inch])
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#333333')),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    elements.append(table)
+    elements.append(Spacer(1, 0.5*inch))
+    
+    # Footer
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.grey,
+        alignment=TA_CENTER
+    )
+    elements.append(Paragraph("This is a computer-generated receipt.", footer_style))
+    elements.append(Paragraph("STMS - Student Tenant Management System", footer_style))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    response = make_response(buffer.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=receipt_{payment.id}.pdf'
+    
+    return response
+
+
+@bp.get("/announcements")
+@login_required
+def announcements():
+    _ensure_tenant()
+    from datetime import datetime
+    
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    category_filter = request.args.get('category', '').strip()
+    
+    # Base query - Get announcements for tenants
+    query = db.session.query(Announcement).filter(
+        Announcement.is_active == True
+    ).filter(db.or_(
+        Announcement.target_audience == 'all',
+        Announcement.target_audience == 'tenants'
+    ))
+    
+    # Apply filters
+    if search:
+        query = query.filter(
+            db.or_(
+                Announcement.title.ilike(f'%{search}%'),
+                Announcement.content.ilike(f'%{search}%')
+            )
+        )
+    
+    if category_filter:
+        query = query.filter(Announcement.category == category_filter)
+    
+    announcements = query.order_by(
+        Announcement.is_pinned.desc(), 
+        Announcement.created_at.desc()
+    ).all()
+    
+    # Get read announcement IDs
+    read_announcement_ids = db.session.query(AnnouncementRead.announcement_id).filter(
+        AnnouncementRead.user_id == current_user.id  # type: ignore[attr-defined]
+    ).all()
+    read_ids = [r[0] for r in read_announcement_ids]
+    
+    # Calculate statistics
+    total_announcements = len(announcements)
+    unread_count = sum(1 for a in announcements if a.id not in read_ids)
+    latest_announcement = announcements[0] if announcements else None
+    
+    # Get available categories
+    all_announcements = db.session.query(Announcement).filter(
+        Announcement.is_active == True
+    ).filter(db.or_(
+        Announcement.target_audience == 'all',
+        Announcement.target_audience == 'tenants'
+    )).all()
+    
+    available_categories = sorted(set(a.category for a in all_announcements if a.category))
+    
+    stats = {
+        'total': total_announcements,
+        'unread': unread_count,
+        'latest': latest_announcement,
+        'available_categories': available_categories
+    }
+    
+    return render_template("tenant/announcements.html", announcements=announcements, read_ids=read_ids, stats=stats)
+
+
+@bp.post("/announcements/<int:announcement_id>/mark-read")
+@login_required
+def mark_announcement_read(announcement_id: int):
+    _ensure_tenant()
+    from datetime import datetime
+    
+    # Check if already marked as read
+    existing = db.session.query(AnnouncementRead).filter(
+        AnnouncementRead.announcement_id == announcement_id,
+        AnnouncementRead.user_id == current_user.id  # type: ignore[attr-defined]
+    ).first()
+    
+    if not existing:
+        read_record = AnnouncementRead(
+            announcement_id=announcement_id,
+            user_id=current_user.id,  # type: ignore[attr-defined]
+            read_at=datetime.utcnow()
+        )
+        db.session.add(read_record)
+        db.session.commit()
+    
+    return redirect(url_for("tenant.announcements"))
+
+
+@bp.get("/documents")
+@login_required
+def documents():
+    _ensure_tenant()
+    from datetime import datetime
+    
+    profile, is_expired = _get_tenant_profile()
+
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    sort_by = request.args.get('sort', 'newest').strip()
+
+    # Base query
+    query = db.session.query(Document).filter(Document.tenant_profile_id == profile.id)
+
+    # Apply search
+    if search:
+        query = query.filter(Document.title.ilike(f'%{search}%'))
+
+    # Apply sorting
+    if sort_by == 'oldest':
+        query = query.order_by(Document.uploaded_at.asc())
+    elif sort_by == 'name':
+        query = query.order_by(Document.title.asc())
+    else:  # newest (default)
+        query = query.order_by(Document.uploaded_at.desc())
+
+    documents = query.all()
+    
+    # Auto-mark all documents as viewed when opening this page
+    for doc in documents:
+        if not doc.is_viewed:
+            doc.is_viewed = True
+            doc.viewed_at = datetime.utcnow()
+            
+            # Track view in DocumentView table
+            from ...models import DocumentView
+            view_record = DocumentView(
+                document_id=doc.id,
+                user_id=current_user.id,  # type: ignore[attr-defined]
+                viewed_at=datetime.utcnow(),
+                downloaded=False
+            )
+            db.session.add(view_record)
+    
+    db.session.commit()
+    
+    # Group documents by type for better organization
+    docs_by_type = {}
+    for doc in documents:
+        doc_type = doc.document_type
+        if doc_type not in docs_by_type:
+            docs_by_type[doc_type] = []
+        docs_by_type[doc_type].append(doc)
+    
+    # Calculate statistics
+    import os
+    total_size = 0
+    latest_upload = documents[0].uploaded_at if documents else None
+    
+    for doc in documents:
+        try:
+            file_path = os.path.join('app', 'static', doc.file_path)
+            if os.path.exists(file_path):
+                total_size += os.path.getsize(file_path)
+        except:
+            pass
+    
+    # Convert bytes to MB
+    total_size_mb = total_size / (1024 * 1024)
+    
+    stats = {
+        'total_size_mb': total_size_mb,
+        'latest_upload': latest_upload
+    }
+    
+    return render_template("tenant/documents.html", documents=documents, docs_by_type=docs_by_type, stats=stats)
+
+
+@bp.get("/documents/download-all")
+@login_required
+def download_all_documents():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    documents = db.session.query(Document).filter(Document.tenant_profile_id == profile.id).all()
+    
+    if not documents:
+        flash("No documents to download.", "warning")
+        return redirect(url_for("tenant.documents"))
+
+    # Create ZIP file
+    import zipfile
+    from io import BytesIO
+    import os
+    
+    memory_file = BytesIO()
+    
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for doc in documents:
+            file_path = os.path.join('app', 'static', doc.file_path)
+            if os.path.exists(file_path):
+                # Get file extension
+                _, ext = os.path.splitext(doc.file_path)
+                # Create safe filename
+                safe_filename = f"{doc.document_type}_{doc.title[:50]}{ext}".replace(' ', '_')
+                zf.write(file_path, safe_filename)
+    
+    memory_file.seek(0)
+    
+    from flask import send_file
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'documents_{profile.user.full_name.replace(" ", "_")}.zip'
+    )
+
+
+@bp.get("/renewal")
+@login_required
+def renewal():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    sort_by = request.args.get('sort', 'newest').strip()
+
+    # Base query
+    query = db.session.query(RenewalRequest).filter(RenewalRequest.tenant_profile_id == profile.id)
+
+    # Apply filters
+    if search:
+        query = query.filter(
+            db.or_(
+                RenewalRequest.notes.ilike(f'%{search}%'),
+                db.cast(RenewalRequest.requested_end_date, db.String).ilike(f'%{search}%')
+            )
+        )
+    
+    if status_filter:
+        query = query.filter(RenewalRequest.status == RenewalRequestStatus(status_filter))
+    
+    # Apply sorting
+    if sort_by == 'oldest':
+        query = query.order_by(RenewalRequest.created_at.asc())
+    else:  # newest (default)
+        query = query.order_by(RenewalRequest.created_at.desc())
+
+    renewal_requests = query.all()
+
+    # Calculate statistics
+    from datetime import date, timedelta
+    total_requests = len(renewal_requests)
+    pending_requests = sum(1 for r in renewal_requests if r.status == RenewalRequestStatus.PENDING)
+    approved_requests = sum(1 for r in renewal_requests if r.status == RenewalRequestStatus.APPROVED)
+    rejected_requests = sum(1 for r in renewal_requests if r.status == RenewalRequestStatus.REJECTED)
+    
+    # Calculate days until contract expires
+    days_until_expiry = None
+    expiry_status = 'safe'  # safe, soon, urgent
+    if profile.contract_end:
+        today = date.today()
+        days_until_expiry = (profile.contract_end - today).days
+        
+        if days_until_expiry <= 7:
+            expiry_status = 'urgent'
+        elif days_until_expiry <= 14:
+            expiry_status = 'soon'
+        else:
+            expiry_status = 'safe'
+
+    stats = {
+        'total': total_requests,
+        'pending': pending_requests,
+        'approved': approved_requests,
+        'rejected': rejected_requests,
+        'days_until_expiry': days_until_expiry,
+        'expiry_status': expiry_status
+    }
+
+    return render_template("tenant/renewal.html", profile=profile, renewal_requests=renewal_requests, stats=stats)
+
+
+@bp.post("/renewal")
+@login_required
+def create_renewal_request():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    requested_end_date_str = request.form.get("requested_end_date")
+    notes = (request.form.get("notes") or "").strip()
+
+    if not requested_end_date_str:
+        flash("Please select a requested end date.", "warning")
+        return redirect(url_for("tenant.renewal"))
+
+    try:
+        requested_end_date = date.fromisoformat(requested_end_date_str)
+    except ValueError:
+        flash("Invalid date format.", "warning")
+        return redirect(url_for("tenant.renewal"))
+
+    renewal = RenewalRequest(
+        tenant_profile_id=profile.id,
+        requested_end_date=requested_end_date,
+        notes=notes,
+        status=RenewalRequestStatus.PENDING,
+    )
+    db.session.add(renewal)
+    db.session.commit()
+    flash("Renewal request submitted.", "success")
+    return redirect(url_for("tenant.renewal"))
+
+
+@bp.post("/renewal/<int:renewal_id>/cancel")
+@login_required
+def cancel_renewal_request(renewal_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    
+    renewal = db.session.get(RenewalRequest, renewal_id)
+    if not renewal or renewal.tenant_profile_id != profile.id:
+        abort(404)
+    
+    # Only allow cancellation of pending requests
+    if renewal.status != RenewalRequestStatus.PENDING:
+        flash("Only pending requests can be cancelled.", "warning")
+        return redirect(url_for("tenant.renewal"))
+    
+    # Delete the request
+    db.session.delete(renewal)
+    db.session.commit()
+    
+    flash("Renewal request cancelled successfully.", "success")
+    return redirect(url_for("tenant.renewal"))
+
+
+@bp.get("/feedback")
+@login_required
+def feedback():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+
+    # Get filter parameters
+    search = request.args.get('search', '').strip()
+    category_filter = request.args.get('category', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    rating_filter = request.args.get('rating', '').strip()
+
+    # Base query
+    query = db.session.query(Feedback).filter(Feedback.tenant_profile_id == profile.id)
+
+    # Apply filters
+    if search:
+        query = query.filter(
+            db.or_(
+                Feedback.comments.ilike(f'%{search}%'),
+                Feedback.category.ilike(f'%{search}%')
+            )
+        )
+    
+    if category_filter:
+        query = query.filter(Feedback.category == category_filter)
+    
+    if status_filter:
+        query = query.filter(Feedback.status == FeedbackStatus(status_filter))
+    
+    if rating_filter:
+        query = query.filter(Feedback.rating == int(rating_filter))
+
+    feedbacks = query.order_by(Feedback.created_at.desc()).all()
+
+    # Calculate statistics
+    total_feedback = len(feedbacks)
+    submitted_count = sum(1 for f in feedbacks if f.status == FeedbackStatus.SUBMITTED)
+    reviewed_count = sum(1 for f in feedbacks if f.status == FeedbackStatus.REVIEWED)
+    
+    # Calculate average rating
+    ratings = [f.rating for f in feedbacks if f.rating is not None]
+    avg_rating = sum(ratings) / len(ratings) if ratings else 0
+    
+    # Most used category
+    from collections import Counter
+    categories = [f.category for f in feedbacks]
+    most_common_category = Counter(categories).most_common(1)[0][0] if categories else 'N/A'
+
+    stats = {
+        'total': total_feedback,
+        'submitted': submitted_count,
+        'reviewed': reviewed_count,
+        'avg_rating': avg_rating,
+        'most_common_category': most_common_category.replace('_', ' ').title()
+    }
+
+    return render_template("tenant/feedback.html", feedbacks=feedbacks, stats=stats, profile=profile)
+
+
+@bp.post("/feedback")
+@login_required
+def create_feedback():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+
+    category = (request.form.get("category") or "").strip()
+    rating_str = request.form.get("rating")
+    comments = (request.form.get("comments") or "").strip()
+
+    if not category or not comments:
+        flash("Please enter category and comments.", "warning")
+        return redirect(url_for("tenant.feedback"))
+
+    rating = int(rating_str) if rating_str else None
+
+    feedback = Feedback(
+        tenant_profile_id=profile.id,
+        unit_id=profile.unit_id,  # Add unit_id for unit-specific ratings
+        category=category,
+        rating=rating,
+        comments=comments,
+        status=FeedbackStatus.SUBMITTED,
+    )
+    db.session.add(feedback)
+    db.session.commit()
+    flash("Feedback submitted.", "success")
+    return redirect(url_for("tenant.feedback"))
+
+
+@bp.post("/feedback/<int:feedback_id>/edit")
+@login_required
+def edit_feedback(feedback_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+    
+    feedback = db.session.get(Feedback, feedback_id)
+    if not feedback or feedback.tenant_profile_id != profile.id:
+        abort(404)
+    
+    # Only allow editing of submitted feedback
+    if feedback.status != FeedbackStatus.SUBMITTED:
+        flash("Only submitted feedback can be edited.", "warning")
+        return redirect(url_for("tenant.feedback"))
+    
+    category = (request.form.get("category") or "").strip()
+    rating_str = request.form.get("rating")
+    comments = (request.form.get("comments") or "").strip()
+    
+    if not category or not comments:
+        flash("Please enter category and comments.", "warning")
+        return redirect(url_for("tenant.feedback"))
+    
+    feedback.category = category
+    feedback.rating = int(rating_str) if rating_str else None
+    feedback.comments = comments
+    
+    db.session.commit()
+    flash("Feedback updated successfully.", "success")
+    return redirect(url_for("tenant.feedback"))
+
+
+@bp.post("/feedback/<int:feedback_id>/delete")
+@login_required
+def delete_feedback(feedback_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+    
+    feedback = db.session.get(Feedback, feedback_id)
+    if not feedback or feedback.tenant_profile_id != profile.id:
+        abort(404)
+    
+    # Only allow deletion of submitted feedback
+    if feedback.status != FeedbackStatus.SUBMITTED:
+        flash("Only submitted feedback can be deleted.", "warning")
+        return redirect(url_for("tenant.feedback"))
+    
+    db.session.delete(feedback)
+    db.session.commit()
+    
+    flash("Feedback deleted successfully.", "success")
+    return redirect(url_for("tenant.feedback"))
+
+
+@bp.get("/settings")
+@login_required
+def settings():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    # Calculate activity summary
+    total_concerns = db.session.query(Concern).filter(Concern.tenant_profile_id == profile.id).count()
+    total_feedback = db.session.query(Feedback).filter(Feedback.tenant_profile_id == profile.id).count()
+    total_payments = db.session.query(Payment).filter(Payment.tenant_profile_id == profile.id).count()
+    total_renewals = db.session.query(RenewalRequest).filter(RenewalRequest.tenant_profile_id == profile.id).count()
+
+    activity_stats = {
+        'concerns': total_concerns,
+        'feedback': total_feedback,
+        'payments': total_payments,
+        'renewals': total_renewals
+    }
+
+    # Calculate days since password changed
+    days_since_password_change = None
+    if profile.password_changed_at:
+        from datetime import datetime
+        delta = datetime.utcnow() - profile.password_changed_at
+        days_since_password_change = delta.days
+
+    return render_template("tenant/settings.html", profile=profile, activity_stats=activity_stats, days_since_password_change=days_since_password_change)
+
+
+@bp.post("/settings")
+@login_required
+def update_settings():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    full_name = (request.form.get("full_name") or "").strip()
+    current_password = (request.form.get("current_password") or "").strip()
+    new_password = (request.form.get("new_password") or "").strip()
+    confirm_password = (request.form.get("confirm_password") or "").strip()
+
+    # Email preferences
+    email_announcements = request.form.get("email_announcements") == "on"
+    email_payment_reminders = request.form.get("email_payment_reminders") == "on"
+    email_concern_updates = request.form.get("email_concern_updates") == "on"
+
+    if not full_name:
+        flash("Please enter your full name.", "warning")
+        return redirect(url_for("tenant.settings"))
+
+    # Update name
+    current_user.full_name = full_name  # type: ignore[attr-defined]
+
+    # Update email preferences
+    profile.email_announcements = email_announcements
+    profile.email_payment_reminders = email_payment_reminders
+    profile.email_concern_updates = email_concern_updates
+
+    # Update password if provided
+    if new_password:
+        if not current_password:
+            flash("Please enter your current password to change password.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        from ...security import verify_password
+        if not verify_password(current_password, current_user.password_hash):  # type: ignore[attr-defined]
+            flash("Current password is incorrect.", "danger")
+            return redirect(url_for("tenant.settings"))
+
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        # Password validation - must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+        if len(new_password) < 8:
+            flash("Password must be at least 8 characters.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        if not re.search(r"[A-Z]", new_password):
+            flash("Password must contain at least 1 uppercase letter.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        if not re.search(r"[a-z]", new_password):
+            flash("Password must contain at least 1 lowercase letter.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        if not re.search(r"[0-9]", new_password):
+            flash("Password must contain at least 1 number.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", new_password):
+            flash("Password must contain at least 1 special character.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        current_user.password_hash = hash_password(new_password)  # type: ignore[attr-defined]
+        
+        # Update password changed timestamp
+        from datetime import datetime
+        profile.password_changed_at = datetime.utcnow()
+
+    db.session.commit()
+    flash("Settings updated successfully.", "success")
+    return redirect(url_for("tenant.settings"))
+

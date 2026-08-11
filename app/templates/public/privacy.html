@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy | STMS{% endblock %}
+
+{% block content %}
+  <style>
+    .legal-page {
+      min-height: 100vh;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, rgba(215, 179, 91, 0.03) 0%, rgba(215, 179, 91, 0.01) 100%);
+    }
+    .legal-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 48px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .legal-header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid #D7B35B;
+    }
+    .legal-header h1 {
+      margin: 0 0 12px 0;
+      color: #1a1a1a;
+      font-size: 32px;
+      font-weight: 700;
+    }
+    .legal-header .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+    .legal-section {
+      margin-bottom: 32px;
+    }
+    .legal-section h2 {
+      color: #D7B35B;
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+    }
+    .legal-section h3 {
+      color: #1a1a1a;
+      font-size: 18px;
+      font-weight: 600;
+      margin: 24px 0 12px 0;
+    }
+    .legal-section p {
+      color: #666;
+      line-height: 1.8;
+      margin: 0 0 16px 0;
+    }
+    .legal-section ul, .legal-section ol {
+      color: #666;
+      line-height: 1.8;
+      margin: 0 0 16px 0;
+      padding-left: 24px;
+    }
+    .legal-section li {
+      margin-bottom: 8px;
+    }
+    .highlight-box {
+      background: rgba(215, 179, 91, 0.1);
+      border-left: 4px solid #D7B35B;
+      padding: 16px 20px;
+      margin: 24px 0;
+      border-radius: 4px;
+    }
+    .highlight-box p {
+      margin: 0;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e5e5;
+    }
+    .back-link a {
+      color: #D7B35B;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 768px) {
+      .legal-container {
+        padding: 32px 24px;
+      }
+      .legal-header h1 {
+        font-size: 24px;
+      }
+    }
+  </style>
+
+  <section class="legal-page">
+    <div class="legal-container">
+      <div class="legal-header">
+        <h1>Privacy Policy</h1>
+        <p class="subtitle">The Elis Center Commercial and Residences</p>
+        <p class="subtitle">Smart Tenant Management System (STMS)</p>
+        <p class="subtitle">Last Updated: May 18, 2026</p>
+      </div>
+
+      <div class="legal-section">
+        <h2>1. Introduction</h2>
+        <p>
+          The Elis Center Commercial and Residences ("we," "us," or "our") is committed to protecting your privacy. 
+          This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use 
+          our Smart Tenant Management System (STMS).
+        </p>
+        <p>
+          By using STMS, you agree to the collection and use of information in accordance with this policy. 
+          If you do not agree with our policies and practices, please do not use our services.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>2. Information We Collect</h2>
+        <h3>2.1 Personal Information</h3>
+        <p>
+          When you register for an account or use our services, we may collect the following personal information:
+        </p>
+        <ul>
+          <li><strong>Full Name</strong>: To identify you in our system</li>
+          <li><strong>Email Address</strong>: For account verification and communication</li>
+          <li><strong>Phone Number</strong>: For contact and emergency purposes</li>
+          <li><strong>Valid ID</strong>: For identity verification and contract processing</li>
+          <li><strong>Move-in/Move-out Dates</strong>: For reservation and contract management</li>
+          <li><strong>Payment Information</strong>: For rent and deposit tracking</li>
+        </ul>
+        
+        <h3>2.2 Automatically Collected Information</h3>
+        <p>
+          When you access STMS, we may automatically collect:
+        </p>
+        <ul>
+          <li><strong>IP Address</strong>: For security and analytics</li>
+          <li><strong>Browser Type and Version</strong>: For compatibility</li>
+          <li><strong>Device Information</strong>: For responsive design</li>
+          <li><strong>Login History</strong>: For security monitoring</li>
+          <li><strong>Activity Logs</strong>: For system improvement</li>
+        </ul>
+        
+        <h3>2.3 CCTV Footage</h3>
+        <p>
+          Our property has CCTV coverage in common areas for safety and security. By entering the premises, 
+          you consent to being recorded. CCTV footage is stored securely and accessed only when necessary 
+          for security purposes.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>3. How We Use Your Information</h2>
+        <p>
+          We use the information we collect for the following purposes:
+        </p>
+        <ul>
+          <li><strong>Account Management</strong>: To create and manage your account</li>
+          <li><strong>Email Verification</strong>: To verify your email address through OTP</li>
+          <li><strong>Reservation Processing</strong>: To process your unit reservations</li>
+          <li><strong>Contract Management</strong>: To prepare and manage lease agreements</li>
+          <li><strong>Payment Processing</strong>: To track rent and deposit payments</li>
+          <li><strong>Communication</strong>: To send important updates and announcements</li>
+          <li><strong>Concerns Management</strong>: To address your concerns and complaints</li>
+          <li><strong>Security</strong>: To protect against fraud and unauthorized access</li>
+          <li><strong>System Improvement</strong>: To improve our services and user experience</li>
+        </ul>
+      </div>
+
+      <div class="legal-section">
+        <h2>4. How We Share Your Information</h2>
+        <h3>4.1 Internal Sharing</h3>
+        <p>
+          Your information is shared internally with:
+        </p>
+        <ul>
+          <li><strong>Admin Staff</strong>: To process reservations and manage tenancies</li>
+          <li><strong>Management</strong>: For oversight and decision-making</li>
+          <li><strong>Maintenance Team</strong>: To address concerns and repairs</li>
+        </ul>
+        
+        <h3>4.2 Third-Party Service Providers</h3>
+        <p>
+          We may share your information with trusted third-party service providers who assist us in:
+        </p>
+        <ul>
+          <li><strong>Email Services</strong>: For sending OTP and notifications (Gmail SMTP)</li>
+          <li><strong>Payment Processing</strong>: For bank transfers (if applicable)</li>
+          <li><strong>Cloud Storage</strong>: For secure data backup</li>
+        </ul>
+        
+        <h3>4.3 Legal Requirements</h3>
+        <p>
+          We may disclose your information if required by law or in response to valid requests by public authorities 
+          (e.g., court orders, government agencies).
+        </p>
+        
+        <div class="highlight-box">
+          <p>
+            🔒 <strong>We Never Sell Your Information</strong>: We do not sell, trade, or rent your personal 
+            information to third parties for marketing purposes.
+          </p>
+        </div>
+      </div>
+
+      <div class="legal-section">
+        <h2>5. Data Security</h2>
+        <p>
+          We implement appropriate technical and organizational measures to protect your personal information:
+        </p>
+        <ul>
+          <li><strong>Password Hashing</strong>: Passwords are hashed using bcrypt</li>
+          <li><strong>Secure Connections</strong>: HTTPS encryption for data transmission</li>
+          <li><strong>Access Controls</strong>: Role-based access to sensitive information</li>
+          <li><strong>Regular Backups</strong>: To prevent data loss</li>
+          <li><strong>Security Monitoring</strong>: To detect and prevent unauthorized access</li>
+        </ul>
+        <p>
+          However, no method of transmission over the internet or electronic storage is 100% secure. 
+          While we strive to protect your information, we cannot guarantee absolute security.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>6. Data Retention</h2>
+        <p>
+          We retain your personal information for as long as necessary to:
+        </p>
+        <ul>
+          <li>Provide our services to you</li>
+          <li>Comply with legal obligations</li>
+          <li>Resolve disputes</li>
+          <li>Enforce our agreements</li>
+        </ul>
+        <p>
+          After your tenancy ends, we may retain certain information for record-keeping and legal compliance 
+          purposes. You may request deletion of your data by contacting us.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>7. Your Rights</h2>
+        <p>
+          Under applicable data protection laws, you have the following rights:
+        </p>
+        <ul>
+          <li><strong>Access</strong>: Request a copy of your personal information</li>
+          <li><strong>Correction</strong>: Request correction of inaccurate information</li>
+          <li><strong>Deletion</strong>: Request deletion of your information (subject to legal requirements)</li>
+          <li><strong>Objection</strong>: Object to processing of your information</li>
+          <li><strong>Portability</strong>: Request transfer of your information to another service</li>
+          <li><strong>Withdrawal of Consent</strong>: Withdraw consent for data processing</li>
+        </ul>
+        <p>
+          To exercise these rights, please contact us using the information provided in Section 12.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>8. Cookies and Tracking</h2>
+        <p>
+          STMS uses cookies and similar tracking technologies to:
+        </p>
+        <ul>
+          <li>Maintain your login session</li>
+          <li>Remember your preferences</li>
+          <li>Analyze site usage and performance</li>
+          <li>Improve user experience</li>
+        </ul>
+        <p>
+          You can control cookies through your browser settings. However, disabling cookies may affect 
+          the functionality of STMS.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>9. Email Communications</h2>
+        <p>
+          We may send you emails for:
+        </p>
+        <ul>
+          <li><strong>Account Verification</strong>: OTP codes for email verification</li>
+          <li><strong>Password Reset</strong>: Links to reset your password</li>
+          <li><strong>Reservation Updates</strong>: Status changes on your reservations</li>
+          <li><strong>Payment Reminders</strong>: Upcoming rent due dates</li>
+          <li><strong>Announcements</strong>: Important updates from management</li>
+          <li><strong>Concern Updates</strong>: Responses to your concerns</li>
+        </ul>
+        <p>
+          You can manage your email preferences in your account settings. However, you cannot opt out of 
+          essential service emails (e.g., OTP, password reset).
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>10. Children's Privacy</h2>
+        <p>
+          STMS is not intended for use by individuals under the age of 18. We do not knowingly collect 
+          personal information from children. If you are a parent or guardian and believe your child has 
+          provided us with personal information, please contact us immediately.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>11. Changes to This Privacy Policy</h2>
+        <p>
+          We may update this Privacy Policy from time to time. Changes will be effective immediately upon 
+          posting on STMS. We will notify you of significant changes via email or through the system.
+        </p>
+        <p>
+          Your continued use of STMS after changes constitutes acceptance of the updated Privacy Policy. 
+          We encourage you to review this policy periodically.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>12. Contact Us</h2>
+        <p>
+          If you have questions, concerns, or requests regarding this Privacy Policy or your personal information, 
+          please contact us:
+        </p>
+        <ul>
+          <li><strong>Phone</strong>: 0918-912-6340 or 0918-920-5645</li>
+          <li><strong>Hours</strong>: Monday–Saturday, 9:00 AM – 6:00 PM</li>
+          <li><strong>Address</strong>: The Elis Center, #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</li>
+          <li><strong>Facebook</strong>: <a href="https://www.facebook.com/profile.php?id=100063700727817" target="_blank" rel="noopener noreferrer" style="color: #D7B35B;">ELIS Business Center | Calamba</a></li>
+        </ul>
+      </div>
+
+      <div class="legal-section">
+        <h2>13. Data Protection Officer</h2>
+        <p>
+          For data protection inquiries, you may contact our management team during office hours. 
+          We are committed to addressing your privacy concerns promptly and professionally.
+        </p>
+      </div>
+
+      <div class="legal-section">
+        <h2>14. Governing Law</h2>
+        <p>
+          This Privacy Policy is governed by the laws of the Republic of the Philippines, including the 
+          Data Privacy Act of 2012 (Republic Act No. 10173) and its implementing rules and regulations.
+        </p>
+      </div>
+
+      <div class="highlight-box" style="margin-top: 40px;">
+        <p>
+          By using STMS, you acknowledge that you have read, understood, and agree to this Privacy Policy.
+        </p>
+      </div>
+
+      <div class="back-link">
+        <a href="{{ url_for('public.home') }}">← Back to Homepage</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

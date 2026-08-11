@@ -1,0 +1,663 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Announcements Management | STMS Admin{% endblock %}
+
+{% block head %}
+  <style>
+    /* Enhanced Announcements Page Styles */
+    .announcements-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    
+    .stat-card {
+      padding: 20px;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: currentColor;
+      opacity: 0.7;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
+    
+    .stat-card__icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    
+    .stat-card__number {
+      font-size: 36px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    
+    .stat-card__label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    .stat-card--total { border-color: rgba(215, 179, 91, 0.4); }
+    .stat-card--total .stat-card__number { color: #D7B35B; }
+    
+    .stat-card--active { border-color: rgba(34, 197, 94, 0.4); }
+    .stat-card--active .stat-card__number { color: #22c55e; }
+    
+    .stat-card--month { border-color: rgba(59, 130, 246, 0.4); }
+    .stat-card--month .stat-card__number { color: #3b82f6; }
+    
+    .stat-card--pinned { border-color: rgba(239, 68, 68, 0.4); }
+    .stat-card--pinned .stat-card__number { color: #ef4444; }
+    
+    /* Filters Section */
+    .filters-section {
+      background: linear-gradient(135deg, rgba(215, 179, 91, 0.06) 0%, rgba(215, 179, 91, 0.02) 100%);
+      border: 2px solid rgba(215, 179, 91, 0.25);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .filter-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    /* Announcement Card */
+    .announcement-card {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    
+    .announcement-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    
+    .announcement-card.pinned {
+      border-color: rgba(239, 68, 68, 0.4);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.02) 100%);
+    }
+    
+    .announcement-card.inactive {
+      opacity: 0.6;
+      background: rgba(0, 0, 0, 0.02);
+    }
+    
+    .announcement-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    
+    .announcement-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .announcement-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    
+    .announcement-content {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      margin-bottom: 16px;
+      max-height: 100px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .announcement-content.expanded {
+      max-height: none;
+    }
+    
+    .announcement-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    /* Category Badges */
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .category-badge--general {
+      background: rgba(156, 163, 175, 0.15);
+      color: #6b7280;
+      border: 1px solid rgba(156, 163, 175, 0.3);
+    }
+    
+    .category-badge--rule_update {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .category-badge--maintenance {
+      background: rgba(234, 179, 8, 0.15);
+      color: #eab308;
+      border: 1px solid rgba(234, 179, 8, 0.3);
+    }
+    
+    .category-badge--emergency {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .category-badge--event {
+      background: rgba(168, 85, 247, 0.15);
+      color: #a855f7;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+    
+    /* Pin Badge */
+    .pin-badge {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    /* Target Audience Badge */
+    .audience-badge {
+      background: rgba(215, 179, 91, 0.15);
+      color: #D7B35B;
+      border: 1px solid rgba(215, 179, 91, 0.3);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    
+    /* Create Form */
+    .create-form-card {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.03) 100%);
+      border: 2px solid rgba(34, 197, 94, 0.3);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">📢 Announcements Management</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <!-- Statistics Cards -->
+    <div class="announcements-stats">
+      <div class="stat-card stat-card--total">
+        <span class="stat-card__icon">📋</span>
+        <div class="stat-card__number" id="stat-total">{{ announcements|length }}</div>
+        <div class="stat-card__label">Total Announcements</div>
+      </div>
+      <div class="stat-card stat-card--active">
+        <span class="stat-card__icon">✅</span>
+        <div class="stat-card__number" id="stat-active">
+          {{ announcements|selectattr('is_active', 'equalto', true)|list|length }}
+        </div>
+        <div class="stat-card__label">Active</div>
+      </div>
+      <div class="stat-card stat-card--month">
+        <span class="stat-card__icon">📅</span>
+        <div class="stat-card__number" id="stat-month">
+          {% set this_month_count = namespace(value=0) %}
+          {% for a in announcements %}
+            {% if a.created_at.date() >= today.replace(day=1) %}
+              {% set this_month_count.value = this_month_count.value + 1 %}
+            {% endif %}
+          {% endfor %}
+          {{ this_month_count.value }}
+        </div>
+        <div class="stat-card__label">This Month</div>
+      </div>
+      <div class="stat-card stat-card--pinned">
+        <span class="stat-card__icon">📌</span>
+        <div class="stat-card__number" id="stat-pinned">
+          {{ announcements|selectattr('is_pinned', 'equalto', true)|list|length }}
+        </div>
+        <div class="stat-card__label">Pinned</div>
+      </div>
+    </div>
+
+    <!-- Create Announcement Form -->
+    <div class="create-form-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #22c55e;">➕ Create New Announcement</h3>
+          <p class="muted" style="margin: 4px 0 0 0; font-size: 13px;">Broadcast important updates to tenants and visitors</p>
+        </div>
+        <a href="{{ url_for('admin.export_announcements') }}" class="btn btn--ghost btn--sm">
+          📊 Export CSV
+        </a>
+      </div>
+      
+      <form method="post" action="{{ url_for('admin.create_announcement') }}" class="mt-16">
+        <div class="grid grid--2" style="gap: 16px;">
+          <div>
+            <label class="label">Title *</label>
+            <input class="input" name="title" placeholder="Announcement title..." required />
+          </div>
+
+          <div>
+            <label class="label">Category</label>
+            <select class="input" name="category">
+              <option value="">General</option>
+              <option value="rule_update">📜 Rule Update</option>
+              <option value="maintenance">🔧 Maintenance</option>
+              <option value="emergency">🚨 Emergency</option>
+              <option value="event">🎉 Event</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid--2 mt-16" style="gap: 16px;">
+          <div>
+            <label class="label">Target Audience</label>
+            <select class="input" name="target_audience">
+              <option value="all">👥 All (Public + Tenants)</option>
+              <option value="tenants">🏠 Tenants Only</option>
+              <option value="public">🌐 Public Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="label">Expires On (Optional)</label>
+            <input class="input" name="expires_at" type="date" />
+            <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Auto-deactivate after this date</div>
+          </div>
+        </div>
+
+        <div class="mt-16">
+          <label class="label">Content *</label>
+          <textarea class="input" name="content" rows="5" placeholder="Announcement content..." required></textarea>
+        </div>
+
+        <div class="mt-16">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" name="is_pinned" />
+            <span style="font-weight: 600;">📌 Pin this announcement (shows at top)</span>
+          </label>
+        </div>
+
+        <button class="btn btn--primary mt-16" type="submit" style="background: #22c55e; border-color: #22c55e;">
+          ➕ Publish Announcement
+        </button>
+      </form>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label class="filter-label">Search</label>
+          <input class="input" id="searchInput" placeholder="Title or content..." autocomplete="off" />
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <select class="input" id="categorySelect">
+            <option value="">All Categories</option>
+            <option value="">General</option>
+            <option value="rule_update">Rule Update</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="emergency">Emergency</option>
+            <option value="event">Event</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select class="input" id="statusSelect">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="pinned">Pinned</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Sort By</label>
+          <select class="input" id="sortSelect">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="pinned">Pinned First</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Announcements List -->
+    <div class="card">
+      <div class="section__header">
+        <div>
+          <h3>📢 All Announcements</h3>
+          <p class="muted" id="results-count">{{ announcements|length }} announcement(s) found</p>
+        </div>
+      </div>
+
+      {% if announcements %}
+        <div class="mt-16" id="announcementsList">
+          {% for announcement in announcements %}
+            <div class="announcement-card {% if announcement.is_pinned %}pinned{% endif %} {% if not announcement.is_active %}inactive{% endif %}"
+                 data-category="{{ announcement.category or '' }}"
+                 data-status="{% if announcement.is_pinned %}pinned{% elif announcement.is_active %}active{% else %}inactive{% endif %}"
+                 data-created="{{ announcement.created_at.timestamp() }}"
+                 data-title="{{ announcement.title.lower() }}"
+                 data-content="{{ announcement.content.lower() }}">
+              
+              <div class="announcement-header">
+                <div style="flex: 1;">
+                  <h4 class="announcement-title">
+                    {% if announcement.is_pinned %}📌{% endif %}
+                    {{ announcement.title }}
+                  </h4>
+                  
+                  <div class="announcement-meta">
+                    {% if announcement.category %}
+                      <span class="category-badge category-badge--{{ announcement.category }}">
+                        {% if announcement.category == 'rule_update' %}📜 Rule Update
+                        {% elif announcement.category == 'maintenance' %}🔧 Maintenance
+                        {% elif announcement.category == 'emergency' %}🚨 Emergency
+                        {% elif announcement.category == 'event' %}🎉 Event
+                        {% else %}📋 {{ announcement.category|title }}
+                        {% endif %}
+                      </span>
+                    {% else %}
+                      <span class="category-badge category-badge--general">📋 General</span>
+                    {% endif %}
+                    
+                    <span class="audience-badge">
+                      {% if announcement.target_audience == 'tenants' %}🏠 Tenants Only
+                      {% elif announcement.target_audience == 'public' %}🌐 Public Only
+                      {% else %}👥 All
+                      {% endif %}
+                    </span>
+                    
+                    {% if announcement.is_pinned %}
+                      <span class="pin-badge">📌 Pinned</span>
+                    {% endif %}
+                    
+                    {% if announcement.expires_at %}
+                      <span style="font-size: 11px; color: var(--muted);">
+                        ⏰ Expires: {{ announcement.expires_at.strftime('%b %d, %Y') }}
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="announcement-content" id="content-{{ announcement.id }}">
+                {{ announcement.content }}
+              </div>
+              
+              <button class="btn btn--ghost btn--sm" data-announcement-id="{{ announcement.id }}" onclick="toggleContent(this.dataset.announcementId)" style="margin-bottom: 12px;">
+                <span id="toggle-text-{{ announcement.id }}">Show More</span>
+              </button>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border);">
+                <div style="font-size: 12px; color: var(--muted);">
+                  📅 {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </div>
+                
+                <div class="announcement-actions">
+                  <form method="post" action="{{ url_for('admin.pin_announcement', announcement_id=announcement.id) }}" style="display: inline;">
+                    <button class="btn btn--ghost btn--sm" type="submit">
+                      {% if announcement.is_pinned %}📌 Unpin{% else %}📌 Pin{% endif %}
+                    </button>
+                  </form>
+                  
+                  <form method="post" action="{{ url_for('admin.toggle_announcement', announcement_id=announcement.id) }}" style="display: inline;">
+                    <button class="btn btn--ghost btn--sm" type="submit">
+                      {% if announcement.is_active %}❌ Deactivate{% else %}✅ Activate{% endif %}
+                    </button>
+                  </form>
+                  
+                  <form method="post" action="{{ url_for('admin.delete_announcement', announcement_id=announcement.id) }}" 
+                        onsubmit="return confirm('Delete this announcement permanently?')" style="display: inline;">
+                    <button class="btn btn--ghost btn--sm" type="submit" style="color: #ef4444;">
+                      🗑️ Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 80px 20px; color: var(--muted);">
+          <div style="font-size: 72px; margin-bottom: 20px; opacity: 0.3;">📢</div>
+          <div style="font-size: 20px; font-weight: 700; margin-bottom: 10px;">No Announcements Yet</div>
+          <div style="font-size: 15px;">Create your first announcement using the form above.</div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const categorySelect = document.getElementById('categorySelect');
+    const statusSelect = document.getElementById('statusSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    const announcementsList = document.getElementById('announcementsList');
+    const resultsCount = document.getElementById('results-count');
+    
+    if (!announcementsList) return;
+    
+    const allCards = Array.from(announcementsList.querySelectorAll('.announcement-card'));
+    
+    // Statistics elements
+    const statTotal = document.querySelector('.stat-card--total .stat-card__number');
+    const statActive = document.querySelector('.stat-card--active .stat-card__number');
+    const statMonth = document.querySelector('.stat-card--month .stat-card__number');
+    const statPinned = document.querySelector('.stat-card--pinned .stat-card__number');
+    
+    function updateStatistics(visibleCards) {
+      const total = visibleCards.length;
+      let active = 0, pinned = 0;
+      const today = new Date();
+      const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      let thisMonth = 0;
+      
+      visibleCards.forEach(card => {
+        const status = card.getAttribute('data-status');
+        const created = new Date(parseFloat(card.getAttribute('data-created')) * 1000);
+        
+        if (status === 'active' || status === 'pinned') active++;
+        if (status === 'pinned') pinned++;
+        if (created >= thisMonthStart) thisMonth++;
+      });
+      
+      statTotal.textContent = total;
+      statActive.textContent = active;
+      statMonth.textContent = thisMonth;
+      statPinned.textContent = pinned;
+    }
+    
+    function sortCards(cards, sortBy) {
+      return cards.sort((a, b) => {
+        if (sortBy === 'newest') {
+          return parseFloat(b.getAttribute('data-created')) - parseFloat(a.getAttribute('data-created'));
+        } else if (sortBy === 'oldest') {
+          return parseFloat(a.getAttribute('data-created')) - parseFloat(b.getAttribute('data-created'));
+        } else if (sortBy === 'pinned') {
+          const aStatus = a.getAttribute('data-status');
+          const bStatus = b.getAttribute('data-status');
+          if (aStatus === 'pinned' && bStatus !== 'pinned') return -1;
+          if (aStatus !== 'pinned' && bStatus === 'pinned') return 1;
+          return parseFloat(b.getAttribute('data-created')) - parseFloat(a.getAttribute('data-created'));
+        }
+        return 0;
+      });
+    }
+    
+    function filterAnnouncements() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const categoryValue = categorySelect.value.toLowerCase();
+      const statusValue = statusSelect.value.toLowerCase();
+      const sortBy = sortSelect.value;
+      
+      let visibleCards = [];
+      
+      allCards.forEach(card => {
+        const title = card.getAttribute('data-title');
+        const content = card.getAttribute('data-content');
+        const category = card.getAttribute('data-category');
+        const status = card.getAttribute('data-status');
+        
+        const matchesSearch = !searchTerm || 
+          title.includes(searchTerm) || 
+          content.includes(searchTerm);
+        
+        const matchesCategory = !categoryValue || category === categoryValue;
+        const matchesStatus = !statusValue || status === statusValue;
+        
+        if (matchesSearch && matchesCategory && matchesStatus) {
+          visibleCards.push(card);
+        }
+      });
+      
+      visibleCards = sortCards(visibleCards, sortBy);
+      
+      allCards.forEach(card => card.style.display = 'none');
+      
+      visibleCards.forEach(card => {
+        card.style.display = '';
+        announcementsList.appendChild(card);
+      });
+      
+      resultsCount.textContent = `${visibleCards.length} announcement(s) found`;
+      updateStatistics(visibleCards);
+      
+      if (visibleCards.length === 0 && allCards.length > 0) {
+        let noResults = document.getElementById('noResults');
+        if (!noResults) {
+          noResults = document.createElement('div');
+          noResults.id = 'noResults';
+          noResults.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
+              <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
+              <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">No Announcements Found</div>
+              <div style="font-size: 14px;">Try adjusting your search or filters</div>
+            </div>
+          `;
+          announcementsList.appendChild(noResults);
+        }
+      } else {
+        const noResults = document.getElementById('noResults');
+        if (noResults) noResults.remove();
+      }
+    }
+    
+    clearFiltersBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      categorySelect.value = '';
+      statusSelect.value = '';
+      sortSelect.value = 'newest';
+      filterAnnouncements();
+    });
+    
+    searchInput.addEventListener('input', debounce(filterAnnouncements, 400));
+    categorySelect.addEventListener('change', filterAnnouncements);
+    statusSelect.addEventListener('change', filterAnnouncements);
+    sortSelect.addEventListener('change', filterAnnouncements);
+    
+    filterAnnouncements();
+  });
+  
+  function toggleContent(id) {
+    const content = document.getElementById('content-' + id);
+    const toggleText = document.getElementById('toggle-text-' + id);
+    
+    if (content.classList.contains('expanded')) {
+      content.classList.remove('expanded');
+      toggleText.textContent = 'Show More';
+    } else {
+      content.classList.add('expanded');
+      toggleText.textContent = 'Show Less';
+    }
+  }
+  </script>
+{% endblock %}

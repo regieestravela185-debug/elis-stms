@@ -1,0 +1,87 @@
+<nav class="side-nav">
+  <a class="side-link side-link--dashboard {% if request.path.startswith('/admin/dashboard') %}is-active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+    <span class="side-ico">▦</span> Dashboard
+  </a>
+  <a class="side-link side-link--floorplan {% if request.path.startswith('/admin/floorplan') %}is-active{% endif %}" href="{{ url_for('admin.floorplan') }}">
+    <span class="side-ico">▧</span> Floorplan
+  </a>
+  <a class="side-link side-link--units {% if request.path.startswith('/admin/units') %}is-active{% endif %}" href="{{ url_for('admin.units') }}">
+    <span class="side-ico">▢</span> Units
+  </a>
+  <a class="side-link side-link--users {% if request.path.startswith('/admin/users') %}is-active{% endif %}" href="{{ url_for('admin.users') }}">
+    <span class="side-ico">◈</span> Customers
+  </a>
+  <a class="side-link side-link--monitoring {% if request.path.startswith('/admin/tenants/monitoring') %}is-active{% endif %}" href="{{ url_for('admin.tenant_monitoring') }}">
+    <span class="side-ico">◕</span> Monitoring
+  </a>
+  <a class="side-link side-link--reservations {% if request.path.startswith('/admin/reservations') %}is-active{% endif %}" href="{{ url_for('admin.reservations') }}">
+    <span class="side-ico">⌁</span> Reservations
+  </a>
+  <a class="side-link side-link--payments {% if request.path.startswith('/admin/payments') %}is-active{% endif %}" href="{{ url_for('admin.payments') }}">
+    <span class="side-ico">₱</span> Payments
+  </a>
+  <a class="side-link side-link--deposits {% if request.path.startswith('/admin/deposits') %}is-active{% endif %}" href="{{ url_for('admin.deposits') }}">
+    <span class="side-ico">💰</span> Deposits
+  </a>
+  <a class="side-link side-link--announcements {% if request.path.startswith('/admin/announcements') %}is-active{% endif %}" href="{{ url_for('admin.announcements') }}">
+    <span class="side-ico">◎</span> Announcements
+  </a>
+  <a class="side-link side-link--documents {% if request.path.startswith('/admin/documents') %}is-active{% endif %}" href="{{ url_for('admin.documents') }}">
+    <span class="side-ico">◉</span> Documents
+  </a>
+  <a class="side-link side-link--renewals {% if request.path.startswith('/admin/renewals') %}is-active{% endif %}" href="{{ url_for('admin.renewals') }}">
+    <span class="side-ico">↻</span> Renewals
+  </a>
+  <a class="side-link side-link--feedbacks {% if request.path.startswith('/admin/feedbacks') %}is-active{% endif %}" href="{{ url_for('admin.feedbacks') }}">
+    <span class="side-ico">✎</span> Feedbacks
+  </a>
+  <a class="side-link side-link--concerns {% if request.path.startswith('/admin/concerns') %}is-active{% endif %}" href="{{ url_for('admin.concerns') }}">
+    <span class="side-ico">⌁</span> Concerns
+  </a>
+  <a class="side-link side-link--inquiries {% if request.path.startswith('/admin/inquiries') %}is-active{% endif %}" href="{{ url_for('admin.inquiries') }}">
+    <span class="side-ico">✉</span> Inquiries
+  </a>
+  <form method="post" action="{{ url_for('auth.logout') }}" style="display:contents">
+    <button class="side-link side-link--logout" type="submit">
+      <span class="side-ico">→</span> Logout
+    </button>
+  </form>
+</nav>
+
+<style>
+/* Admin Sidebar - White & Gold Theme */
+/* Keep sidebar white background, active items get gold gradient */
+
+/* Gold gradient for ALL active menu items */
+.side-link--dashboard.is-active,
+.side-link--floorplan.is-active,
+.side-link--units.is-active,
+.side-link--users.is-active,
+.side-link--monitoring.is-active,
+.side-link--reservations.is-active,
+.side-link--payments.is-active,
+.side-link--deposits.is-active,
+.side-link--announcements.is-active,
+.side-link--documents.is-active,
+.side-link--renewals.is-active,
+.side-link--feedbacks.is-active,
+.side-link--concerns.is-active,
+.side-link--inquiries.is-active {
+  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
+}
+
+/* Hover effects - subtle gold tint */
+.side-link:hover:not(.is-active) {
+  background: rgba(215, 179, 91, 0.08);
+  border-left: 3px solid #D7B35B;
+}
+
+/* Logout button - red gradient on hover */
+.side-link--logout:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+}
+</style>
+

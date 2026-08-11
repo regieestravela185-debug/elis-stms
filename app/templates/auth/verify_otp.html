@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Verify OTP | STMS{% endblock %}
+
+{% block content %}
+  <section class="auth">
+    <div class="card auth__card">
+      <h2>Verify email</h2>
+      <p class="muted">Enter the 6-digit OTP sent to <strong>{{ target_email or "your email" }}</strong>.</p>
+
+      <div class="hint">
+        <div class="hint__title">No OTP yet?</div>
+        <div class="muted">Check spam or promotions, then tap <strong>Resend OTP</strong>. If still not received, ask admin to check SMTP email settings.</div>
+      </div>
+
+      <form method="post" action="{{ url_for('auth.verify_otp_post') }}" class="form">
+        <label class="label">OTP</label>
+        <input class="input" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required />
+        <button class="btn btn--primary w-full" type="submit">Verify</button>
+      </form>
+
+      <form method="post" action="{{ url_for('auth.resend_otp') }}" class="mt-12">
+        <button class="btn btn--ghost w-full" type="submit">Resend OTP</button>
+      </form>
+    </div>
+  </section>
+{% endblock %}
+

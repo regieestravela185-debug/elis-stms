@@ -1,0 +1,40 @@
+<nav class="nav" id="siteNav">
+  <div class="container" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <a class="brand" href="{{ url_for('public.home') }}">
+      <img src="{{ url_for('static', filename='img/elis-mark.png') }}" alt="Elis mark" class="brand__logo" />
+      <div class="brand__text">
+        <div class="brand__title">THE ELIS CENTER</div>
+        <div class="brand__subtitle">COMMERCIAL AND RESIDENCES</div>
+      </div>
+    </a>
+
+    {% if request.path == "/" %}
+      <div class="nav__menu">
+        <a class="nav__link nav__link--scroll" href="#home">Home</a>
+        <a class="nav__link nav__link--scroll" href="#units">Units</a>
+        <a class="nav__link nav__link--scroll" href="#about">About</a>
+        <a class="nav__link nav__link--scroll" href="#faq">FAQ</a>
+        <a class="nav__link nav__link--scroll" href="#contact">Contact</a>
+      </div>
+    {% endif %}
+
+    <div class="nav__actions">
+      {% if current_user.is_authenticated %}
+        {% if current_user.role.value == "user" %}
+          <span class="nav__profile muted">Hi, {{ current_user.full_name }}</span>
+        {% endif %}
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <button class="btn btn--ghost" type="submit">Logout</button>
+        </form>
+      {% else %}
+        {% if request.path == "/" %}
+          <button type="button" class="btn btn--ghost js-open-login">Login</button>
+          <button type="button" class="btn btn--primary js-open-register">Register</button>
+        {% else %}
+          <a class="btn btn--ghost" href="{{ url_for('auth.login') }}">Login</a>
+          <a class="btn btn--primary" href="{{ url_for('auth.register') }}">Register</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</nav>

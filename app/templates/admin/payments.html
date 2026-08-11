@@ -1,0 +1,662 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Payments Management | STMS Admin{% endblock %}
+
+{% block head %}
+  <style>
+    /* Enhanced Payments Page Styles */
+    .payments-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    
+    .stat-card {
+      padding: 20px;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: currentColor;
+      opacity: 0.7;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
+    
+    .stat-card__icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    
+    .stat-card__number {
+      font-size: 36px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    
+    .stat-card__label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    .stat-card--total { border-color: rgba(215, 179, 91, 0.4); }
+    .stat-card--total .stat-card__number { color: #D7B35B; }
+    
+    .stat-card--month { border-color: rgba(34, 197, 94, 0.4); }
+    .stat-card--month .stat-card__number { color: #22c55e; }
+    
+    .stat-card--last { border-color: rgba(59, 130, 246, 0.4); }
+    .stat-card--last .stat-card__number { color: #3b82f6; }
+    
+    .stat-card--tenants { border-color: rgba(234, 179, 8, 0.4); }
+    .stat-card--tenants .stat-card__number { color: #eab308; }
+    
+    /* Filters Section */
+    .filters-section {
+      background: linear-gradient(135deg, rgba(215, 179, 91, 0.06) 0%, rgba(215, 179, 91, 0.02) 100%);
+      border: 2px solid rgba(215, 179, 91, 0.25);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .filter-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    
+    /* Add Payment Form */
+    .add-payment-card {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.03) 100%);
+      border: 2px solid rgba(34, 197, 94, 0.3);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    
+    /* Table Enhancements */
+    .payments-table-wrap {
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    
+    .table tbody tr {
+      transition: all 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+      background: rgba(215, 179, 91, 0.06);
+      transform: scale(1.002);
+    }
+    
+    /* Payment Type Badges */
+    .badge--monthly {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .badge--deposit {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .badge--return {
+      background: rgba(234, 179, 8, 0.15);
+      color: #eab308;
+      border: 1px solid rgba(234, 179, 8, 0.3);
+    }
+    
+    /* Blockchain Alert */
+    .blockchain-alert {
+      background: rgba(255, 80, 80, 0.08);
+      border: 2px solid rgba(255, 80, 80, 0.4);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+    }
+    
+    .empty-state__icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+    
+    .empty-state__title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    
+    .empty-state__text {
+      font-size: 15px;
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Payments Management</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <!-- Blockchain Alert -->
+    {% if session.get('blockchain_verification') and not session.get('blockchain_verification').valid %}
+    <div class="blockchain-alert">
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+        <span style="font-size: 48px;">🚨</span>
+        <div>
+          <h3 style="color: #ff5050; margin: 0; font-size: 18px; font-weight: 900;">Blockchain Integrity Issues Detected</h3>
+          <p style="margin: 4px 0 0 0; color: #dc2626; font-size: 14px;">Some payment records have been manually altered in the database.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr style="background: rgba(255, 80, 80, 0.1);">
+              <th style="color: #ff5050;">Tenant / Unit</th>
+              <th style="color: #ff5050;">Payment ID</th>
+              <th style="color: #ff5050;">Current Amount</th>
+              <th style="color: #ff5050;">Issue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for issue in session.get('blockchain_verification').issues %}
+            <tr>
+              <td><strong>{{ issue.tenant_info or 'N/A' }}</strong></td>
+              <td class="mono">#{{ issue.payment_id }}</td>
+              <td style="color: #ff5050; font-weight: bold;">₱{{ '{:,.2f}'.format(issue.payment_amount|float) }}</td>
+              <td>
+                <span style="color: #ff5050;">{{ issue.issue }}</span><br>
+                <a href="{{ url_for('admin.view_ledger', payment_id=issue.payment_id) }}" style="font-size: 11px;">View Hash Details</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Statistics Cards -->
+    <div class="payments-stats">
+      <div class="stat-card stat-card--total">
+        <span class="stat-card__icon">💰</span>
+        <div class="stat-card__number" id="stat-total">
+          ₱{{ '{:,.0f}'.format(payments|sum(attribute='amount')|float) if payments else '0' }}
+        </div>
+        <div class="stat-card__label">Total Revenue</div>
+      </div>
+      <div class="stat-card stat-card--month">
+        <span class="stat-card__icon">📅</span>
+        <div class="stat-card__number" id="stat-month">
+          {% set this_month_total = namespace(value=0) %}
+          {% for p in payments %}
+            {% if p.paid_at.date() >= today.replace(day=1) %}
+              {% set this_month_total.value = this_month_total.value + p.amount %}
+            {% endif %}
+          {% endfor %}
+          ₱{{ '{:,.0f}'.format(this_month_total.value|float) }}
+        </div>
+        <div class="stat-card__label">This Month</div>
+      </div>
+      <div class="stat-card stat-card--last">
+        <span class="stat-card__icon">📈</span>
+        <div class="stat-card__number" id="stat-last">
+          {% set last_month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1) %}
+          {% set last_month_end = today.replace(day=1) %}
+          {% set last_month_total = namespace(value=0) %}
+          {% for p in payments %}
+            {% if p.paid_at.date() >= last_month_start and p.paid_at.date() < last_month_end %}
+              {% set last_month_total.value = last_month_total.value + p.amount %}
+            {% endif %}
+          {% endfor %}
+          ₱{{ '{:,.0f}'.format(last_month_total.value|float) }}
+        </div>
+        <div class="stat-card__label">Last Month</div>
+      </div>
+      <div class="stat-card stat-card--tenants">
+        <span class="stat-card__icon">🏠</span>
+        <div class="stat-card__number" id="stat-tenants">
+          {{ payments|map(attribute='tenant_profile_id')|unique|list|length if payments else 0 }}
+        </div>
+        <div class="stat-card__label">Tenants Paid</div>
+      </div>
+    </div>
+
+    <!-- Add Payment Form -->
+    <div class="add-payment-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #22c55e;">➕ Add New Payment</h3>
+          <p class="muted" style="margin: 4px 0 0 0; font-size: 13px;">Record tenant payment - blockchain ledger generated automatically</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <a href="{{ url_for('admin.verify_blockchain') }}" class="btn btn--ghost btn--sm" style="border: 1px solid #D7B35B; color: #D7B35B;">
+            🔐 Verify Blockchain
+          </a>
+          <a href="{{ url_for('admin.export_payments') }}" class="btn btn--ghost btn--sm">
+            📊 Export CSV
+          </a>
+        </div>
+      </div>
+      
+      <form method="post" action="{{ url_for('admin.add_payment') }}" class="grid grid--4" style="gap: 16px;">
+        <div>
+          <label class="label">Tenant *</label>
+          <select class="input" name="tenant_profile_id" id="paymentTenantSelect" required>
+            <option value="" disabled selected>Select tenant...</option>
+            {% for t in tenants %}
+              <option value="{{ t.id }}" 
+                      data-price="{{ t.unit.price_monthly }}" 
+                      data-unit="{{ t.unit.unit_code }}"
+                      data-building="{{ t.unit.building.code }}">
+                {{ t.user.full_name }} • {{ t.unit.building.code }}-{{ t.unit.unit_code }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="label">Payment Month *</label>
+          <input class="input" name="payment_month" id="paymentMonthInput" type="month" required />
+        </div>
+        <div>
+          <label class="label">Amount (₱) *</label>
+          <input class="input" name="amount" id="paymentAmountInput" type="number" step="0.01" min="0" required />
+        </div>
+        <div>
+          <label class="label">Reference</label>
+          <input class="input" name="reference" placeholder="OR / Txn ref (optional)" />
+        </div>
+        <div class="align-end">
+          <button class="btn btn--primary w-full" type="submit" style="background: #22c55e; border-color: #22c55e;">
+            ➕ Add Payment
+          </button>
+        </div>
+      </form>
+      
+      <div id="tenantInfo" style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.5); border-radius: 8px; display: none;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">SELECTED TENANT INFO:</div>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          <div>
+            <span style="font-size: 11px; color: var(--muted);">Unit:</span>
+            <strong id="infoUnit" style="margin-left: 6px;">-</strong>
+          </div>
+          <div>
+            <span style="font-size: 11px; color: var(--muted);">Monthly Rate:</span>
+            <strong id="infoPrice" style="margin-left: 6px; color: #22c55e;">-</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label class="filter-label">Search</label>
+          <input class="input" id="searchInput" placeholder="Tenant name or unit..." autocomplete="off" />
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Payment Type</label>
+          <select class="input" id="typeSelect">
+            <option value="">All Types</option>
+            <option value="monthly">Monthly Payment</option>
+            <option value="deposit">Deposit</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Building</label>
+          <select class="input" id="buildingSelect">
+            <option value="">All Buildings</option>
+            {% for building in buildings %}
+              <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Floor</label>
+          <select class="input" id="floorSelect">
+            <option value="">All Floors</option>
+            <option value="1">Floor 1</option>
+            <option value="2">Floor 2</option>
+            <option value="3">Floor 3</option>
+            <option value="4">Floor 4</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">Sort By</label>
+          <select class="input" id="sortSelect">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="amount-high">Amount (High-Low)</option>
+            <option value="amount-low">Amount (Low-High)</option>
+            <option value="tenant">Tenant Name (A-Z)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="card">
+      <div class="section__header">
+        <div>
+          <h3>💳 Payment History & Blockchain Ledger</h3>
+          <p class="muted" id="results-count">{{ payments|length }} payment(s) found</p>
+        </div>
+      </div>
+
+      {% if payments %}
+        <div class="payments-table-wrap mt-16">
+          <table class="table" id="paymentsTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Tenant</th>
+                <th>Building</th>
+                <th>Unit</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Reference</th>
+                <th>Blockchain Hash</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for payment in payments %}
+                <tr data-type="{{ 'deposit' if payment.is_deposit else 'monthly' }}"
+                    data-building="{{ payment.tenant_profile.unit.building.code|upper }}"
+                    data-floor="{{ payment.tenant_profile.unit.floor or 0 }}"
+                    data-date="{{ payment.paid_at.timestamp() }}"
+                    data-amount="{{ payment.amount }}"
+                    data-tenant="{{ payment.tenant_profile.user.full_name.lower() }}"
+                    data-unit="{{ payment.tenant_profile.unit.unit_code.lower() }}">
+                  <td class="muted" style="font-size: 12px;">
+                    {{ payment.paid_at.strftime("%b %d, %Y") }}
+                    <div style="font-size: 10px; margin-top: 2px;">{{ payment.paid_at.strftime("%I:%M %p") }}</div>
+                  </td>
+                  <td>
+                    <strong style="font-size: 14px;">{{ payment.tenant_profile.user.full_name }}</strong>
+                  </td>
+                  <td>
+                    <span class="badge" style="background: rgba(215, 179, 91, 0.25); color: #B8962E; border: 1px solid rgba(215, 179, 91, 0.5); font-size: 12px; font-weight: 700; text-transform: uppercase;">
+                      {{ payment.tenant_profile.unit.building.code }}
+                    </span>
+                  </td>
+                  <td class="mono" style="font-size: 14px; font-weight: 600;">
+                    {{ payment.tenant_profile.unit.unit_code }}
+                  </td>
+                  <td>
+                    {% if payment.is_deposit %}
+                      {% if payment.deposit_transaction_type == 'deposit_returned' %}
+                        <span class="badge badge--return">🔄 Return</span>
+                      {% else %}
+                        <span class="badge badge--deposit">💵 Deposit</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="badge badge--monthly">💰 Monthly</span>
+                    {% endif %}
+                  </td>
+                  <td class="mono" style="font-size: 16px; font-weight: 700; color: #22c55e;">
+                    ₱{{ '{:,.2f}'.format(payment.amount|float) }}
+                  </td>
+                  <td class="muted" style="font-size: 13px;">
+                    {{ payment.reference or '—' }}
+                  </td>
+                  <td class="mono" style="font-size: 11px;">
+                    {% if payment.ledger %}
+                      <span style="color: #22c55e;">✓</span> {{ payment.ledger.hash[:12] }}...
+                    {% else %}
+                      <span class="muted">Pending</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{{ url_for('admin.view_ledger', payment_id=payment.id) }}" class="btn btn--sm btn--ghost" style="font-size: 12px;" title="View Blockchain Ledger">
+                      🔐 Ledger
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state__icon">💳</div>
+          <div class="empty-state__title">No Payments Yet</div>
+          <div class="empty-state__text">Start recording tenant payments using the form above.</div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add Payment Form
+    const tenantSelect = document.getElementById('paymentTenantSelect');
+    const amountInput = document.getElementById('paymentAmountInput');
+    const monthInput = document.getElementById('paymentMonthInput');
+    const tenantInfo = document.getElementById('tenantInfo');
+    const infoUnit = document.getElementById('infoUnit');
+    const infoPrice = document.getElementById('infoPrice');
+
+    // Set default month to current month
+    const today = new Date();
+    const currentMonth = today.toISOString().slice(0, 7);
+    monthInput.value = currentMonth;
+
+    tenantSelect.addEventListener('change', function() {
+      const selectedOption = tenantSelect.options[tenantSelect.selectedIndex];
+      const price = selectedOption.getAttribute('data-price');
+      const unit = selectedOption.getAttribute('data-unit');
+      const building = selectedOption.getAttribute('data-building');
+
+      if (price && unit) {
+        amountInput.value = price;
+        infoUnit.textContent = building + '-' + unit;
+        infoPrice.textContent = '₱' + parseFloat(price).toLocaleString('en-US', {minimumFractionDigits: 2});
+        tenantInfo.style.display = 'block';
+      }
+    });
+
+    // Filters
+    const searchInput = document.getElementById('searchInput');
+    const typeSelect = document.getElementById('typeSelect');
+    const buildingSelect = document.getElementById('buildingSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    const paymentsTable = document.getElementById('paymentsTable');
+    const resultsCount = document.getElementById('results-count');
+    
+    // Statistics elements
+    const statTotal = document.querySelector('.stat-card--total .stat-card__number');
+    const statMonth = document.querySelector('.stat-card--month .stat-card__number');
+    const statLast = document.querySelector('.stat-card--last .stat-card__number');
+    const statTenants = document.querySelector('.stat-card--tenants .stat-card__number');
+    
+    if (!paymentsTable) return;
+    
+    const allRows = Array.from(paymentsTable.querySelectorAll('tbody tr'));
+    
+    function updateStatistics(visibleRows) {
+      let total = 0, thisMonth = 0, lastMonth = 0;
+      const tenantIds = new Set();
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = thisMonthStart;
+      
+      visibleRows.forEach(row => {
+        const amount = parseFloat(row.getAttribute('data-amount'));
+        const date = new Date(parseFloat(row.getAttribute('data-date')) * 1000);
+        const tenantName = row.cells[1].textContent.trim();
+        
+        total += amount;
+        if (date >= thisMonthStart) thisMonth += amount;
+        if (date >= lastMonthStart && date < lastMonthEnd) lastMonth += amount;
+        tenantIds.add(tenantName);
+      });
+      
+      statTotal.textContent = '₱' + Math.round(total).toLocaleString();
+      statMonth.textContent = '₱' + Math.round(thisMonth).toLocaleString();
+      statLast.textContent = '₱' + Math.round(lastMonth).toLocaleString();
+      statTenants.textContent = tenantIds.size;
+    }
+    
+    function sortRows(rows, sortBy) {
+      return rows.sort((a, b) => {
+        if (sortBy === 'newest') {
+          return parseFloat(b.getAttribute('data-date')) - parseFloat(a.getAttribute('data-date'));
+        } else if (sortBy === 'oldest') {
+          return parseFloat(a.getAttribute('data-date')) - parseFloat(b.getAttribute('data-date'));
+        } else if (sortBy === 'amount-high') {
+          return parseFloat(b.getAttribute('data-amount')) - parseFloat(a.getAttribute('data-amount'));
+        } else if (sortBy === 'amount-low') {
+          return parseFloat(a.getAttribute('data-amount')) - parseFloat(b.getAttribute('data-amount'));
+        } else if (sortBy === 'tenant') {
+          return a.getAttribute('data-tenant').localeCompare(b.getAttribute('data-tenant'));
+        }
+        return 0;
+      });
+    }
+    
+    function filterTable() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const typeValue = typeSelect.value.toLowerCase();
+      const buildingCode = buildingSelect.value.toUpperCase();
+      const sortBy = sortSelect.value;
+      
+      let visibleRows = [];
+      
+      allRows.forEach(row => {
+        const tenant = row.getAttribute('data-tenant');
+        const unit = row.getAttribute('data-unit');
+        const type = row.getAttribute('data-type');
+        const building = row.getAttribute('data-building');
+        const floor = row.getAttribute('data-floor');
+        const floorFilter = (document.getElementById('floorSelect') || {value: ''}).value;
+        
+        const matchesSearch = !searchTerm || 
+          tenant.includes(searchTerm) || 
+          unit.includes(searchTerm);
+        
+        const matchesType = !typeValue || type === typeValue;
+        const matchesBuilding = !buildingCode || building === buildingCode;
+        const matchesFloor = !floorFilter || floor === floorFilter;
+        
+        if (matchesSearch && matchesType && matchesBuilding && matchesFloor) {
+          visibleRows.push(row);
+        }
+      });
+      
+      visibleRows = sortRows(visibleRows, sortBy);
+      
+      allRows.forEach(row => row.style.display = 'none');
+      
+      const tbody = paymentsTable.querySelector('tbody');
+      visibleRows.forEach(row => {
+        row.style.display = '';
+        tbody.appendChild(row);
+      });
+      
+      resultsCount.textContent = `${visibleRows.length} payment(s) found`;
+      updateStatistics(visibleRows);
+      
+      let noResultsRow = document.getElementById('noResultsRow');
+      
+      if (visibleRows.length === 0 && allRows.length > 0) {
+        if (!noResultsRow) {
+          noResultsRow = document.createElement('tr');
+          noResultsRow.id = 'noResultsRow';
+          noResultsRow.innerHTML = `
+            <td colspan="9" style="text-align: center; padding: 60px 20px;">
+              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
+              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Payments Found</div>
+              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
+            </td>
+          `;
+          tbody.appendChild(noResultsRow);
+        }
+      } else if (noResultsRow) {
+        noResultsRow.remove();
+      }
+    }
+    
+    clearFiltersBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      typeSelect.value = '';
+      buildingSelect.value = '';
+      sortSelect.value = 'newest';
+      filterTable();
+    });
+    
+    searchInput.addEventListener('input', debounce(filterTable, 400));
+    typeSelect.addEventListener('change', filterTable);
+    buildingSelect.addEventListener('change', filterTable);
+    const floorSelect = document.getElementById('floorSelect');
+    if (floorSelect) floorSelect.addEventListener('change', filterTable);
+    sortSelect.addEventListener('change', filterTable);
+    
+    filterTable();
+  });
+  </script>
+{% endblock %}

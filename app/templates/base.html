@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="STMS" />
+    <meta name="theme-color" content="#D7B35B" />
+    <meta name="description" content="Student Tenant Management System - The Elis Center" />
+    <title>{% block title %}STMS | Elis Business Center{% endblock %}</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icons/icon-192.png') }}" />
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='img/icons/icon-512.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icons/icon-192.png') }}" />
+    <script>
+      // Mark JS-capable browsers early (prevents blank page if JS fails later).
+      document.documentElement.classList.add("js");
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/static/sw.js')
+            .then(registration => console.log('SW registered'))
+            .catch(err => console.log('SW registration failed'));
+        });
+      }
+    </script>
+    {% block head %}{% endblock %}
+  </head>
+  <body {% block body_attrs %}{% endblock %}>
+    {% include "components/_nav.html" %}
+    <main class="container">
+      {% include "components/_flash.html" %}
+      {% block content %}{% endblock %}
+    </main>
+    {% block footer %}
+    <footer class="footer">
+      <div class="container footer__inner">
+        <div class="footer__left muted">
+          © {{ current_year }} STMS • THE ELIS CENTER
+          <span class="footer__sep">•</span>
+          <span>All rights reserved</span>
+        </div>
+        <div class="footer__right muted">
+          <a
+            class="footer__link"
+            href="https://www.facebook.com/profile.php?id=100063700727817"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Facebook</a>
+          <span class="footer__sep">•</span>
+          <span class="footer__text">The Elis Center, #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</span>
+          <span class="footer__sep">•</span>
+          <span class="footer__text">0918-912-6340 / 0918-920-5645</span>
+        </div>
+      </div>
+    </footer>
+    {% endblock %}
+  </body>
+</html>

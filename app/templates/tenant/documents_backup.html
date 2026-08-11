@@ -1,0 +1,226 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Documents | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">📄 My Documents</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <!-- Info Banner -->
+    <div style="background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border: 2px solid rgba(215, 179, 91, 0.3); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.1);">
+      <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.3);">
+          📄
+        </div>
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 8px 0; color: #92400e; font-size: 20px; font-weight: 700;">Your Document Center</h3>
+          <p style="margin: 0; color: #78350f; font-size: 15px; line-height: 1.6;">
+            Access your lease agreements, receipts, certificates, and utility bills. All documents uploaded by admin will appear here and you'll receive email notifications.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {% if documents %}
+      <!-- Statistics Summary -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+          <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px;">{{ documents|length }}</div>
+          <div style="font-size: 14px; opacity: 0.95;">Total Documents</div>
+        </div>
+        {% for doc_type, docs in docs_by_type.items() %}
+          <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.3);">
+            <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px;">{{ docs|length }}</div>
+            <div style="font-size: 13px; opacity: 0.95;">{{ doc_type|replace('_', ' ')|title }}</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Filter by Type -->
+      <div style="margin-bottom: 24px;">
+        <label class="label" style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: block;">🔍 Filter by Document Type</label>
+        <select class="input" id="typeFilter" style="max-width: 400px; font-size: 15px;">
+          <option value="">📋 All Document Types ({{ documents|length }})</option>
+          <option value="lease_agreement">📄 Lease Agreement</option>
+          <option value="receipt">🧾 Receipt</option>
+          <option value="certificate">🏆 Certificate</option>
+          <option value="rules">📜 Rules & Regulations</option>
+          <option value="electricity_bill">⚡ Electricity Bill</option>
+          <option value="water_bill">💧 Water Bill</option>
+          <option value="internet_bill">🌐 Internet Bill</option>
+        </select>
+      </div>
+
+      <!-- Documents Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+        {% for doc in documents %}
+          <div class="document-card" data-type="{{ doc.document_type }}" style="position: relative; padding: 24px; border-radius: 16px; border: 2px solid #e5e7eb; transition: all 0.3s; background: white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+            <!-- Document Icon -->
+            {% set doc_icon_bg_class = 'doc-icon-bg-default' %}
+            {% if doc.document_type == 'lease_agreement' %}
+              {% set doc_icon_bg_class = 'doc-icon-bg-lease' %}
+            {% elif doc.document_type == 'receipt' %}
+              {% set doc_icon_bg_class = 'doc-icon-bg-receipt' %}
+            {% elif doc.document_type == 'certificate' %}
+              {% set doc_icon_bg_class = 'doc-icon-bg-certificate' %}
+            {% elif doc.document_type == 'rules' %}
+              {% set doc_icon_bg_class = 'doc-icon-bg-rules' %}
+            {% elif doc.document_type == 'electricity_bill' %}
+              {% set doc_icon_bg_class = 'doc-icon-bg-electricity' %}
+            {% elif doc.document_type == 'water_bill' %}
+              {% set doc_icon_bg_class = 'doc-icon-bg-water' %}
+            {% elif doc.document_type == 'internet_bill' %}
+              {% set doc_icon_bg_class = 'doc-icon-bg-internet' %}
+            {% endif %}
+            <div style="width: 72px; height: 72px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);" class="{{ doc_icon_bg_class }}">
+              <span style="filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));">
+                {% if doc.document_type == 'lease_agreement' %}📄
+                {% elif doc.document_type == 'receipt' %}🧾
+                {% elif doc.document_type == 'certificate' %}🏆
+                {% elif doc.document_type == 'rules' %}📜
+                {% elif doc.document_type == 'electricity_bill' %}⚡
+                {% elif doc.document_type == 'water_bill' %}💧
+                {% elif doc.document_type == 'internet_bill' %}🌐
+                {% else %}📋{% endif %}
+              </span>
+            </div>
+
+            <!-- Document Info -->
+            <h4 style="margin: 0 0 12px 0; font-size: 17px; font-weight: 700; color: #1a1a1a; line-height: 1.4;">{{ doc.title }}</h4>
+            
+            <div style="margin-bottom: 16px;">
+              {% set doc_chip_class = 'doc-chip-default' %}
+              {% if doc.document_type == 'lease_agreement' %}
+                {% set doc_chip_class = 'doc-chip-lease' %}
+              {% elif doc.document_type == 'receipt' %}
+                {% set doc_chip_class = 'doc-chip-receipt' %}
+              {% elif doc.document_type == 'certificate' %}
+                {% set doc_chip_class = 'doc-chip-certificate' %}
+              {% elif doc.document_type == 'rules' %}
+                {% set doc_chip_class = 'doc-chip-rules' %}
+              {% elif doc.document_type == 'electricity_bill' %}
+                {% set doc_chip_class = 'doc-chip-electricity' %}
+              {% elif doc.document_type == 'water_bill' %}
+                {% set doc_chip_class = 'doc-chip-water' %}
+              {% elif doc.document_type == 'internet_bill' %}
+                {% set doc_chip_class = 'doc-chip-internet' %}
+              {% endif %}
+              <span class="chip {{ doc_chip_class }}" style="font-size: 12px; font-weight: 600;">
+                {{ doc.document_type|replace('_', ' ')|title }}
+              </span>
+            </div>
+
+            <div style="margin-bottom: 20px; padding: 12px; background: rgba(215, 179, 91, 0.08); border-radius: 8px; border-left: 3px solid #D7B35B;">
+              <div style="font-size: 13px; color: #78350f; font-weight: 600;">📅 Uploaded</div>
+              <div style="font-size: 14px; color: #92400e; margin-top: 4px;">{{ doc.uploaded_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <a href="{{ url_for('static', filename=doc.file_path) }}" target="_blank" class="btn btn--sm" style="text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; font-weight: 600;" data-doc-id="{{ doc.id }}" onclick="trackDownload(this.dataset.docId)">
+                👁️ View
+              </a>
+              <a href="{{ url_for('static', filename=doc.file_path) }}" download class="btn btn--primary btn--sm" style="text-align: center; font-weight: 600;" data-doc-id="{{ doc.id }}" onclick="trackDownload(this.dataset.docId)">
+                ⬇️ Download
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <div class="empty-state" style="text-align: center; padding: 80px 20px;">
+        <div style="width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(215, 179, 91, 0.3);">
+          <span style="font-size: 64px;">📄</span>
+        </div>
+        <div class="empty-state__title" style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">No Documents Yet</div>
+        <div class="empty-state__text" style="font-size: 16px; color: #666; max-width: 500px; margin: 0 auto; line-height: 1.6;">
+          No documents have been uploaded for you yet. When the admin uploads documents (receipts, bills, certificates, etc.), they will appear here and you'll receive an email notification.
+        </div>
+        <div style="margin-top: 32px; padding: 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 1px solid rgba(59, 130, 246, 0.2);">
+          <p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.6;">
+            <strong>💡 Tip:</strong> You'll receive an email notification whenever a new document is uploaded. Check your email inbox regularly!
+          </p>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <style>
+    .document-card {
+      cursor: pointer;
+    }
+    .document-card:hover {
+      border-color: #D7B35B !important;
+      box-shadow: 0 8px 24px rgba(215, 179, 91, 0.25) !important;
+      transform: translateY(-4px);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .empty-state__icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .empty-state__title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    .empty-state__text {
+      font-size: 14px;
+      color: #666;
+      max-width: 400px;
+    }
+    .doc-icon-bg-lease { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .doc-icon-bg-receipt { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .doc-icon-bg-certificate { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .doc-icon-bg-rules { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    .doc-icon-bg-electricity { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+    .doc-icon-bg-water { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
+    .doc-icon-bg-internet { background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); }
+    .doc-icon-bg-default { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+    .doc-chip-lease { background: rgba(59, 130, 246, 0.15); color: #1e40af; }
+    .doc-chip-receipt { background: rgba(16, 185, 129, 0.15); color: #065f46; }
+    .doc-chip-certificate { background: rgba(245, 158, 11, 0.15); color: #92400e; }
+    .doc-chip-rules { background: rgba(139, 92, 246, 0.15); color: #5b21b6; }
+    .doc-chip-electricity { background: rgba(251, 191, 36, 0.15); color: #78350f; }
+    .doc-chip-water { background: rgba(14, 165, 233, 0.15); color: #075985; }
+    .doc-chip-internet { background: rgba(168, 85, 247, 0.15); color: #6b21a8; }
+    .doc-chip-default { background: rgba(107, 114, 128, 0.15); color: #374151; }
+  </style>
+
+  <script>
+    // Filter documents by type
+    const typeFilter = document.getElementById('typeFilter');
+    const documentCards = document.querySelectorAll('.document-card');
+
+    if (typeFilter) {
+      typeFilter.addEventListener('change', function() {
+        const selectedType = this.value;
+        
+        documentCards.forEach(card => {
+          if (selectedType === '' || card.dataset.type === selectedType) {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    // Track download (optional - for future analytics)
+    function trackDownload(docId) {
+      console.log('Document downloaded:', docId);
+      // You can add AJAX call here to track downloads in DocumentView table
+    }
+  </script>
+{% endblock %}

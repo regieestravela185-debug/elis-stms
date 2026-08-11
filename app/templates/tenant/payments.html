@@ -1,0 +1,282 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Payment History | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Payment History</div>
+{% endblock %}
+
+{% block content %}
+  <div id="paymentsBaseUrl" data-base-url="{{ url_for('tenant.payments') }}" style="display: none;"></div>
+  <!-- Payment Statistics -->
+  <div class="grid grid--4" style="gap: 16px; margin-bottom: 24px;">
+    <div class="card card--lift" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white;">
+      <div style="font-size: 28px; font-weight: 900; margin-bottom: 4px;">₱{{ "{:,.2f}".format(stats.total_amount) }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Total Paid</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+      <div style="font-size: 28px; font-weight: 900; margin-bottom: 4px;">{{ stats.total_count }}</div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Total Payments</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+      <div style="font-size: 14px; font-weight: 900; margin-bottom: 4px;">
+        {% if stats.last_payment %}
+          {{ (stats.last_payment.paid_at|to_ph).strftime('%b %d, %Y') }}
+        {% else %}
+          No payments yet
+        {% endif %}
+      </div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Last Payment</div>
+    </div>
+    
+    <div class="card card--lift" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+      <div style="font-size: 14px; font-weight: 900; margin-bottom: 4px;">
+        {% if stats.next_payment_due %}
+          {{ stats.next_payment_due.strftime('%b %d, %Y') }}
+        {% else %}
+          N/A
+        {% endif %}
+      </div>
+      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Next Payment Due</div>
+    </div>
+  </div>
+
+  <!-- Search & Filter -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="section__header">
+      <h3>Search & Filter</h3>
+      <div style="display: flex; gap: 8px;">
+        <a href="{{ url_for('tenant.export_payments') }}" class="btn btn--ghost btn--sm">📤 Export CSV</a>
+      </div>
+    </div>
+    
+    <div class="grid grid--2" style="gap: 12px; margin-top: 16px;">
+      <input 
+        type="text" 
+        id="searchInput" 
+        class="input" 
+        placeholder="🔍 Search by reference or receipt number..."
+        value="{{ request.args.get('search', '') }}"
+      />
+      
+      <div style="display: flex; gap: 8px;">
+        <select id="yearFilter" class="input" style="flex: 1;">
+          <option value="">All Years</option>
+          {% for y in stats.available_years %}
+            <option value="{{ y }}" {% if request.args.get('year') == y|string %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+        
+        <select id="monthFilter" class="input" style="flex: 1;">
+          <option value="">All Months</option>
+          <option value="1" {% if request.args.get('month') == '1' %}selected{% endif %}>January</option>
+          <option value="2" {% if request.args.get('month') == '2' %}selected{% endif %}>February</option>
+          <option value="3" {% if request.args.get('month') == '3' %}selected{% endif %}>March</option>
+          <option value="4" {% if request.args.get('month') == '4' %}selected{% endif %}>April</option>
+          <option value="5" {% if request.args.get('month') == '5' %}selected{% endif %}>May</option>
+          <option value="6" {% if request.args.get('month') == '6' %}selected{% endif %}>June</option>
+          <option value="7" {% if request.args.get('month') == '7' %}selected{% endif %}>July</option>
+          <option value="8" {% if request.args.get('month') == '8' %}selected{% endif %}>August</option>
+          <option value="9" {% if request.args.get('month') == '9' %}selected{% endif %}>September</option>
+          <option value="10" {% if request.args.get('month') == '10' %}selected{% endif %}>October</option>
+          <option value="11" {% if request.args.get('month') == '11' %}selected{% endif %}>November</option>
+          <option value="12" {% if request.args.get('month') == '12' %}selected{% endif %}>December</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="grid grid--2" style="gap: 12px; margin-top: 12px;">
+      <div>
+        <label class="label" style="font-size: 12px;">Date From</label>
+        <input type="date" id="dateFrom" class="input" value="{{ request.args.get('date_from', '') }}" />
+      </div>
+      <div>
+        <label class="label" style="font-size: 12px;">Date To</label>
+        <input type="date" id="dateTo" class="input" value="{{ request.args.get('date_to', '') }}" />
+      </div>
+    </div>
+    
+    <div style="margin-top: 12px;">
+      <button type="button" class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- Payment History -->
+  <div class="card">
+    <div class="section__header" style="margin-bottom: 16px;">
+      <h3>Payment History</h3>
+      <p class="muted">{{ payments|length }} payments</p>
+    </div>
+    
+    {% if payments %}
+      {% for payment in payments %}
+        {% set payment_border_class = 'payment-border-on-time' %}
+        {% if payment.is_late %}
+          {% set payment_border_class = 'payment-border-late' %}
+        {% endif %}
+        <div class="card {{ payment_border_class }}" style="margin-bottom: 16px; padding: 20px;">
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <strong style="font-size: 16px;">{{ (payment.paid_at|to_ph).strftime('%B %d, %Y') }}</strong>
+              <span class="muted" style="margin-left: 8px; font-size: 13px;">{{ (payment.paid_at|to_ph).strftime('%I:%M %p') }}</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <!-- Status Badge -->
+              {% if payment.is_late %}
+                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
+                  ⚠️ Late Payment
+                </span>
+              {% else %}
+                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
+                  ✅ On Time
+                </span>
+              {% endif %}
+              
+              {% if payment.payment_status == 'verified' %}
+                <span class="chip" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                  ✓ Verified
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Amount -->
+          <div style="background: rgba(215, 179, 91, 0.05); padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div class="kicker">Total Amount</div>
+                <div style="font-size: 32px; font-weight: 900; color: #D7B35B; margin-top: 4px;">
+                  ₱{{ "{:,.2f}".format(payment.amount|float) }}
+                </div>
+              </div>
+              
+              <!-- Breakdown -->
+              {% if payment.breakdown_json %}
+                {% set breakdown = payment.breakdown_json|from_json %}
+                <div style="text-align: right;">
+                  <div class="kicker">Breakdown</div>
+                  <div style="font-size: 12px; margin-top: 4px;">
+                    {% if breakdown.rent %}
+                      <div>Rent: ₱{{ "{:,.2f}".format(breakdown.rent|float) }}</div>
+                    {% endif %}
+                    {% if breakdown.utilities %}
+                      <div>Utilities: ₱{{ "{:,.2f}".format(breakdown.utilities|float) }}</div>
+                    {% endif %}
+                    {% if breakdown.late_fee %}
+                      <div style="color: #f59e0b;">Late Fee: ₱{{ "{:,.2f}".format(breakdown.late_fee|float) }}</div>
+                    {% endif %}
+                    {% if breakdown.other %}
+                      <div>Other: ₱{{ "{:,.2f}".format(breakdown.other|float) }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Details -->
+          <div class="grid grid--2" style="gap: 16px; margin-bottom: 12px;">
+            <div>
+              <div class="kicker">Receipt Number</div>
+              <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">
+                {{ payment.receipt_number or ('OR-' + '%06d'|format(payment.id)) }}
+              </div>
+            </div>
+            
+            <div>
+              <div class="kicker">Reference</div>
+              <div style="font-size: 14px; margin-top: 4px;">
+                {{ payment.reference or 'N/A' }}
+              </div>
+            </div>
+          </div>
+
+          {% if payment.notes %}
+            <div style="background: rgba(59, 130, 246, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 3px solid #3b82f6;">
+              <div class="kicker">Notes</div>
+              <p style="margin-top: 4px; font-size: 13px;">{{ payment.notes }}</p>
+            </div>
+          {% endif %}
+
+          <!-- Actions -->
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; gap: 8px;">
+            <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--primary btn--sm">
+              🧾 Download Receipt
+            </a>
+            <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--ghost btn--sm">
+              🖨️ Print Receipt
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state mt-16">
+        <div class="empty-state__icon">₱</div>
+        <div class="empty-state__title">No Payments Found</div>
+        <div class="empty-state__text">
+          {% if request.args %}
+            Try adjusting your filters.
+          {% else %}
+            You haven't made any payments yet.
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <style>
+    .card--lift {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card--lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .payment-border-late { border-left: 4px solid #f59e0b; }
+    .payment-border-on-time { border-left: 4px solid #10b981; }
+  </style>
+
+  <script>
+    // Filter functionality
+    const searchInput = document.getElementById('searchInput');
+    const yearFilter = document.getElementById('yearFilter');
+    const monthFilter = document.getElementById('monthFilter');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (yearFilter.value) params.set('year', yearFilter.value);
+      if (monthFilter.value) params.set('month', monthFilter.value);
+      if (dateFrom.value) params.set('date_from', dateFrom.value);
+      if (dateTo.value) params.set('date_to', dateTo.value);
+      
+      const baseUrl = document.getElementById('paymentsBaseUrl').dataset.baseUrl;
+      window.location.href = `${baseUrl}?${params.toString()}`;
+    }
+    
+    function clearFilters() {
+      window.location.href = document.getElementById('paymentsBaseUrl').dataset.baseUrl;
+    }
+    
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    
+    yearFilter.addEventListener('change', applyFilters);
+    monthFilter.addEventListener('change', applyFilters);
+    dateFrom.addEventListener('change', applyFilters);
+    dateTo.addEventListener('change', applyFilters);
+  </script>
+{% endblock %}

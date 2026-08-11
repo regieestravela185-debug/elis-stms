@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="STMS" />
+    <meta name="theme-color" content="#D7B35B" />
+    <meta name="description" content="Student Tenant Management System - The Elis Center" />
+    <title>{% block title %}Dashboard | STMS{% endblock %}</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icons/icon-192.png') }}" />
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='img/icons/icon-512.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icons/icon-192.png') }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+    
+    <style>
+      /* Modern Dashboard UI */
+      body.dash-body { background: #f8f9fa; }
+      .card { border-radius: 16px; }
+      .btn { border-radius: 10px; }
+      .input { border-radius: 10px; }
+      /* Modern Sidebar */
+      .dash__side { background: white; }
+      .topbar { background: white; }
+      /* Modern Table */
+      table { border-radius: 12px; }
+      th { font-weight: 700; }
+    </style>
+    
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+    
+    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/static/sw.js')
+            .then(registration => console.log('SW registered'))
+            .catch(err => console.log('SW registration failed'));
+        });
+      }
+    </script>
+    {% block head %}{% endblock %}
+  </head>
+  <body class="dash-body" {% block body_attrs %}{% endblock %}>
+    <div class="sidebar-backdrop js-sidebar-backdrop"></div>
+    <div class="dash">
+      <aside class="dash__side">
+        <div class="dash__brand">
+          <img src="{{ url_for('static', filename='img/elis-mark.png') }}" alt="Elis mark" class="dash__logo" />
+          <div>
+            <div class="dash__brandTitle">THE ELIS CENTER</div>
+            <div class="dash__brandSub">Commercial and Residences</div>
+          </div>
+        </div>
+        {% block sidebar %}{% endblock %}
+      </aside>
+
+      <div class="dash__main">
+        <header class="topbar">
+          <div class="topbar__left">
+            <button class="hamburger-menu js-toggle-sidebar" type="button" aria-label="Toggle sidebar">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            {% block topbar_left %}{% endblock %}
+          </div>
+          <div class="topbar__right">
+            <div class="topbar__user">
+              <div class="topbar__avatar">{{ (current_user.full_name[:1] if current_user.is_authenticated else "U") }}</div>
+              <div class="topbar__meta">
+                <div class="topbar__name">{{ current_user.full_name if current_user.is_authenticated else "Guest" }}</div>
+                <div class="topbar__role muted">{{ current_user.role.value if current_user.is_authenticated else "" }}</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main class="dash__content">
+          {% include "components/_flash.html" %}
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+    
+    <!-- Initialize SocketIO Connection -->
+    <script>
+      // Global SocketIO instance - WebSocket + Polling
+      window.socket = io({
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5
+      });
+      
+      // Connection status handlers
+      window.socket.on('connect', function() {
+        console.log('✅ SocketIO Connected');
+      });
+      
+      window.socket.on('disconnect', function() {
+        console.log('❌ SocketIO Disconnected');
+      });
+      
+      window.socket.on('connection_status', function(data) {
+        console.log('Connection Status:', data);
+      });
+      
+      window.socket.on('error', function(data) {
+        console.error('SocketIO Error:', data);
+      });
+    </script>
+  </body>
+</html>
+

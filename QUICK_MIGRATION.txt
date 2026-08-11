@@ -1,0 +1,185 @@
+🚀 ELIS SYSTEM - SUPABASE MIGRATION QUICK GUIDE
+================================================
+
+⏱️  TIME NEEDED: 20-30 minutes
+📋 REQUIREMENTS: Supabase account (free), Internet connection
+
+
+STEP 1: BACKUP CURRENT DATABASE (5 mins)
+=========================================
+1. Open: http://localhost/phpmyadmin
+2. Click: stms_elis database
+3. Click: Export tab
+4. Click: Go button
+5. Save: stms_elis_backup.sql
+
+
+STEP 2: CREATE SUPABASE PROJECT (5 mins)
+=========================================
+1. Go to: https://supabase.com
+2. Sign up/Login
+3. Click: New Project
+4. Fill in:
+   Name: ELIS System
+   Password: (strong password - SAVE THIS!)
+   Region: Singapore
+5. Wait 2-3 minutes
+
+
+STEP 3: GET SUPABASE CREDENTIALS (2 mins)
+==========================================
+1. Settings → Database
+2. Find "Connection string"
+3. Note down:
+   Host: db.xxxxx.supabase.co
+   Password: (your password from Step 2)
+
+
+STEP 4: CONVERT DATABASE (5 mins)
+==================================
+Option A - Online (Easiest):
+1. Go to: https://www.sqlines.com/online
+2. Select: MySQL → PostgreSQL
+3. Upload: stms_elis_backup.sql
+4. Click: Convert
+5. Download converted file
+
+Option B - Use migration script:
+1. python migrate_to_supabase.py
+2. Follow the prompts
+
+
+STEP 5: IMPORT TO SUPABASE (5 mins)
+====================================
+1. Supabase dashboard → SQL Editor
+2. New Query
+3. Copy entire converted SQL file
+4. Paste into editor
+5. Click: Run (Cmd+Enter)
+6. Wait for completion
+
+
+STEP 6: UPDATE ELIS CONFIG (2 mins)
+====================================
+1. Install PostgreSQL driver:
+   pip install psycopg2-binary
+
+2. Update .env file:
+   DB_TYPE=postgresql
+   DB_HOST=db.xxxxx.supabase.co
+   DB_PORT=5432
+   DB_NAME=postgres
+   DB_USER=postgres
+   DB_PASSWORD=your-password-here
+
+
+STEP 7: TEST (5 mins)
+=====================
+1. python run.py
+2. Open: http://localhost:5001
+3. Test login
+4. Check units page
+5. Try creating reservation
+6. Check admin dashboard
+
+
+DONE! 🎉
+========
+Your system is now on Supabase!
+
+
+TROUBLESHOOTING
+===============
+
+Problem: Can't connect to Supabase
+Solution: 
+- Check password in .env
+- Verify host URL
+- Check internet connection
+
+Problem: Import errors in SQL Editor
+Solution:
+- Remove CREATE DATABASE lines
+- Remove USE database lines
+- Run in smaller chunks
+
+Problem: App shows errors
+Solution:
+- Restart: python run.py
+- Check .env file has correct values
+- Verify DB_TYPE=postgresql
+
+
+ROLLBACK TO MYSQL (if needed)
+==============================
+1. Stop application
+2. Restore .env.backup to .env
+3. Change DB_TYPE=mysql
+4. Start XAMPP
+5. python run.py
+
+
+BENEFITS
+========
+✅ No XAMPP needed
+✅ Access from anywhere
+✅ Automatic backups
+✅ Always online
+✅ Free SSL
+✅ Real-time features
+✅ Better performance
+
+
+NEED HELP?
+==========
+📚 Full guide: SUPABASE_MIGRATION_GUIDE.md
+🤖 Migration tool: python migrate_to_supabase.py
+📧 Supabase docs: https://supabase.com/docs
+
+
+IMPORTANT FILES
+===============
+.env              - Your current config
+.env.backup       - Backup of old config (auto-created)
+.env.supabase.example - Template for Supabase config
+
+
+CHECKLIST
+=========
+[ ] Backup MySQL database
+[ ] Create Supabase account
+[ ] Create new project
+[ ] Get connection credentials
+[ ] Convert SQL to PostgreSQL
+[ ] Import to Supabase
+[ ] Install psycopg2-binary
+[ ] Update .env file
+[ ] Test connection
+[ ] Test application
+[ ] Verify all features work
+
+
+WHAT TO KEEP
+=============
+✓ Keep .env.backup (rollback if needed)
+✓ Keep stms_elis_backup.sql (MySQL backup)
+✓ Keep Supabase password safe
+✓ Document your Supabase project URL
+
+
+WHAT CHANGES
+=============
+MySQL (before):
+- Runs on XAMPP
+- localhost only
+- Manual backups
+- Computer must be on
+
+PostgreSQL/Supabase (after):
+- Cloud-based
+- Access anywhere
+- Auto backups
+- Always online
+
+
+That's it! Simple lang talaga! 🚀
