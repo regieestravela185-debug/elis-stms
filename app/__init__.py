@@ -21,7 +21,7 @@ def create_app(config_object: type[Config] = Config) -> Flask:
     db.init_app(app)
     login_manager.init_app(app)
     mail.init_app(app)
-    socketio.init_app(app)
+    # socketio.init_app(app)  # Disabled for deployment compatibility
     
     # Initialize OAuth
     oauth.init_app(app)
@@ -51,8 +51,8 @@ def create_app(config_object: type[Config] = Config) -> Flask:
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
 
-    # Register SocketIO event handlers
-    from . import socket_events
+    # Register SocketIO event handlers (DISABLED for deployment)
+    # from . import socket_events
 
     @app.context_processor
     def _inject_globals():
