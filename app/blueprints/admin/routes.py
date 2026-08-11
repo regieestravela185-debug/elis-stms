@@ -1766,39 +1766,6 @@ The Elis Center Management
     
     flash(f"{user.full_name} has been banned. They will no longer be able to log in.", "warning")
     return redirect(url_for("admin.users"))
-        <div class="content">
-            <p>Dear <strong>{user.full_name}</strong>,</p>
-            
-            <p>Your account at <strong>The Elis Center Smart Tenant Management System</strong> has been suspended.</p>
-            
-            <div class="reason">
-                <strong>Reason:</strong> {user.ban_reason}
-            </div>
-            
-            <p>If you believe this is a mistake or would like to appeal this decision, please contact the administrator.</p>
-            
-            <p>Thank you,<br>
-            <strong>The Elis Center Management</strong></p>
-        </div>
-        <div class="footer">
-            <p>This is an automated message. Please do not reply to this email.</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
-                mail.send(msg)
-        except Exception as e:
-            print(f"Failed to send ban notification email: {e}")
-    
-    # Send email in background thread (non-blocking)
-    import threading
-    email_thread = threading.Thread(target=send_ban_email)
-    email_thread.daemon = True
-    email_thread.start()
-    
-    flash(f"{user.full_name} has been banned. They will no longer be able to log in.", "warning")
-    return redirect(url_for("admin.users"))
 
 
 @bp.post("/users/<int:user_id>/unban")
