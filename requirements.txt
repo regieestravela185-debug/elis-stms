@@ -13,7 +13,8 @@ requests==2.32.3
 python-dateutil==2.8.2
 Flask-SocketIO==5.3.6
 python-socketio==5.11.1
-eventlet==0.35.2
+gevent==24.2.1
+gevent-websocket==0.10.1
 simple-websocket==1.0.0
 Werkzeug==3.0.0
 gunicorn==21.2.0
