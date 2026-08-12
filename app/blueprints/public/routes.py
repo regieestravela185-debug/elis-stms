@@ -583,8 +583,6 @@ def get_unit_reviews(unit_id: int):
 def submit_inquiry():
     """Submit an inquiry from the homepage contact form"""
     from ...models import Inquiry
-    from flask_mail import Message
-    from ...extensions import mail
     
     data = request.form
     full_name = (data.get("full_name") or "").strip()
@@ -607,61 +605,10 @@ def submit_inquiry():
     db.session.add(inquiry)
     db.session.commit()
     
-    # Send auto-reply email to inquirer
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Inquiry Received</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Inquiry Received</h2>
-                <div style="background: rgba(64, 201, 64, 0.1); border: 2px solid #40c940; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-                    <span style="font-size: 48px; font-weight: 700; color: #40c940;">✓</span>
-                    <p style="margin: 12px 0 0 0; color: #40c940; font-size: 18px; font-weight: 600;">Thank You!</p>
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{full_name}</strong>,</p>
-                <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
-                    We have received your inquiry regarding: <strong>{subject}</strong>
-                </p>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
-                    Our team will review your message and respond to you as soon as possible at <strong>{email}</strong>.
-                </p>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
-                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;"><strong>Your Message:</strong></p>
-                    <p style="margin: 8px 0 0 0; color: #666666; font-size: 14px; line-height: 1.5;">{message}</p>
-                </div>
-                <p style="margin: 24px 0 0 0; color: #666666; font-size: 14px; line-height: 1.5;">
-                    If you have any urgent concerns, please contact us directly at:<br/>
-                    <strong>Phone:</strong> 0918-912-6340 or 0918-920-5645<br/>
-                    <strong>Hours:</strong> Mon–Sat, 9:00 AM – 6:00 PM
-                </p>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {datetime.now().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    # Send auto-reply email to inquirer using Brevo HTTP API
+    from ...email_helper import send_inquiry_confirmation_email
     
-    try:
-        msg = Message(
-            subject=f"Inquiry Received - {subject}",
-            recipients=[email],
-            html=html_body
-        )
-        mail.send(msg)
-    except Exception:
-        pass  # Don't fail if email sending fails
+    send_inquiry_confirmation_email(full_name, email, subject, message)
     
     return jsonify({
         "success": True,

@@ -322,3 +322,557 @@ The Elis Center Management
     
     send_email_async(subject, user_email, user_name, html_content, text_content)
 
+
+def send_reservation_result_email(to_email, to_name, status, unit_code):
+    """Send reservation result email (approved/rejected/cancelled)"""
+    from datetime import date
+    
+    status_text = status.upper()
+    
+    if status == "approved":
+        status_color = "#40c940"
+        status_icon = "✓"
+        next_steps_approved = True
+    elif status == "rejected":
+        status_color = "#ff5050"
+        status_icon = "✗"
+        next_steps_approved = False
+    else:  # CANCELLED
+        status_color = "#ff5050"
+        status_icon = "!"
+        next_steps_approved = False
+
+    subject = f"Reservation {status_text} - The Elis Center STMS"
+    
+    text_content = f"""
+Dear {to_name},
+
+Your reservation for Unit {unit_code} has been {status_text.lower()}.
+
+{'Your account is now tagged as tenant. Please login again to access your tenant portal.' if next_steps_approved else 'You may contact us or submit another reservation request for other available units.'}
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Status</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Reservation {status_text}</h2>
+            <div style="background: #f9f9f9; border: 2px solid {status_color}; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 48px; font-weight: 700; color: {status_color};">{status_icon}</span>
+                <p style="margin: 12px 0 0 0; color: {status_color}; font-size: 18px; font-weight: 600;">{status_text}</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Your reservation for <strong>Unit {unit_code}</strong> has been {status_text.lower()}.</p>
+            <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
+                {'Your account is now tagged as tenant. Please login again to access your tenant portal.' if next_steps_approved else 'You may contact us or submit another reservation request for other available units.'}
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
+                <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;"><strong>Next Steps:</strong></p>
+                <ul style="margin: 8px 0 0 20px; padding: 0; color: #666666; font-size: 14px; line-height: 1.5;">
+                    <li>{'Complete your tenant profile setup' if next_steps_approved else 'Browse available units on our website'}</li>
+                    <li>{'Review your contract details' if next_steps_approved else 'Submit a new reservation request'}</li>
+                    <li>Contact admin if you have questions</li>
+                </ul>
+            </div>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, to_email, to_name, html_content, text_content)
+
+
+def send_renewal_reminder_email(tenant_name, tenant_email, unit_code, contract_end_date, days_remaining):
+    """Send contract renewal reminder email"""
+    from datetime import date
+    
+    subject = f"Contract Renewal Reminder - {days_remaining} Days Remaining"
+    
+    text_content = f"""
+Dear {tenant_name},
+
+Your lease contract for Unit {unit_code} will expire on {contract_end_date.strftime('%B %d, %Y')}. 
+You have {days_remaining} days remaining.
+
+To continue your stay, please submit a renewal request through your tenant portal or contact our administration office.
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Renewal Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Contract Renewal Reminder</h2>
+            <div style="background: rgba(255, 80, 80, 0.1); border: 2px solid #ff5050; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 48px; font-weight: 700; color: #ff5050;">⚠️</span>
+                <p style="margin: 12px 0 0 0; color: #ff5050; font-size: 18px; font-weight: 600;">Contract Expiring Soon</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                Your lease contract for <strong>Unit {unit_code}</strong> will expire on <strong>{contract_end_date.strftime('%B %d, %Y')}</strong>. 
+                You have <strong>{days_remaining} days</strong> remaining.
+            </p>
+            <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
+                To continue your stay, please submit a renewal request through your tenant portal or contact our administration office.
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
+                <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;"><strong>Next Steps:</strong></p>
+                <ul style="margin: 8px 0 0 20px; padding: 0; color: #666666; font-size: 14px; line-height: 1.5;">
+                    <li>Login to your tenant portal</li>
+                    <li>Go to Renewal section</li>
+                    <li>Submit your renewal request</li>
+                    <li>Or contact us directly for assistance</li>
+                </ul>
+            </div>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_inquiry_confirmation_email(full_name, email, subject_text, message_text):
+    """Send inquiry confirmation email to the person who submitted the inquiry"""
+    from datetime import datetime
+    
+    subject = f"Inquiry Received - {subject_text}"
+    
+    text_content = f"""
+Dear {full_name},
+
+We have received your inquiry regarding: {subject_text}
+
+Our team will review your message and respond to you as soon as possible at {email}.
+
+Your Message:
+{message_text}
+
+If you have any urgent concerns, please contact us directly at:
+Phone: 0918-912-6340 or 0918-920-5645
+Hours: Mon–Sat, 9:00 AM – 6:00 PM
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inquiry Received</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Inquiry Received</h2>
+            <div style="background: rgba(64, 201, 64, 0.1); border: 2px solid #40c940; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 48px; font-weight: 700; color: #40c940;">✓</span>
+                <p style="margin: 12px 0 0 0; color: #40c940; font-size: 18px; font-weight: 600;">Thank You!</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{full_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                We have received your inquiry regarding: <strong>{subject_text}</strong>
+            </p>
+            <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
+                Our team will review your message and respond to you as soon as possible at <strong>{email}</strong>.
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
+                <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;"><strong>Your Message:</strong></p>
+                <p style="margin: 8px 0 0 0; color: #666666; font-size: 14px; line-height: 1.5;">{message_text}</p>
+            </div>
+            <p style="margin: 24px 0 0 0; color: #666666; font-size: 14px; line-height: 1.5;">
+                If you have any urgent concerns, please contact us directly at:<br/>
+                <strong>Phone:</strong> 0918-912-6340 or 0918-920-5645<br/>
+                <strong>Hours:</strong> Mon–Sat, 9:00 AM – 6:00 PM
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {datetime.now().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, email, full_name, html_content, text_content)
+
+
+
+
+def send_document_notification_email(tenant_name, tenant_email, document_title, unit_code):
+    """Send notification when admin uploads a new document for tenant"""
+    from datetime import datetime
+    
+    subject = f"New Document: {document_title} - The Elis Center"
+    
+    text_content = f"""
+Dear {tenant_name},
+
+A new document has been uploaded to your tenant portal: {document_title}
+
+You can view this document by logging into your tenant dashboard.
+
+Unit: {unit_code}
+
+If you have any questions, please contact the administrator.
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Document Uploaded</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">📄 New Document Uploaded</h2>
+            <div style="background: rgba(64, 201, 64, 0.1); border: 2px solid #40c940; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 48px; font-weight: 700; color: #40c940;">📄</span>
+                <p style="margin: 12px 0 0 0; color: #40c940; font-size: 18px; font-weight: 600;">Document Available</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                A new document has been uploaded to your tenant portal:
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Document:</strong></p>
+                <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{document_title}</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Unit:</strong></p>
+                <p style="margin: 0; color: #1a1a1a; font-size: 16px;">{unit_code}</p>
+            </div>
+            <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
+                You can view this document by logging into your tenant dashboard.
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {datetime.now().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_renewal_result_email(tenant_name, tenant_email, unit_code, status, old_end_date=None, new_end_date=None):
+    """Send renewal request result email (approved/rejected)"""
+    from datetime import date
+    
+    if status == 'approved':
+        status_color = "#10b981"
+        status_icon = "✓"
+        status_text = "APPROVED"
+        message = f"Your contract renewal request has been approved! Your new contract end date is {new_end_date.strftime('%B %d, %Y')}."
+    else:
+        status_color = "#ef4444"
+        status_icon = "✗"
+        status_text = "REJECTED"
+        message = "Your contract renewal request has been rejected. Please contact the admin office for more information."
+    
+    subject = f"Renewal Request {status_text} - The Elis Center"
+    
+    text_content = f"""
+Dear {tenant_name},
+
+{message}
+
+Unit: {unit_code}
+{'Previous Contract End: ' + old_end_date.strftime('%B %d, %Y') if old_end_date and status == 'approved' else ''}
+{'New Contract End: ' + new_end_date.strftime('%B %d, %Y') if new_end_date and status == 'approved' else ''}
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renewal Request {status_text}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">↻ Renewal Request {status_text}</h2>
+            <div style="background: rgba({'16, 185, 129' if status == 'approved' else '239, 68, 68'}, 0.1); border: 2px solid {status_color}; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 48px; font-weight: 700; color: {status_color};">{status_icon}</span>
+                <p style="margin: 12px 0 0 0; color: {status_color}; font-size: 18px; font-weight: 600;">{status_text}</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                {message}
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Unit:</strong></p>
+                <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{unit_code}</p>
+                {f'<p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Previous Contract End:</strong></p><p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px;">{old_end_date.strftime("%B %d, %Y") if old_end_date else "N/A"}</p>' if status == 'approved' else ''}
+                {f'<p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>New Contract End:</strong></p><p style="margin: 0; color: #10b981; font-size: 18px; font-weight: 700;">{new_end_date.strftime("%B %d, %Y")}</p>' if status == 'approved' and new_end_date else ''}
+            </div>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_concern_status_update_email(tenant_name, tenant_email, subject_text, status_text, unit_code):
+    """Send email when concern status is updated"""
+    from datetime import datetime
+    
+    subject = f"Concern Status Updated - {subject_text}"
+    
+    text_content = f"""
+Dear {tenant_name},
+
+Your concern has been updated:
+
+Subject: {subject_text}
+New Status: {status_text}
+Unit: {unit_code}
+
+You can view the full details by logging into your tenant dashboard.
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concern Status Updated</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">🔔 Concern Status Updated</h2>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                Your concern has been updated:
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Subject:</strong></p>
+                <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{subject_text}</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>New Status:</strong></p>
+                <p style="margin: 0 0 16px 0; color: #10b981; font-size: 16px; font-weight: 600;">{status_text}</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Unit:</strong></p>
+                <p style="margin: 0; color: #1a1a1a; font-size: 16px;">{unit_code}</p>
+            </div>
+            <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
+                You can view the full details by logging into your tenant dashboard.
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {datetime.now().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_concern_response_email(tenant_name, tenant_email, subject_text, admin_response, unit_code):
+    """Send email when admin responds to a concern"""
+    from datetime import datetime
+    
+    subject = f"Admin Response - {subject_text}"
+    
+    text_content = f"""
+Dear {tenant_name},
+
+The administrator has responded to your concern:
+
+Subject: {subject_text}
+Unit: {unit_code}
+
+Admin Response:
+{admin_response}
+
+You can view the full conversation by logging into your tenant dashboard.
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Response</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">💬 Admin Response</h2>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                The administrator has responded to your concern:
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Subject:</strong></p>
+                <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{subject_text}</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Unit:</strong></p>
+                <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px;">{unit_code}</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Admin Response:</strong></p>
+                <p style="margin: 0; color: #1a1a1a; font-size: 14px; line-height: 1.6;">{admin_response}</p>
+            </div>
+            <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
+                You can view the full conversation by logging into your tenant dashboard.
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {datetime.now().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_inquiry_response_email(inquirer_name, inquirer_email, subject_text, admin_response):
+    """Send email response to an inquiry from the contact form"""
+    from datetime import datetime
+    
+    subject = f"Reply to Your Inquiry - {subject_text}"
+    
+    text_content = f"""
+Dear {inquirer_name},
+
+Thank you for your inquiry. Here is our response:
+
+Your Inquiry: {subject_text}
+
+Our Response:
+{admin_response}
+
+If you have any additional questions, please feel free to contact us.
+
+Contact: 0918-912-6340 or 0918-920-5645
+Hours: Mon–Sat, 9:00 AM – 6:00 PM
+
+Thank you,
+The Elis Center Management
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reply to Your Inquiry</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">💬 Reply to Your Inquiry</h2>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{inquirer_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                Thank you for your inquiry. Here is our response:
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Your Inquiry:</strong></p>
+                <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{subject_text}</p>
+                <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Our Response:</strong></p>
+                <p style="margin: 0; color: #1a1a1a; font-size: 14px; line-height: 1.6;">{admin_response}</p>
+            </div>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                If you have any additional questions, please feel free to contact us.
+            </p>
+            <p style="margin: 0 0 24px 0; color: #666666; font-size: 14px; line-height: 1.5;">
+                <strong>Contact:</strong> 0918-912-6340 or 0918-920-5645<br/>
+                <strong>Hours:</strong> Mon–Sat, 9:00 AM – 6:00 PM
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {datetime.now().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    send_email_async(subject, inquirer_email, inquirer_name, html_content, text_content)

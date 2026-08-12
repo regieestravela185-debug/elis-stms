@@ -5,10 +5,9 @@ from datetime import date, datetime, timedelta
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for, Response
 from flask_login import current_user, login_required
-from flask_mail import Message
 from dateutil.relativedelta import relativedelta
 
-from ...extensions import db, mail
+from ...extensions import db
 from ...models import (
     ActivityLog,
     Announcement,
@@ -184,133 +183,27 @@ def verify_blockchain_chain() -> dict:
     }
 
 
-def _send_reservation_result_email(to_email: str, status: ReservationStatus, unit_code: str) -> None:
+def _send_reservation_result_email(to_email: str, status: ReservationStatus, unit_code: str, to_name: str = "Tenant") -> None:
+    """Send reservation result email using Brevo HTTP API"""
     if not to_email:
         return
     
-    status_text = status.value.upper()
+    from ...email_helper import send_reservation_result_email
     
-    if status == ReservationStatus.APPROVED:
-        status_color = "#40c940"
-        status_icon = "✓"
-    elif status == ReservationStatus.REJECTED:
-        status_color = "#ff5050"
-        status_icon = "✗"
-    else:  # CANCELLED
-        status_color = "#ff5050"
-        status_icon = "!"
-
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reservation Status</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Reservation {status_text}</h2>
-                <div style="background: #f9f9f9; border: 2px solid {status_color}; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-                    <span style="font-size: 48px; font-weight: 700; color: {status_color};">{status_icon}</span>
-                    <p style="margin: 12px 0 0 0; color: {status_color}; font-size: 18px; font-weight: 600;">{status_text}</p>
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Your reservation for <strong>Unit {unit_code}</strong> has been {status_text.lower()}.</p>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
-                    {f"Your account is now tagged as tenant. Please login again to access your tenant portal." if status == ReservationStatus.APPROVED else "You may contact us or submit another reservation request for other available units."}
-                </p>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
-                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;"><strong>Next Steps:</strong></p>
-                    <ul style="margin: 8px 0 0 20px; padding: 0; color: #666666; font-size: 14px; line-height: 1.5;">
-                        <li>{f"Complete your tenant profile setup" if status == ReservationStatus.APPROVED else "Browse available units on our website"}</li>
-                        <li>{f"Review your contract details" if status == ReservationStatus.APPROVED else "Submit a new reservation request"}</li>
-                        <li>Contact admin if you have questions</li>
-                    </ul>
-                </div>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject=f"Reservation {status_text} - The Elis Center STMS",
-        recipients=[to_email],
-        html=html_body,
-    )
-    try:
-        mail.send(msg)
-    except Exception:
-        pass
+    # Convert ReservationStatus enum to string
+    status_str = status.value.lower()  # 'approved', 'rejected', 'cancelled'
+    
+    send_reservation_result_email(to_email, to_name, status_str, unit_code)
 
 
 def _send_renewal_reminder_email(tenant_name: str, tenant_email: str, unit_code: str, contract_end: date, days_remaining: int) -> None:
+    """Send renewal reminder email using Brevo HTTP API"""
     if not tenant_email:
         return
     
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Contract Renewal Reminder</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Contract Renewal Reminder</h2>
-                <div style="background: rgba(255, 80, 80, 0.1); border: 2px solid #ff5050; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-                    <span style="font-size: 48px; font-weight: 700; color: #ff5050;">⚠️</span>
-                    <p style="margin: 12px 0 0 0; color: #ff5050; font-size: 18px; font-weight: 600;">Contract Expiring Soon</p>
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
-                <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
-                    Your lease contract for <strong>Unit {unit_code}</strong> will expire on <strong>{contract_end.strftime('%B %d, %Y')}</strong>. 
-                    You have <strong>{days_remaining} days</strong> remaining.
-                </p>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
-                    To continue your stay, please submit a renewal request through your tenant portal or contact our administration office.
-                </p>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
-                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;"><strong>Next Steps:</strong></p>
-                    <ul style="margin: 8px 0 0 20px; padding: 0; color: #666666; font-size: 14px; line-height: 1.5;">
-                        <li>Login to your tenant portal</li>
-                        <li>Go to Renewal section</li>
-                        <li>Submit your renewal request</li>
-                        <li>Or contact us directly for assistance</li>
-                    </ul>
-                </div>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject=f"Contract Renewal Reminder - {days_remaining} Days Remaining",
-        recipients=[tenant_email],
-        html=html_body,
-    )
-    try:
-        mail.send(msg)
-    except Exception:
-        pass
+    from ...email_helper import send_renewal_reminder_email
+    
+    send_renewal_reminder_email(tenant_name, tenant_email, unit_code, contract_end, days_remaining)
 
 
 @bp.post("/notifications/generate-automated")
@@ -2316,83 +2209,22 @@ def upload_document():
         tenant_name=profile.user.full_name,
         tenant_email=profile.user.email,
         document_title=title,
-        document_type=document_type.replace('_', ' ').title()
+        document_type=document_type.replace('_', ' ').title(),
+        unit_code=profile.unit.unit_code
     )
     
     flash(f"Document uploaded successfully and notification sent to {profile.user.full_name}.", "success")
     return redirect(url_for("admin.documents"))
 
 
-def _send_document_notification_email(tenant_name: str, tenant_email: str, document_title: str, document_type: str) -> None:
-    """Send email notification when admin uploads a document for tenant"""
+def _send_document_notification_email(tenant_name: str, tenant_email: str, document_title: str, document_type: str, unit_code: str = "N/A") -> None:
+    """Send email notification when admin uploads a document for tenant using Brevo HTTP API"""
     if not tenant_email:
         return
     
-    # Get the base URL from Flask request context
-    from flask import request
-    base_url = request.url_root.rstrip('/')
+    from ...email_helper import send_document_notification_email
     
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Document Available</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">📄 New Document Available</h2>
-                <div style="background: rgba(215, 179, 91, 0.1); border: 2px solid rgba(215, 179, 91, 0.3); border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-                    <span style="font-size: 48px; font-weight: 700; color: #D7B35B;">📄</span>
-                    <p style="margin: 12px 0 0 0; color: #D7B35B; font-size: 18px; font-weight: 600;">Document Uploaded</p>
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
-                <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
-                    A new document has been uploaded to your account by the admin.
-                </p>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
-                    <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Document Type:</strong></p>
-                    <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{document_type}</p>
-                    <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Title:</strong></p>
-                    <p style="margin: 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{document_title}</p>
-                </div>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
-                    Please login to your tenant portal to view and download this document.
-                </p>
-                <div style="text-align: center; margin: 24px 0;">
-                    <a href="{base_url}/tenant/documents" style="display: inline-block; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                        View Document
-                    </a>
-                </div>
-                <div style="background: rgba(59, 130, 246, 0.08); padding: 12px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2); margin-top: 24px;">
-                    <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #1e40af;">
-                        <strong>ℹ️ Note:</strong> This is an automated notification. Please do not reply to this email.
-                    </p>
-                </div>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject=f"New Document: {document_title} - The Elis Center",
-        recipients=[tenant_email],
-        html=html_body,
-    )
-    try:
-        mail.send(msg)
-    except Exception as e:
-        print(f"Failed to send email: {e}")
+    send_document_notification_email(tenant_name, tenant_email, document_title, unit_code)
 
 
 @bp.post("/documents/<int:document_id>/delete")
@@ -2834,77 +2666,13 @@ def reject_renewal(renewal_id: int):
 
 
 def _send_renewal_result_email(tenant_name: str, tenant_email: str, unit_code: str, status: str, old_end_date, new_end_date) -> None:
-    """Send email notification when renewal request is approved or rejected"""
+    """Send email notification when renewal request is approved or rejected using Brevo HTTP API"""
     if not tenant_email:
         return
     
-    from flask import request
-    base_url = request.url_root.rstrip('/')
+    from ...email_helper import send_renewal_result_email
     
-    if status == 'approved':
-        status_color = "#10b981"
-        status_icon = "✓"
-        status_text = "APPROVED"
-        message = f"Your contract renewal request has been approved! Your new contract end date is <strong>{new_end_date.strftime('%B %d, %Y')}</strong>."
-    else:
-        status_color = "#ef4444"
-        status_icon = "✗"
-        status_text = "REJECTED"
-        message = "Your contract renewal request has been rejected. Please contact the admin office for more information."
-    
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Renewal Request {status_text}</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">↻ Renewal Request {status_text}</h2>
-                <div style="background: rgba({status_color.replace('#', '')}, 0.1); border: 2px solid {status_color}; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-                    <span style="font-size: 48px; font-weight: 700; color: {status_color};">{status_icon}</span>
-                    <p style="margin: 12px 0 0 0; color: {status_color}; font-size: 18px; font-weight: 600;">{status_text}</p>
-                </div>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
-                <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
-                    {message}
-                </p>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
-                    <p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Unit:</strong></p>
-                    <p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">{unit_code}</p>
-                    {f'<p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>Previous Contract End:</strong></p><p style="margin: 0 0 16px 0; color: #1a1a1a; font-size: 16px;">{old_end_date.strftime("%B %d, %Y") if old_end_date else "N/A"}</p>' if status == 'approved' else ''}
-                    {f'<p style="margin: 0 0 8px 0; color: #666666; font-size: 14px;"><strong>New Contract End:</strong></p><p style="margin: 0; color: #10b981; font-size: 18px; font-weight: 700;">{new_end_date.strftime("%B %d, %Y")}</p>' if status == 'approved' else ''}
-                </div>
-                <div style="text-align: center; margin: 24px 0;">
-                    <a href="{base_url}/tenant/renewal" style="display: inline-block; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                        View Renewal Status
-                    </a>
-                </div>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject=f"Renewal Request {status_text} - The Elis Center",
-        recipients=[tenant_email],
-        html=html_body,
-    )
-    try:
-        mail.send(msg)
-    except Exception as e:
-        print(f"Failed to send email: {e}")
+    send_renewal_result_email(tenant_name, tenant_email, unit_code, status, old_end_date, new_end_date)
 
 
 @bp.get("/feedbacks")
@@ -3308,7 +3076,7 @@ def update_concern(concern_id: int):
             tenant_email=concern.tenant_profile.user.email,
             subject=concern.subject,
             status=concern.status.value,
-            priority=concern.priority
+            unit_code=concern.tenant_profile.unit.unit_code
         )
     
     flash("Concern updated successfully.", "success")
@@ -3343,158 +3111,34 @@ def respond_concern(concern_id: int):
             tenant_email=concern.tenant_profile.user.email,
             subject=concern.subject,
             admin_response=admin_response,
-            admin_name=current_user.full_name  # type: ignore[attr-defined]
+            unit_code=concern.tenant_profile.unit.unit_code
         )
     
     flash("Response added successfully.", "success")
     return redirect(url_for("admin.concerns"))
 
 
-def _send_concern_status_email(tenant_name: str, tenant_email: str, subject: str, status: str, priority: str) -> None:
-    """Send email notification when concern status is updated"""
+def _send_concern_status_email(tenant_name: str, tenant_email: str, subject: str, status: str, unit_code: str) -> None:
+    """Send email notification when concern status is updated using Brevo HTTP API"""
     if not tenant_email:
         return
     
-    status_colors = {
-        'pending': '#eab308',
-        'in_progress': '#3b82f6',
-        'resolved': '#10b981'
-    }
+    from ...email_helper import send_concern_status_update_email
     
-    status_icons = {
-        'pending': '⏳',
-        'in_progress': '🔄',
-        'resolved': '✓'
-    }
+    # Convert status to display format
+    status_text = status.replace('_', ' ').title()
     
-    priority_colors = {
-        'low': '#10b981',
-        'medium': '#eab308',
-        'high': '#f97316',
-        'urgent': '#ef4444'
-    }
-    
-    status_color = status_colors.get(status, '#666666')
-    status_icon = status_icons.get(status, '📋')
-    priority_color = priority_colors.get(priority, '#666666')
-    
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Concern Status Update</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Concern Status Updated</h2>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
-                    Your concern "<strong>{subject}</strong>" has been updated.
-                </p>
-                <div style="background: #f9f9f9; border: 2px solid {status_color}; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <div>
-                            <span style="font-size: 14px; color: #666;">Status:</span>
-                            <div style="font-size: 18px; font-weight: 600; color: {status_color}; margin-top: 4px;">
-                                {status_icon} {status.replace('_', ' ').title()}
-                            </div>
-                        </div>
-                        <div>
-                            <span style="font-size: 14px; color: #666;">Priority:</span>
-                            <div style="font-size: 18px; font-weight: 600; color: {priority_color}; margin-top: 4px;">
-                                {priority.title()}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
-                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;">
-                        You can view the full details and any responses by logging into your tenant portal.
-                    </p>
-                </div>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject=f"Concern Status Updated - {subject}",
-        recipients=[tenant_email],
-        html=html_body,
-    )
-    try:
-        mail.send(msg)
-    except Exception:
-        pass
+    send_concern_status_update_email(tenant_name, tenant_email, subject, status_text, unit_code)
 
 
-def _send_concern_response_email(tenant_name: str, tenant_email: str, subject: str, admin_response: str, admin_name: str) -> None:
-    """Send email notification when admin responds to a concern"""
+def _send_concern_response_email(tenant_name: str, tenant_email: str, subject: str, admin_response: str, unit_code: str) -> None:
+    """Send email notification when admin responds to a concern using Brevo HTTP API"""
     if not tenant_email:
         return
     
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Admin Response to Your Concern</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">💬 Admin Response</h2>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
-                    Our admin team has responded to your concern "<strong>{subject}</strong>".
-                </p>
-                <div style="background: rgba(215, 179, 91, 0.1); border-left: 4px solid #D7B35B; padding: 20px; border-radius: 8px; margin: 24px 0;">
-                    <div style="font-size: 12px; color: #D7B35B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">
-                        Response from {admin_name}
-                    </div>
-                    <p style="margin: 0; color: #374151; line-height: 1.6; font-size: 15px;">
-                        {admin_response}
-                    </p>
-                </div>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;">
-                        If you have any follow-up questions, please login to your tenant portal or contact us directly.
-                    </p>
-                </div>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject=f"Admin Response - {subject}",
-        recipients=[tenant_email],
-        html=html_body,
-    )
-    try:
-        mail.send(msg)
-    except Exception:
-        pass
+    from ...email_helper import send_concern_response_email
+    
+    send_concern_response_email(tenant_name, tenant_email, subject, admin_response, unit_code)
 
 
 
@@ -3678,61 +3322,10 @@ def export_inquiries():
 
 
 def _send_inquiry_reply_email(inquirer_name: str, inquirer_email: str, subject: str, admin_reply: str, admin_name: str) -> None:
-    """Send email notification when admin replies to an inquiry"""
+    """Send email notification when admin replies to an inquiry using Brevo HTTP API"""
     if not inquirer_email:
         return
     
-    html_body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reply to Your Inquiry</title>
-    </head>
-    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
-            </div>
-            <div style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">💬 Reply to Your Inquiry</h2>
-                <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{inquirer_name}</strong>,</p>
-                <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
-                    Thank you for your inquiry regarding "<strong>{subject}</strong>". Here is our response:
-                </p>
-                <div style="background: rgba(215, 179, 91, 0.1); border-left: 4px solid #D7B35B; padding: 20px; border-radius: 8px; margin: 24px 0;">
-                    <div style="font-size: 12px; color: #D7B35B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">
-                        Response from {admin_name}
-                    </div>
-                    <p style="margin: 0; color: #374151; line-height: 1.6; font-size: 15px;">
-                        {admin_reply}
-                    </p>
-                </div>
-                <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                    <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;">
-                        <strong>Need more help?</strong><br/>
-                        If you have any follow-up questions, feel free to reply to this email or contact us directly:<br/>
-                        <strong>Phone:</strong> 0918-912-6340 or 0918-920-5645<br/>
-                        <strong>Hours:</strong> Mon–Sat, 9:00 AM – 6:00 PM
-                    </p>
-                </div>
-            </div>
-            <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
-                <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    msg = Message(
-        subject=f"Reply to Your Inquiry - {subject}",
-        recipients=[inquirer_email],
-        html=html_body,
-    )
-    try:
-        mail.send(msg)
-    except Exception:
-        pass
+    from ...email_helper import send_inquiry_response_email
+    
+    send_inquiry_response_email(inquirer_name, inquirer_email, subject, admin_reply)

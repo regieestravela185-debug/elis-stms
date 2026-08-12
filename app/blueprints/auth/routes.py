@@ -6,9 +6,8 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for, current_app
 from flask_login import login_required, login_user, logout_user, current_user
-from flask_mail import Message
 
-from ...extensions import db, login_manager, mail
+from ...extensions import db, login_manager
 from ...models import User, Role
 from ...security import generate_otp_code, hash_password, otp_expiry, verify_password
 
