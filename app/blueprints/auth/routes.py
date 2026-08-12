@@ -156,6 +156,7 @@ def register_post():
         return _home_auth_modal("register")
 
     otp = generate_otp_code()
+    session.permanent = True  # Make session persistent
     session["pending_registration"] = {
         "full_name": full_name,
         "email": email,

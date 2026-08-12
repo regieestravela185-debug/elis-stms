@@ -3235,11 +3235,12 @@
               otpInput.value = '';
               setTimeout(() => otpInput.focus(), 100);
               
-              // If there's a redirect in error (like need to re-register), redirect after delay
+              // If there's a redirect in error (like need to re-register), redirect immediately with message
               if (data.redirect) {
+                showAlert(data.message + ' Redirecting...', 'warning');
                 setTimeout(() => {
                   window.location.href = data.redirect;
-                }, 2000);
+                }, 1500); // Shorter delay so user can read message
               }
             }
           } catch (error) {

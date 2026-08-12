@@ -8,6 +8,13 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+    
+    # Session configuration - Make sessions more persistent
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"  # True in production with HTTPS
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)  # Session lasts 24 hours
+    SESSION_COOKIE_NAME = "elis_stms_session"  # Custom session cookie name
 
     # Database Configuration - Supports both MySQL and PostgreSQL
     DB_TYPE = os.getenv("DB_TYPE", "mysql")  # mysql or postgresql

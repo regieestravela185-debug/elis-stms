@@ -88,8 +88,12 @@ def create_app(config_object: type[Config] = Config) -> Flask:
         boot_id = session.get("boot_id")
         current_boot = app.config.get("SERVER_BOOT_ID")
         if current_user.is_authenticated and boot_id != current_boot:
+            # Preserve pending_registration even when clearing session
+            pending_reg = session.get("pending_registration")
             logout_user()
             session.clear()
+            if pending_reg:
+                session["pending_registration"] = pending_reg
 
     with app.app_context():
         # Tables are created via MySQL import SQL; keep this as a safe fallback.
