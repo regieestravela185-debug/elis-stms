@@ -5,8 +5,9 @@ from sqlalchemy import text
 from authlib.integrations.flask_client import OAuth
 
 from .config import Config
-from .extensions import db, login_manager, mail, socketio
+from .extensions import db, login_manager, mail, socketio, limiter
 from .jobs import start_scheduler
+from .security_utils import apply_security_headers, cleanup_old_attempts
 from datetime import datetime
 
 # Fix eventlet DNS resolution issues in Docker containers
@@ -26,6 +27,7 @@ def create_app(config_object: type[Config] = Config) -> Flask:
     login_manager.init_app(app)
     mail.init_app(app)
     socketio.init_app(app)
+    limiter.init_app(app)  # Initialize rate limiter
     
     # Initialize OAuth
     oauth.init_app(app)
@@ -94,6 +96,11 @@ def create_app(config_object: type[Config] = Config) -> Flask:
             session.clear()
             if pending_reg:
                 session["pending_registration"] = pending_reg
+    
+    @app.after_request
+    def _add_security_headers(response):
+        """Add security headers to all responses"""
+        return apply_security_headers(response)
 
     with app.app_context():
         # Tables are created via MySQL import SQL; keep this as a safe fallback.

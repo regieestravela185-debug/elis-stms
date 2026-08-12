@@ -7,9 +7,16 @@ from datetime import datetime, timedelta
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for, current_app, jsonify
 from flask_login import login_required, login_user, logout_user, current_user
 
-from ...extensions import db, login_manager
+from ...extensions import db, login_manager, limiter
 from ...models import User, Role
 from ...security import generate_otp_code, hash_password, otp_expiry, verify_password
+from ...security_utils import (
+    check_rate_limit, 
+    record_failed_attempt, 
+    clear_failed_attempts,
+    get_remaining_attempts,
+    log_security_event
+)
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -58,6 +65,7 @@ def login():
 
 
 @bp.post("/login")
+@limiter.limit("10 per minute")  # General rate limit
 def login_post():
     email = (request.form.get("email") or "").strip().lower()
     password = request.form.get("password") or ""
@@ -66,23 +74,45 @@ def login_post():
     if not email.endswith("@gmail.com"):
         flash("Email must end with @gmail.com", "warning")
         return _home_auth_modal("login")
+    
+    # Check if account is locked due to too many failed attempts
+    is_locked, lock_msg = check_rate_limit(email, 'login')
+    if is_locked:
+        log_security_event('login_lockout', f'Email: {email}')
+        flash(lock_msg, "danger")
+        return _home_auth_modal("login")
 
     user = db.session.query(User).filter_by(email=email).first()
 
     # Google-only accounts: user signed up via Google and never set a password
     if user and user.oauth_provider == 'google' and not verify_password(user.password_hash, password):
-        flash("Invalid email or password.", "danger")
+        locked, remaining = record_failed_attempt(email, 'login')
+        log_security_event('failed_login', f'Email: {email} (Google account)')
+        if locked:
+            flash(f"🔒 Too many failed attempts. Account locked for 15 minutes.", "danger")
+        else:
+            flash(f"Invalid email or password. {remaining} attempts remaining.", "danger")
         return _home_auth_modal("login")
 
     if not user or not verify_password(user.password_hash, password):
-        flash("Invalid email or password.", "danger")
+        locked, remaining = record_failed_attempt(email, 'login')
+        log_security_event('failed_login', f'Email: {email}')
+        if locked:
+            flash(f"🔒 Too many failed attempts. Account locked for 15 minutes.", "danger")
+        else:
+            flash(f"Invalid email or password. {remaining} attempts remaining.", "danger")
         return _home_auth_modal("login")
 
     # Check if user is banned
     if user.is_banned:
+        log_security_event('banned_login_attempt', f'Email: {email}')
         flash("Your account has been banned. Please contact support for assistance.", "danger")
         return _home_auth_modal("login")
 
+    # Successful login - clear failed attempts
+    clear_failed_attempts(email, 'login')
+    log_security_event('successful_login', f'Email: {email}')
+    
     login_user(user, remember=True)
     session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
     user.last_login_at = datetime.utcnow()
@@ -115,6 +145,7 @@ def register():
 
 
 @bp.post("/register")
+@limiter.limit("5 per hour")  # Stricter limit for registration
 def register_post():
     full_name = (request.form.get("full_name") or "").strip()
     email = (request.form.get("email") or "").strip().lower()
@@ -127,6 +158,13 @@ def register_post():
     # Email validation - must end with @gmail.com
     if not email.endswith("@gmail.com"):
         flash("Email must end with @gmail.com", "warning")
+        return _home_auth_modal("register")
+    
+    # Check if IP/email is locked due to too many registration attempts
+    is_locked, lock_msg = check_rate_limit(email, 'register')
+    if is_locked:
+        log_security_event('register_lockout', f'Email: {email}')
+        flash(lock_msg, "danger")
         return _home_auth_modal("register")
 
     # Password validation - must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
@@ -192,6 +230,7 @@ def verify_otp():
 
 
 @bp.post("/verify-otp")
+@limiter.limit("10 per 5 minutes")  # Allow 10 OTP attempts per 5 minutes
 def verify_otp_post():
     code = (request.form.get("otp") or "").strip()
     
@@ -200,6 +239,16 @@ def verify_otp_post():
 
     if current_user.is_authenticated and not current_user.is_email_verified:
         user: User = current_user  # type: ignore
+        
+        # Check rate limit
+        is_locked, lock_msg = check_rate_limit(user.email, 'otp')
+        if is_locked:
+            log_security_event('otp_lockout', f'Email: {user.email}')
+            msg = lock_msg
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 429
+            flash(msg, "danger")
+            return _home_auth_modal("verify")
 
         if not user.otp_code or not user.otp_expires_at:
             msg = "OTP not found. Please request a new one."
@@ -216,13 +265,25 @@ def verify_otp_post():
             return _home_auth_modal("verify")
 
         if code != user.otp_code:
-            msg = "❌ Invalid OTP. Please check and try again."
+            # Record failed OTP attempt
+            locked, remaining = record_failed_attempt(user.email, 'otp')
+            log_security_event('failed_otp', f'Email: {user.email}')
+            
+            if locked:
+                msg = "🔒 Too many failed OTP attempts. Account locked for 15 minutes."
+            else:
+                msg = f"❌ Invalid OTP. {remaining} attempts remaining."
+            
             if is_ajax:
                 return jsonify({"success": False, "message": msg}), 400
             flash(msg, "danger")
             return _home_auth_modal("verify")
 
         try:
+            # Successful OTP verification - clear failed attempts
+            clear_failed_attempts(user.email, 'otp')
+            log_security_event('successful_otp', f'Email: {user.email}')
+            
             user.is_email_verified = True
             user.otp_code = None
             user.otp_expires_at = None
@@ -251,6 +312,18 @@ def verify_otp_post():
             return jsonify({"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}), 400
         flash(msg, "warning")
         return _home_auth_modal("register")
+    
+    email = (pending.get("email") or "").strip().lower()
+    
+    # Check rate limit for pending registration OTP
+    is_locked, lock_msg = check_rate_limit(email, 'otp')
+    if is_locked:
+        log_security_event('otp_lockout_pending', f'Email: {email}')
+        msg = lock_msg
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 429
+        flash(msg, "danger")
+        return _home_auth_modal("verify")
 
     otp_code = pending.get("otp_code")
     otp_expires_at_raw = pending.get("otp_expires_at")
@@ -280,13 +353,20 @@ def verify_otp_post():
         return _home_auth_modal("verify")
 
     if code != otp_code:
-        msg = "❌ Invalid OTP. Please check and try again."
+        # Record failed OTP attempt for pending registration
+        locked, remaining = record_failed_attempt(email, 'otp')
+        log_security_event('failed_otp_pending', f'Email: {email}')
+        
+        if locked:
+            msg = "🔒 Too many failed OTP attempts. Account locked for 15 minutes."
+        else:
+            msg = f"❌ Invalid OTP. {remaining} attempts remaining."
+        
         if is_ajax:
             return jsonify({"success": False, "message": msg}), 400
         flash(msg, "danger")
         return _home_auth_modal("verify")
 
-    email = (pending.get("email") or "").strip().lower()
     full_name = (pending.get("full_name") or "").strip()
     password_hash = pending.get("password_hash") or ""
     if not email or not full_name or not password_hash:
@@ -304,6 +384,10 @@ def verify_otp_post():
         return _home_auth_modal("login")
     if existing and not existing.is_email_verified:
         try:
+            # Successful verification - clear failed attempts
+            clear_failed_attempts(email, 'otp')
+            log_security_event('successful_registration', f'Email: {email} (existing user updated)')
+            
             existing.full_name = full_name
             existing.password_hash = password_hash
             existing.is_email_verified = True
@@ -342,6 +426,10 @@ def verify_otp_post():
     )
     
     try:
+        # Successful verification - clear failed attempts
+        clear_failed_attempts(email, 'otp')
+        log_security_event('successful_registration', f'Email: {email} (new user)')
+        
         db.session.add(user)
         db.session.commit()
         
@@ -369,9 +457,17 @@ def verify_otp_post():
 
 
 @bp.post("/resend-otp")
+@limiter.limit("3 per 10 minutes")  # Limit OTP resend requests
 def resend_otp():
     if current_user.is_authenticated and not current_user.is_email_verified:
         user: User = current_user  # type: ignore
+        
+        # Check if locked out
+        is_locked, lock_msg = check_rate_limit(user.email, 'otp')
+        if is_locked:
+            flash(lock_msg, "danger")
+            return _home_auth_modal("verify")
+        
         user.otp_code = generate_otp_code()
         user.otp_expires_at = otp_expiry(10)
         db.session.commit()
