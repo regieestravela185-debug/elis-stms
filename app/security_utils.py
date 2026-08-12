@@ -8,7 +8,7 @@ Security utilities for ELIS STMS
 
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import request, flash, session
+from flask import request, flash, session, current_app
 from flask_login import current_user
 import logging
 
