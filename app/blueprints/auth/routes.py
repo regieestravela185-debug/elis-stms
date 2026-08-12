@@ -209,13 +209,20 @@ def verify_otp_post():
             flash("Invalid OTP.", "danger")
             return _home_auth_modal("verify")
 
-        user.is_email_verified = True
-        user.otp_code = None
-        user.otp_expires_at = None
-        db.session.commit()
+        try:
+            user.is_email_verified = True
+            user.otp_code = None
+            user.otp_expires_at = None
+            db.session.commit()
 
-        flash("Email verified.", "success")
-        return _redirect_by_role(user)
+            flash("✅ Email verified successfully! Welcome to ELIS STMS!", "success")
+            return _redirect_by_role(user)
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error verifying user email: {e}")
+            flash("Verification failed. Please try again.", "danger")
+            return _home_auth_modal("verify")
 
     pending = session.get("pending_registration")
     if not pending:
@@ -258,17 +265,33 @@ def verify_otp_post():
         session.pop("pending_registration", None)
         return _home_auth_modal("login")
     if existing and not existing.is_email_verified:
-        existing.full_name = full_name
-        existing.password_hash = password_hash
-        existing.is_email_verified = True
-        existing.otp_code = None
-        existing.otp_expires_at = None
-        db.session.commit()
-        session.pop("pending_registration", None)
-        login_user(existing, remember=True)
-        session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
-        flash("Registration completed and email verified.", "success")
-        return _redirect_by_role(existing)
+        try:
+            existing.full_name = full_name
+            existing.password_hash = password_hash
+            existing.is_email_verified = True
+            existing.otp_code = None
+            existing.otp_expires_at = None
+            db.session.commit()
+            
+            # Clear pending registration
+            session.pop("pending_registration", None)
+            
+            # Auto-login
+            login_user(existing, remember=True)
+            session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
+            
+            flash("✅ Registration completed! Your email has been verified. Welcome to ELIS STMS!", "success")
+            
+            if existing.role == Role.USER:
+                return redirect(url_for("public.home"))
+            else:
+                return _redirect_by_role(existing)
+                
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error updating user: {e}")
+            flash("Verification failed. Please try again.", "danger")
+            return _home_auth_modal("verify")
 
     user = User(
         full_name=full_name,
@@ -279,13 +302,32 @@ def verify_otp_post():
         otp_code=None,
         otp_expires_at=None,
     )
-    db.session.add(user)
-    db.session.commit()
-    session.pop("pending_registration", None)
-    login_user(user, remember=True)
-    session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
-    flash("Registration completed and email verified.", "success")
-    return _redirect_by_role(user)
+    
+    try:
+        db.session.add(user)
+        db.session.commit()
+        
+        # Clear pending registration from session
+        session.pop("pending_registration", None)
+        
+        # Auto-login the new user
+        login_user(user, remember=True)
+        session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
+        
+        # Success message
+        flash("✅ Registration completed! Your email has been verified. Welcome to ELIS STMS!", "success")
+        
+        # Redirect to user dashboard (for Role.USER)
+        if user.role == Role.USER:
+            return redirect(url_for("public.home"))  # Users go to homepage
+        else:
+            return _redirect_by_role(user)
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error saving user to database: {e}")
+        flash("Registration failed. Please try again or contact support.", "danger")
+        return _home_auth_modal("register")
 
 
 @bp.post("/resend-otp")
