@@ -203,21 +203,21 @@ def verify_otp_post():
         if not user.otp_code or not user.otp_expires_at:
             msg = "OTP not found. Please request a new one."
             if is_ajax:
-                return {"success": False, "message": msg}, 400
+                return jsonify({"success": False, "message": msg}), 400
             flash(msg, "warning")
             return _home_auth_modal("verify")
 
         if datetime.utcnow() > user.otp_expires_at:
             msg = "OTP expired. Please request a new one."
             if is_ajax:
-                return {"success": False, "message": msg}, 400
+                return jsonify({"success": False, "message": msg}), 400
             flash(msg, "warning")
             return _home_auth_modal("verify")
 
         if code != user.otp_code:
             msg = "❌ Invalid OTP. Please check and try again."
             if is_ajax:
-                return {"success": False, "message": msg}, 400
+                return jsonify({"success": False, "message": msg}), 400
             flash(msg, "danger")
             return _home_auth_modal("verify")
 
@@ -230,7 +230,7 @@ def verify_otp_post():
             msg = "✅ Email verified successfully! Welcome to ELIS STMS!"
             if is_ajax:
                 redirect_url = url_for('public.home') if user.role == Role.USER else url_for('admin.dashboard') if user.role == Role.ADMIN else url_for('tenant.dashboard')
-                return {"success": True, "message": msg, "redirect": redirect_url}, 200
+                return jsonify({"success": True, "message": msg, "redirect": redirect_url}), 200
             flash(msg, "success")
             return _redirect_by_role(user)
             
@@ -239,7 +239,7 @@ def verify_otp_post():
             print(f"❌ Error verifying user email: {e}")
             msg = "Verification failed. Please try again."
             if is_ajax:
-                return {"success": False, "message": msg}, 500
+                return jsonify({"success": False, "message": msg}), 500
             flash(msg, "danger")
             return _home_auth_modal("verify")
 
@@ -247,7 +247,7 @@ def verify_otp_post():
     if not pending:
         msg = "OTP session not found. Please register again."
         if is_ajax:
-            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+            return jsonify({"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}), 400
         flash(msg, "warning")
         return _home_auth_modal("register")
 
@@ -256,7 +256,7 @@ def verify_otp_post():
     if not otp_code or not otp_expires_at_raw:
         msg = "OTP not found. Please register again."
         if is_ajax:
-            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+            return jsonify({"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}), 400
         flash(msg, "warning")
         session.pop("pending_registration", None)
         return _home_auth_modal("register")
@@ -266,7 +266,7 @@ def verify_otp_post():
     except ValueError:
         msg = "OTP data is invalid. Please register again."
         if is_ajax:
-            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+            return jsonify({"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}), 400
         flash(msg, "warning")
         session.pop("pending_registration", None)
         return _home_auth_modal("register")
@@ -274,14 +274,14 @@ def verify_otp_post():
     if datetime.utcnow() > otp_expires_at:
         msg = "OTP expired. Please request a new one."
         if is_ajax:
-            return {"success": False, "message": msg}, 400
+            return jsonify({"success": False, "message": msg}), 400
         flash(msg, "warning")
         return _home_auth_modal("verify")
 
     if code != otp_code:
         msg = "❌ Invalid OTP. Please check and try again."
         if is_ajax:
-            return {"success": False, "message": msg}, 400
+            return jsonify({"success": False, "message": msg}), 400
         flash(msg, "danger")
         return _home_auth_modal("verify")
 
@@ -291,7 +291,7 @@ def verify_otp_post():
     if not email or not full_name or not password_hash:
         msg = "Registration data is incomplete. Please register again."
         if is_ajax:
-            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+            return jsonify({"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}), 400
         flash(msg, "warning")
         session.pop("pending_registration", None)
         return _home_auth_modal("register")
