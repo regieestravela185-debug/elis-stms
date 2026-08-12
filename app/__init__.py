@@ -102,6 +102,8 @@ def create_app(config_object: type[Config] = Config) -> Flask:
 
 def _apply_non_breaking_schema_updates() -> None:
     """Best-effort additive schema updates for local/dev runs."""
+    from flask import current_app
+    
     # Detect database type
     db_type = current_app.config.get('DB_TYPE', 'mysql').lower()
     
