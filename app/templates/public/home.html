@@ -3196,37 +3196,37 @@
           try {
             const response = await fetch('{{ url_for("auth.verify_otp_post") }}', {
               method: 'POST',
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+              },
               body: formData
             });
             
-            const text = await response.text();
+            const data = await response.json();
             
-            // Check if response is a redirect (successful verification)
-            if (response.redirected || response.status === 302 || text.includes('Redirecting')) {
-              showAlert('✅ Email verified successfully! Redirecting...', 'success');
+            if (data.success) {
+              // Success - show message and redirect
+              showAlert(data.message || '✅ Email verified successfully! Redirecting...', 'success');
               setTimeout(() => {
-                window.location.href = response.url || '/';
+                window.location.href = data.redirect || '/';
               }, 500);
             } else {
-              // Parse HTML to get flash message
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(text, 'text/html');
-              const flashMsg = doc.querySelector('.flash-stack .alert');
-              
-              if (flashMsg) {
-                const msgText = flashMsg.textContent.trim();
-                const isError = flashMsg.classList.contains('flash--danger');
-                const isWarning = flashMsg.classList.contains('flash--warning');
-                showAlert(msgText, isError ? 'danger' : isWarning ? 'warning' : 'info');
-              } else {
-                showAlert('Invalid OTP. Please try again.', 'danger');
-              }
+              // Error - show message and stay on modal
+              showAlert(data.message || 'Invalid OTP. Please try again.', 'danger');
               
               // Clear input and refocus
               otpInput.value = '';
               otpInput.focus();
+              
+              // If there's a redirect in error (like need to re-register), redirect after delay
+              if (data.redirect) {
+                setTimeout(() => {
+                  window.location.href = data.redirect;
+                }, 2000);
+              }
             }
           } catch (error) {
+            console.error('OTP verification error:', error);
             showAlert('Network error. Please check your connection and try again.', 'danger');
           } finally {
             otpVerifyBtn.disabled = false;

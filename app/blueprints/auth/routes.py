@@ -4,7 +4,7 @@ import re
 import secrets
 from datetime import datetime, timedelta
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for, current_app
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for, current_app, jsonify
 from flask_login import login_required, login_user, logout_user, current_user
 
 from ...extensions import db, login_manager
@@ -193,20 +193,32 @@ def verify_otp():
 @bp.post("/verify-otp")
 def verify_otp_post():
     code = (request.form.get("otp") or "").strip()
+    
+    # Check if this is an AJAX request
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json
 
     if current_user.is_authenticated and not current_user.is_email_verified:
         user: User = current_user  # type: ignore
 
         if not user.otp_code or not user.otp_expires_at:
-            flash("OTP not found. Please request a new one.", "warning")
+            msg = "OTP not found. Please request a new one."
+            if is_ajax:
+                return {"success": False, "message": msg}, 400
+            flash(msg, "warning")
             return _home_auth_modal("verify")
 
         if datetime.utcnow() > user.otp_expires_at:
-            flash("OTP expired. Please request a new one.", "warning")
+            msg = "OTP expired. Please request a new one."
+            if is_ajax:
+                return {"success": False, "message": msg}, 400
+            flash(msg, "warning")
             return _home_auth_modal("verify")
 
         if code != user.otp_code:
-            flash("Invalid OTP.", "danger")
+            msg = "❌ Invalid OTP. Please check and try again."
+            if is_ajax:
+                return {"success": False, "message": msg}, 400
+            flash(msg, "danger")
             return _home_auth_modal("verify")
 
         try:
@@ -215,47 +227,72 @@ def verify_otp_post():
             user.otp_expires_at = None
             db.session.commit()
 
-            flash("✅ Email verified successfully! Welcome to ELIS STMS!", "success")
+            msg = "✅ Email verified successfully! Welcome to ELIS STMS!"
+            if is_ajax:
+                redirect_url = url_for('public.home') if user.role == Role.USER else url_for('admin.dashboard') if user.role == Role.ADMIN else url_for('tenant.dashboard')
+                return {"success": True, "message": msg, "redirect": redirect_url}, 200
+            flash(msg, "success")
             return _redirect_by_role(user)
             
         except Exception as e:
             db.session.rollback()
             print(f"❌ Error verifying user email: {e}")
-            flash("Verification failed. Please try again.", "danger")
+            msg = "Verification failed. Please try again."
+            if is_ajax:
+                return {"success": False, "message": msg}, 500
+            flash(msg, "danger")
             return _home_auth_modal("verify")
 
     pending = session.get("pending_registration")
     if not pending:
-        flash("OTP session not found. Please register again.", "warning")
+        msg = "OTP session not found. Please register again."
+        if is_ajax:
+            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+        flash(msg, "warning")
         return _home_auth_modal("register")
 
     otp_code = pending.get("otp_code")
     otp_expires_at_raw = pending.get("otp_expires_at")
     if not otp_code or not otp_expires_at_raw:
-        flash("OTP not found. Please register again.", "warning")
+        msg = "OTP not found. Please register again."
+        if is_ajax:
+            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+        flash(msg, "warning")
         session.pop("pending_registration", None)
         return _home_auth_modal("register")
 
     try:
         otp_expires_at = datetime.fromisoformat(otp_expires_at_raw)
     except ValueError:
-        flash("OTP data is invalid. Please register again.", "warning")
+        msg = "OTP data is invalid. Please register again."
+        if is_ajax:
+            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+        flash(msg, "warning")
         session.pop("pending_registration", None)
         return _home_auth_modal("register")
 
     if datetime.utcnow() > otp_expires_at:
-        flash("OTP expired. Please request a new one.", "warning")
+        msg = "OTP expired. Please request a new one."
+        if is_ajax:
+            return {"success": False, "message": msg}, 400
+        flash(msg, "warning")
         return _home_auth_modal("verify")
 
     if code != otp_code:
-        flash("Invalid OTP.", "danger")
+        msg = "❌ Invalid OTP. Please check and try again."
+        if is_ajax:
+            return {"success": False, "message": msg}, 400
+        flash(msg, "danger")
         return _home_auth_modal("verify")
 
     email = (pending.get("email") or "").strip().lower()
     full_name = (pending.get("full_name") or "").strip()
     password_hash = pending.get("password_hash") or ""
     if not email or not full_name or not password_hash:
-        flash("Registration data is incomplete. Please register again.", "warning")
+        msg = "Registration data is incomplete. Please register again."
+        if is_ajax:
+            return {"success": False, "message": msg, "redirect": url_for('public.home', auth='register')}, 400
+        flash(msg, "warning")
         session.pop("pending_registration", None)
         return _home_auth_modal("register")
 
