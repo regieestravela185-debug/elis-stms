@@ -160,6 +160,10 @@ def apply_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     
+    # HSTS - Force HTTPS (only in production)
+    if not current_app.debug:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
+    
     # Content Security Policy (adjust as needed)
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
