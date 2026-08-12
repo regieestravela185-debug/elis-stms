@@ -3120,17 +3120,22 @@
   </script>
   {% endif %}
 
-  {% if otp_target_email %}
+  <!-- OTP Verification Modal - Always render for JavaScript to open via ?auth=verify -->
   <div class="modal" id="modalVerifyOtp" hidden aria-modal="true" role="dialog">
     <div class="modal__backdrop js-modal-close"></div>
     <div class="modal__card">
       <button type="button" class="modal__x js-modal-close" aria-label="Close">×</button>
       <h3 class="modal__title">Verify email</h3>
-      <p class="modal__hint">Enter the 6-digit OTP sent to <strong>{{ otp_target_email }}</strong>.</p>
+      <p class="modal__hint">Enter the 6-digit OTP sent to <strong>{{ otp_target_email or 'your email' }}</strong>.</p>
 
       <div class="hint">
         <div class="hint__title">No OTP yet?</div>
         <div class="muted">Check spam or promotions, then tap <strong>Resend OTP</strong>.</div>
+        {% if otp_dev_code %}
+        <div class="mt-8 p-8 bg-warning-subtle rounded">
+          <strong>DEV MODE:</strong> OTP Code = <code>{{ otp_dev_code }}</code>
+        </div>
+        {% endif %}
       </div>
 
       <form method="post" action="{{ url_for('auth.verify_otp_post') }}" class="form">
@@ -3144,7 +3149,6 @@
       </form>
     </div>
   </div>
-  {% endif %}
 
   {% if can_reserve %}
   <div class="modal" id="modalReserve" hidden aria-modal="true" role="dialog">
