@@ -102,27 +102,58 @@ def create_app(config_object: type[Config] = Config) -> Flask:
 
 def _apply_non_breaking_schema_updates() -> None:
     """Best-effort additive schema updates for local/dev runs."""
-    stmts = [
-        "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS id_type VARCHAR(64) NULL",
-        "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS id_number VARCHAR(120) NULL",
-        "ALTER TABLE units ADD COLUMN IF NOT EXISTS description TEXT NULL",
-        "ALTER TABLE units ADD COLUMN IF NOT EXISTS unit_images_json TEXT NULL",
-        "ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS last_renewal_reminder_sent DATE NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at DATETIME NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_at DATETIME NULL",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(255) NULL",
-        # New tables for tenant modules
-        "CREATE TABLE IF NOT EXISTS announcements (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, content TEXT NOT NULL, category VARCHAR(50), is_active BOOLEAN DEFAULT TRUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)",
-        "CREATE TABLE IF NOT EXISTS documents (id INT AUTO_INCREMENT PRIMARY KEY, tenant_profile_id INT NOT NULL, title VARCHAR(200) NOT NULL, document_type VARCHAR(50) NOT NULL, file_path VARCHAR(255) NOT NULL, uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id), INDEX (tenant_profile_id))",
-        "CREATE TABLE IF NOT EXISTS renewal_requests (id INT AUTO_INCREMENT PRIMARY KEY, tenant_profile_id INT NOT NULL, requested_end_date DATE NOT NULL, notes TEXT, status VARCHAR(20) DEFAULT 'pending', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id), INDEX (tenant_profile_id))",
-        "CREATE TABLE IF NOT EXISTS feedbacks (id INT AUTO_INCREMENT PRIMARY KEY, tenant_profile_id INT NOT NULL, category VARCHAR(50) NOT NULL, rating INT, comments TEXT NOT NULL, status VARCHAR(20) DEFAULT 'submitted', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id), INDEX (tenant_profile_id))",
-    ]
+    # Detect database type
+    db_type = current_app.config.get('DB_TYPE', 'mysql').lower()
+    
+    if db_type == 'postgresql':
+        # PostgreSQL syntax
+        stmts = [
+            "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS id_type VARCHAR(64) NULL",
+            "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS id_number VARCHAR(120) NULL",
+            "ALTER TABLE units ADD COLUMN IF NOT EXISTS description TEXT NULL",
+            "ALTER TABLE units ADD COLUMN IF NOT EXISTS unit_images_json TEXT NULL",
+            "ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS last_renewal_reminder_sent DATE NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMP NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(255) NULL",
+            # New tables for tenant modules (PostgreSQL)
+            "CREATE TABLE IF NOT EXISTS announcements (id SERIAL PRIMARY KEY, title VARCHAR(200) NOT NULL, content TEXT NOT NULL, category VARCHAR(50), is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, target_audience VARCHAR(20) DEFAULT 'all', is_pinned BOOLEAN DEFAULT FALSE)",
+            "CREATE TABLE IF NOT EXISTS documents (id SERIAL PRIMARY KEY, tenant_profile_id INT NOT NULL, title VARCHAR(200) NOT NULL, document_type VARCHAR(50) NOT NULL, file_path VARCHAR(255) NOT NULL, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, uploaded_by INT, is_viewed BOOLEAN DEFAULT FALSE, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id))",
+            "CREATE INDEX IF NOT EXISTS idx_documents_tenant ON documents(tenant_profile_id)",
+            "CREATE TABLE IF NOT EXISTS renewal_requests (id SERIAL PRIMARY KEY, tenant_profile_id INT NOT NULL, requested_end_date DATE NOT NULL, notes TEXT, status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id))",
+            "CREATE INDEX IF NOT EXISTS idx_renewal_requests_tenant ON renewal_requests(tenant_profile_id)",
+            "CREATE TABLE IF NOT EXISTS feedbacks (id SERIAL PRIMARY KEY, tenant_profile_id INT NOT NULL, unit_id INT, category VARCHAR(50) NOT NULL, rating INT, comments TEXT NOT NULL, status VARCHAR(20) DEFAULT 'submitted', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id), FOREIGN KEY (unit_id) REFERENCES units(id))",
+            "CREATE INDEX IF NOT EXISTS idx_feedbacks_tenant ON feedbacks(tenant_profile_id)",
+            "CREATE INDEX IF NOT EXISTS idx_feedbacks_unit ON feedbacks(unit_id)",
+        ]
+    else:
+        # MySQL syntax (original)
+        stmts = [
+            "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS id_type VARCHAR(64) NULL",
+            "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS id_number VARCHAR(120) NULL",
+            "ALTER TABLE units ADD COLUMN IF NOT EXISTS description TEXT NULL",
+            "ALTER TABLE units ADD COLUMN IF NOT EXISTS unit_images_json TEXT NULL",
+            "ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS last_renewal_reminder_sent DATE NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at DATETIME NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_at DATETIME NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(255) NULL",
+            # New tables for tenant modules (MySQL)
+            "CREATE TABLE IF NOT EXISTS announcements (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, content TEXT NOT NULL, category VARCHAR(50), is_active BOOLEAN DEFAULT TRUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS documents (id INT AUTO_INCREMENT PRIMARY KEY, tenant_profile_id INT NOT NULL, title VARCHAR(200) NOT NULL, document_type VARCHAR(50) NOT NULL, file_path VARCHAR(255) NOT NULL, uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id), INDEX (tenant_profile_id))",
+            "CREATE TABLE IF NOT EXISTS renewal_requests (id INT AUTO_INCREMENT PRIMARY KEY, tenant_profile_id INT NOT NULL, requested_end_date DATE NOT NULL, notes TEXT, status VARCHAR(20) DEFAULT 'pending', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id), INDEX (tenant_profile_id))",
+            "CREATE TABLE IF NOT EXISTS feedbacks (id INT AUTO_INCREMENT PRIMARY KEY, tenant_profile_id INT NOT NULL, category VARCHAR(50) NOT NULL, rating INT, comments TEXT NOT NULL, status VARCHAR(20) DEFAULT 'submitted', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (tenant_profile_id) REFERENCES tenant_profiles(id), INDEX (tenant_profile_id))",
+        ]
+    
     for stmt in stmts:
         try:
             db.session.execute(text(stmt))
             db.session.commit()
-        except Exception:
+        except Exception as e:
+            # Log error but continue with other statements
+            print(f"Schema update skipped (may already exist): {str(e)[:100]}")
             db.session.rollback()
 
