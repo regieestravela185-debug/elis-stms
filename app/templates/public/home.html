@@ -3187,6 +3187,7 @@
       if (otpVerifyForm) {
         otpVerifyForm.addEventListener('submit', async (e) => {
           e.preventDefault();
+          e.stopPropagation(); // Prevent any other form handlers
           hideAlert();
           
           const formData = new FormData(otpVerifyForm);
@@ -3197,12 +3198,27 @@
             const response = await fetch('{{ url_for("auth.verify_otp_post") }}', {
               method: 'POST',
               headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
               },
               body: formData
             });
             
+            console.log('OTP Response status:', response.status);
+            console.log('OTP Response headers:', response.headers.get('content-type'));
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              console.error('Non-JSON response received:', await response.text());
+              showAlert('❌ Server error. Please try again or contact support.', 'danger');
+              otpVerifyBtn.disabled = false;
+              otpVerifyBtn.textContent = 'Verify';
+              return;
+            }
+            
             const data = await response.json();
+            console.log('OTP Response data:', data);
             
             if (data.success) {
               // Success - show message and redirect
@@ -3211,12 +3227,13 @@
                 window.location.href = data.redirect || '/';
               }, 500);
             } else {
-              // Error - show message and stay on modal
-              showAlert(data.message || 'Invalid OTP. Please try again.', 'danger');
+              // Error - show message and stay on modal (DO NOT CLOSE MODAL)
+              console.log('OTP verification failed:', data.message);
+              showAlert(data.message || '❌ Invalid OTP. Please try again.', 'danger');
               
               // Clear input and refocus
               otpInput.value = '';
-              otpInput.focus();
+              setTimeout(() => otpInput.focus(), 100);
               
               // If there's a redirect in error (like need to re-register), redirect after delay
               if (data.redirect) {
@@ -3227,7 +3244,7 @@
             }
           } catch (error) {
             console.error('OTP verification error:', error);
-            showAlert('Network error. Please check your connection and try again.', 'danger');
+            showAlert('❌ Network error. Please check your connection and try again.', 'danger');
           } finally {
             otpVerifyBtn.disabled = false;
             otpVerifyBtn.textContent = 'Verify';
