@@ -371,7 +371,7 @@
     log.innerHTML = `
       <div class="chat-welcome">
         <div class="chat-welcome__avatar">
-          <span class="ellie-av"><img class="ellie-av__night" src="/static/img/ellie-night.jpg" alt="Ellie" loading="lazy"><img class="ellie-av__day" src="/static/img/ellie-day.jpg" alt="Ellie (kape mode)" loading="lazy"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5 9 7M17 4.5 15 7"/><path d="M12 3.8c-3.4 0-6.2 2.8-6.2 6.2v2.4a6.2 6.2 0 0 0 12.4 0v-2.4c0-3.4-2.8-6.2-6.2-6.2Z"/><circle cx="9.3" cy="10.4" r="2"/><circle cx="14.7" cy="10.4" r="2"/><circle cx="9.3" cy="10.4" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="10.4" r="0.6" fill="currentColor" stroke="none"/><path d="M12 12.5 11 13.9h2Z" fill="currentColor" stroke="none"/><path d="M8.5 19.5 7.3 21M15.5 19.5 16.7 21"/></svg>
         </div>
         <div class="chat-welcome__bubble">
           <p><strong>Kumusta! Ako si Ellie 🦉</strong> — ang virtual assistant ng The Elis Center. Matutulungan kita sa pricing, location, viewing, requirements, office hours, reservation, maintenance, at iba pa.</p>

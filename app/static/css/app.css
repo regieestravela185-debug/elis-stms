@@ -75,52 +75,8 @@ a{color:inherit}
 .env-widget__sep{ opacity:.4 }
 @media (max-width: 640px){ .env-widget{ display:none } }
 
-/* Ellie the owl 🦉 — a living, FLOATING character (not a flat profile pic) */
-.ellie-av{ display:block; width:100%; height:100%; position:relative }
-.ellie-av img{
-  width:100%; height:100%; object-fit:cover; display:block;
-  /* feathered soft edges so there's no hard circular "photo" frame */
-  -webkit-mask-image: radial-gradient(circle at 50% 44%, #000 55%, rgba(0,0,0,0) 74%);
-          mask-image: radial-gradient(circle at 50% 44%, #000 55%, rgba(0,0,0,0) 74%);
-}
-.ellie-av__day{ display:none }
-html.is-day .ellie-av__night{ display:none }
-html.is-day .ellie-av__day{ display:block }
-
-/* Make every Ellie container transparent so the character floats freely */
-.chat-fab,
-.chat-panel__avatar,
-.chat-welcome__avatar,
-.chat-bubble--bot .chat-bubble__avatar{
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-.chat-fab__pulse{ display:none !important }
-
-/* The corner launcher = a big floating owl mascot with a ground shadow */
-.chat-fab{
-  width: 90px; height: 90px;
-  overflow: visible;
-  animation: ellieFloat 3.6s ease-in-out infinite;
-}
-.chat-fab .ellie-av{ filter: drop-shadow(0 6px 9px rgba(0,0,0,.30)) }
-.chat-fab:hover{ animation-duration: 1.9s }
-.chat-fab::after{
-  content:""; position:absolute; left:50%; bottom:-4px; transform:translateX(-50%);
-  width:46px; height:9px; border-radius:50%;
-  background:rgba(0,0,0,.22); filter:blur(3px);
-  animation: ellieShadow 3.6s ease-in-out infinite; z-index:-1;
-}
-@keyframes ellieFloat{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-9px) } }
-@keyframes ellieShadow{ 0%,100%{ transform:translateX(-50%) scale(1); opacity:.24 } 50%{ transform:translateX(-50%) scale(.78); opacity:.14 } }
-
-/* Header + welcome owls get a gentle "alive" bob too */
-.chat-panel__avatar, .chat-welcome__avatar{ animation: ellieBob 3s ease-in-out infinite }
-@keyframes ellieBob{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-2px) } }
-
-/* clear space above the bigger floating owl for the open chat panel */
-.chat-panel{ bottom: 122px }
+/* Ellie the owl 🦉 — clean, simple round avatar (AI-assistant style) */
+.chat-fab svg{ width: 26px; height: 26px }
 .nav__profile{
   font-size:12px;
   font-weight:700;
