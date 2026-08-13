@@ -13,20 +13,20 @@
   <section class="dash-panel">
     <!-- Statistics Dashboard -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
-      <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.total }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #3b82f6;">{{ stats.total }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Total Documents</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.this_month }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #10b981;">{{ stats.this_month }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Uploaded This Month</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.tenants_with_docs }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #f59e0b;">{{ stats.tenants_with_docs }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Tenants with Documents</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.unviewed }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #ef4444;">{{ stats.unviewed }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Unviewed Documents</div>
 </div>
 </div>
@@ -88,7 +88,7 @@
 
       <div id="tenantInfo" style="display: none; margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
         <p style="margin: 0; font-size: 14px; color: #1e40af;">
-          <strong>ℹ Selected Tenant:</strong> <span id="tenantName"></span> | <strong>Unit:</strong> <span id="tenantUnit"></span> | <strong>Building:</strong> <span id="tenantBuilding"></span>
+          <strong>Selected Tenant:</strong> <span id="tenantName"></span> | <strong>Unit:</strong> <span id="tenantUnit"></span> | <strong>Building:</strong> <span id="tenantBuilding"></span>
 </p>
 </div>
 </div>
@@ -291,19 +291,30 @@
   <style>
     .stat-card {
       padding: 24px;
-      border-radius: 12px;
-      color: white;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(20,20,23,0.06);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(20,20,23,0.03), 0 12px 28px rgba(20,20,23,0.04);
+      transition: all .3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 2px 4px rgba(20,20,23,0.04), 0 20px 40px rgba(20,20,23,0.07);
+      border-color: rgba(215,179,91,0.28);
     }
     .stat-card__value {
+      font-family: 'Playfair Display', Georgia, serif;
       font-size: 36px;
-      font-weight: 900;
+      font-weight: 700;
       margin-bottom: 8px;
     }
     .stat-card__label {
-      font-size: 14px;
-      opacity: 0.95;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
     }
     .empty-state {
       text-align: center;

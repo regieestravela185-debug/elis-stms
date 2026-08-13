@@ -36,14 +36,20 @@
       }
       .dash-body h1, .dash-body h2, .dash-body h3{ color: #201c14; }
 
-      /* Refined card system: hairline border + soft low shadow */
+      /* Refined card system: hairline border + soft low shadow.
+         NOTE: do NOT force a background — some cards intentionally use a
+         colored gradient with white text; forcing white made them invisible. */
       .dash-body .card,
       .dash-body .metric,
       .chart-container, .analytics-card, .action-card, .stat-mini{
-        background: #fff !important;
         border: 1px solid rgba(20,20,23,0.06) !important;
         border-radius: 18px !important;
         box-shadow: 0 1px 2px rgba(20,20,23,0.03), 0 12px 28px rgba(20,20,23,0.04) !important;
+      }
+      /* Plain (non-colored) surfaces get a clean white background */
+      .dash-body .metric,
+      .chart-container, .analytics-card, .stat-mini{
+        background: #fff;
       }
       .dash-body .card:hover,
       .dash-body .metric:hover,
