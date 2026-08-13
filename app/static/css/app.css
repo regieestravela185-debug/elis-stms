@@ -75,14 +75,13 @@ a{color:inherit}
 .env-widget__sep{ opacity:.4 }
 @media (max-width: 640px){ .env-widget{ display:none } }
 
-/* Ellie the owl: awake at night, asleep by day (owls are nocturnal 🦉) */
-.owl-asleep{ display:none }
+/* Ellie the owl (nocturnal 🦉): normal eyes at night, tired RED eyes by day */
+.owl-asleep{ display:none }          /* not used — Ellie stays awake */
 .owl-awake{ display:inline }
-html.is-day .owl-awake{ display:none }
-html.is-day .owl-asleep{ display:inline }
-/* gentle "breathing" while asleep */
-html.is-day .owl-ico{ animation: owlSnooze 3.2s ease-in-out infinite }
-@keyframes owlSnooze{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(0.6px) } }
+/* Daytime = been up all night → bloodshot, tired red eyes */
+html.is-day .owl-awake circle{ stroke:#ff4d4d; fill:#ff4d4d }
+html.is-day .owl-awake{ animation: owlTired 2.6s ease-in-out infinite }
+@keyframes owlTired{ 0%,100%{ opacity:1 } 50%{ opacity:.7 } }
 .nav__profile{
   font-size:12px;
   font-weight:700;
