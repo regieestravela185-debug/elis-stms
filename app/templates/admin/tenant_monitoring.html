@@ -306,6 +306,7 @@
               <th>Move-in Date</th>
               <th>Move-out Date</th>
               <th>Status</th>
+              <th>Renewal Risk</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -377,6 +378,16 @@
                   <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3);">
                      Active
 </span>
+                {% endif %}
+</td>
+              <td>
+                {% set _ch = item.churn %}
+                {% if _ch %}
+                  {% set _lc = '#ef4444' if _ch.level == 'high' else ('#eab308' if _ch.level == 'medium' else '#22c55e') %}
+                  <span class="badge" style="background: {{ _lc }}1a; color: {{ _lc }}; border: 1px solid {{ _lc }}40; font-weight: 700;" title="{{ _ch.reasons|join('; ') }}">
+                    {{ _ch.level|title }} · {{ _ch.score }}
+                  </span>
+                  <div class="muted" style="font-size: 10px; margin-top: 4px; max-width: 180px;">{{ _ch.reasons[0] }}</div>
                 {% endif %}
 </td>
               <td>
@@ -499,7 +510,7 @@ document.addEventListener('DOMContentLoaded', function() {
         noResultsRow = document.createElement('tr');
         noResultsRow.id = 'noResultsRow';
         noResultsRow.innerHTML = `
-          <td colspan="6" style="text-align: center; padding: 60px 20px;">
+          <td colspan="7" style="text-align: center; padding: 60px 20px;">
             <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Tenants Found</div>
             <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
 </td>

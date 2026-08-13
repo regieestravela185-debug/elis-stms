@@ -682,6 +682,8 @@ def reset_blockchain_alarm():
 def tenant_monitoring():
     _ensure_admin()
     from datetime import date, timedelta
+    from sqlalchemy import func
+    from ...ai_utils import churn_score
     
     search_query = request.args.get('search', '').strip()
     building_filter = request.args.get('building', '')
@@ -746,13 +748,28 @@ def tenant_monitoring():
             RenewalRequest.tenant_profile_id == t.id,
             RenewalRequest.status == RenewalRequestStatus.PENDING
         ).first()
-        
+
+        # Renewal/churn risk (rule-based heuristic)
+        late_payments = db.session.query(Payment).filter(
+            Payment.tenant_profile_id == t.id, Payment.is_late == True
+        ).count()
+        open_concerns = db.session.query(Concern).filter(
+            Concern.tenant_profile_id == t.id,
+            Concern.status != ConcernStatus.RESOLVED
+        ).count()
+        avg_rating = db.session.query(func.avg(Feedback.rating)).filter(
+            Feedback.tenant_profile_id == t.id, Feedback.rating.isnot(None)
+        ).scalar()
+        avg_rating = round(float(avg_rating), 1) if avg_rating else None
+        churn = churn_score(days_remaining, late_payments, open_concerns, avg_rating)
+
         monitoring_data.append({
             "profile": t,
             "days_remaining": days_remaining,
             "status": status,
             "has_pending_renewal": renewal is not None,
-            "duration_days": duration_days
+            "duration_days": duration_days,
+            "churn": churn,
         })
     
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
