@@ -667,9 +667,14 @@
             return;
           }
           
-          const authenticity = data.id_authenticity_score ? (data.id_authenticity_score * 100).toFixed(0) : '—';
-          const faceMatch = data.face_match_score ? (data.face_match_score * 100).toFixed(0) : '—';
+          const authNum = (data.id_authenticity_score != null) ? Math.round(data.id_authenticity_score * 100) : null;
           const log = data.verification_log || {};
+          // 3-tier verdict derived from the authenticity score
+          let vLabel, vColor, vBg;
+          if (authNum == null) { vLabel = 'Not analyzed'; vColor = '#6b7280'; vBg = '#f3f4f6'; }
+          else if (authNum >= 70) { vLabel = 'Likely Genuine'; vColor = '#065f46'; vBg = '#d1fae5'; }
+          else if (authNum >= 40) { vLabel = 'Needs Review'; vColor = '#92400e'; vBg = '#fef3c7'; }
+          else { vLabel = 'Likely Tampered / Fake'; vColor = '#991b1b'; vBg = '#fee2e2'; }
           
           let statusBadge = '';
           if (data.verification_status === 'verified') {
@@ -699,7 +704,25 @@
               <h3 style="margin:0;">Verification Details</h3>
               ${statusBadge}
 </div>
-            
+
+            <!-- ID Authenticity (AI estimate) -->
+            <div style="background:${vBg}; border:1px solid ${vColor}33; border-radius:12px; padding:16px; margin-bottom:20px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <div>
+                  <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:${vColor}; font-weight:700;">ID Authenticity (AI estimate)</div>
+                  <div style="font-size:34px; font-weight:800; color:${vColor}; line-height:1.1;">${authNum != null ? authNum + '%' : '—'}</div>
+                </div>
+                <span style="background:#fff; color:${vColor}; border:1px solid ${vColor}55; padding:6px 14px; border-radius:999px; font-weight:700; font-size:13px;">${vLabel}</span>
+              </div>
+              <div style="height:8px; border-radius:999px; background:rgba(0,0,0,0.08); margin-top:12px; overflow:hidden;">
+                <div style="height:100%; width:${authNum != null ? authNum : 0}%; background:${vColor};"></div>
+              </div>
+              ${reasonsHtml}
+              <div style="margin-top:10px; font-size:12px; color:${vColor}; opacity:.85;">
+                AI-assisted estimate from image forensics (tampering, noise, QR). Please still review the ID image below — the final decision is yours.
+              </div>
+</div>
+
             <!-- ID Document Only -->
             <div>
               <h4 style="margin:0 0 12px 0; color:#64748b; font-size:12px; text-transform:uppercase;">ID Document</h4>

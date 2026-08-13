@@ -67,85 +67,101 @@ def detect_fake_id(image_path: str) -> dict:
     - Sensor noise check (real photos have noise; AI/screenshots are too clean)
     Returns dict with fake_score (0-1, higher = more suspicious) and reasons.
     """
-    reasons = []
+    # Calibrated, evidence-weighted scoring.
+    #   - STRONG signals (tampering/AI): ELA, sensor noise, unreadable QR.
+    #   - WEAK signals (common for legit scans too): EXIF, file format, aspect.
+    # This avoids over-flagging genuine scanned/photographed IDs.
+    reasons = []      # warning flags (things that lower authenticity)
+    positives = []    # reassuring signals (things that raise authenticity)
     fake_score = 0.0
-    
+
     if not PIL_AVAILABLE:
-        return {"fake_score": 0.0, "is_fake": False, "reasons": ["PIL not available"]}
-    
+        return {"fake_score": 0.0, "is_fake": False, "authenticity": 100,
+                "verdict": "unknown", "reasons": [], "positives": [], "note": "PIL not available"}
+
     try:
         img = Image.open(image_path)
         img_format = (img.format or "").upper()
-        
-        # 1. Check image dimensions
         width, height = img.size
+        aspect = max(width, height) / max(1, min(width, height))
+
+        # 1. Resolution (weak) — very low res is a mild concern
         if width < 300 or height < 200:
-            reasons.append("Image resolution too low")
-            fake_score += 0.25
-        
-        # 2. Check aspect ratio
-        aspect = max(width, height) / min(width, height)
-        if aspect > 2.5:
-            reasons.append("Unusual aspect ratio (possible screenshot)")
-            fake_score += 0.2
-        
-        # 3. EXIF metadata - real phone photos have camera tags
-        # NOTE: Many legitimate IDs are scanned/photographed without EXIF, so this is just a warning
-        exif_data = img._getexif() if hasattr(img, '_getexif') else None
-        has_camera_exif = False
-        if exif_data:
-            if 271 in exif_data or 272 in exif_data or 306 in exif_data:
-                has_camera_exif = True
-        
-        if not has_camera_exif:
-            # Reduced penalty - missing EXIF is common for scanned IDs, photos of IDs, etc.
-            fake_score += 0.1  # minor penalty, not a rejection reason by itself
-        
-        # 4. File format check - real ID photos from phones are JPEG/JPG.
-        # PNG, WEBP, GIF are common for AI-generated, downloaded, or edited images.
+            reasons.append("Very low image resolution")
+            fake_score += 0.12
+
+        # 2. Aspect ratio (weak) — extreme ratios hint at a cropped screenshot
+        if aspect > 2.6:
+            reasons.append("Unusual aspect ratio (possible screenshot/crop)")
+            fake_score += 0.08
+
+        # 3. EXIF (informational) — most legit ID photos are scans without EXIF,
+        #    so absence is only a tiny nudge; presence is a positive signal.
+        exif_data = img._getexif() if hasattr(img, "_getexif") else None
+        has_camera_exif = bool(exif_data and (271 in exif_data or 272 in exif_data or 306 in exif_data))
+        if has_camera_exif:
+            positives.append("Original camera metadata (EXIF) present")
+        else:
+            fake_score += 0.05
+
+        # 4. File format (weak) — phone photos are usually JPEG
         if img_format in ("PNG", "WEBP", "GIF", "BMP", "TIFF"):
-            reasons.append(f"{img_format} format (real phone photos are JPEG, not {img_format})")
-            fake_score += 0.25
-        
-        # 5. Sensor noise check - real camera photos have natural noise.
-        # AI-generated and screenshots are unnaturally smooth.
+            reasons.append(f"{img_format} format (phone photos are usually JPEG)")
+            fake_score += 0.10
+        elif img_format in ("JPEG", "JPG"):
+            positives.append("Natural JPEG photo format")
+
+        # 5. Sensor noise (STRONG) — AI-generated/heavily-edited images are too smooth
         noise_score = compute_noise_score(image_path)
         if noise_score < 1.0:
-            reasons.append(f"Suspiciously clean/smooth image (noise={noise_score:.2f}, likely AI-generated)")
-            fake_score += 0.35
+            reasons.append(f"Unnaturally smooth image (noise={noise_score:.2f}) — possible AI/edit")
+            fake_score += 0.30
         elif noise_score < 2.0:
-            reasons.append(f"Low natural noise (noise={noise_score:.2f})")
-            fake_score += 0.15
-        
-        # 6. Error Level Analysis (ELA) - detect tampering
+            fake_score += 0.10
+        else:
+            positives.append("Natural sensor noise present")
+
+        # 6. Error Level Analysis (STRONG) — highlights re-saved/edited regions
         ela_score = compute_ela_score(image_path)
         if ela_score > 15.0:
-            reasons.append(f"High tampering indicators (ELA={ela_score:.1f})")
-            fake_score += 0.4
+            reasons.append(f"Strong tampering indicators (ELA={ela_score:.1f})")
+            fake_score += 0.35
         elif ela_score > 10.0:
-            reasons.append(f"Moderate tampering indicators (ELA={ela_score:.1f})")
-            fake_score += 0.2
-        
-        # 7. QR Code validation - real Philippine government IDs have valid QR codes.
-        # Fake/AI-generated IDs often have no QR or garbage QR that doesn't decode.
+            reasons.append(f"Some tampering indicators (ELA={ela_score:.1f})")
+            fake_score += 0.15
+        else:
+            positives.append("No tampering signs (ELA normal)")
+
+        # 7. QR code (STRONG when valid) — real PH gov IDs carry a decodable QR
         qr_check = check_qr_code(image_path)
         if qr_check["has_qr_visual"] and not qr_check["decoded"]:
-            reasons.append("QR code present but unreadable (likely fake/garbage QR)")
-            fake_score += 0.35
+            reasons.append("QR present but unreadable (possible fake QR)")
+            fake_score += 0.22
         elif qr_check["decoded"] and not qr_check["valid_format"]:
-            reasons.append(f"QR decodes but content is suspicious ({qr_check['data_preview']})")
-            fake_score += 0.15
+            reasons.append(f"QR content looks suspicious ({qr_check['data_preview']})")
+            fake_score += 0.10
         elif qr_check["decoded"] and qr_check["valid_format"]:
-            # Valid QR is a STRONG positive signal - reduce fake_score
-            reasons.append(f"✓ Valid government QR code detected")
-            fake_score = max(0.0, fake_score - 0.3)
-        
-        fake_score = min(fake_score, 1.0)
-        
+            positives.append("Valid government QR code detected")
+            fake_score = max(0.0, fake_score - 0.35)
+
+        fake_score = max(0.0, min(fake_score, 1.0))
+        authenticity = round((1.0 - fake_score) * 100)
+
+        # Clear 3-tier verdict for the admin
+        if fake_score >= 0.6:
+            verdict = "likely_fake"
+        elif fake_score >= 0.30:
+            verdict = "needs_review"
+        else:
+            verdict = "likely_genuine"
+
         return {
-            "fake_score": fake_score,
-            "is_fake": fake_score >= 0.5,  # balanced threshold - only reject clearly suspicious IDs
+            "fake_score": round(fake_score, 3),
+            "authenticity": authenticity,          # 0–100, higher = more genuine
+            "verdict": verdict,                    # likely_genuine | needs_review | likely_fake
+            "is_fake": fake_score >= 0.6,          # only clear cases are auto-flagged
             "reasons": reasons,
+            "positives": positives,
             "ela_score": ela_score,
             "noise_score": noise_score,
             "has_exif": has_camera_exif,
@@ -155,9 +171,9 @@ def detect_fake_id(image_path: str) -> dict:
         }
     except Exception as e:
         return {
-            "fake_score": 0.0,
-            "is_fake": False,
-            "reasons": [f"Fake ID check error: {str(e)}"],
+            "fake_score": 0.0, "authenticity": 100, "verdict": "unknown",
+            "is_fake": False, "reasons": [], "positives": [],
+            "note": f"Fake ID check error: {str(e)}",
         }
 
 
