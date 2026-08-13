@@ -175,6 +175,12 @@
                        LOW RATING
 </span>
                   {% endif %}
+                  {% set _s = sentiments.get(feedback.id) if sentiments else None %}
+                  {% if _s %}
+                    {% set _c = '#10b981' if _s.label == 'positive' else ('#6b7280' if _s.label == 'neutral' else '#ef4444') %}
+                    <span style="background: {{ _c }}1a; color: {{ _c }}; border: 1px solid {{ _c }}40; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;" title="AI sentiment (rule-based)">AI: {{ _s.label|title }}</span>
+                    {% if _s.flag %}<span style="background: rgba(239,68,68,0.12); color: #dc2626; border: 1px solid rgba(239,68,68,0.3); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">Needs follow-up</span>{% endif %}
+                  {% endif %}
 </div>
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                   <span class="chip" style="background: rgba(215, 179, 91, 0.15); color: #92400e; font-weight: 700;">

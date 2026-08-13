@@ -2810,7 +2810,12 @@ def feedbacks():
         query = query.order_by(Feedback.created_at.desc())
     
     feedbacks = query.all()
-    
+
+    # AI sentiment analysis (rule-based, bilingual) per feedback
+    from ...ai_utils import analyze_sentiment
+    sentiments = {f.id: analyze_sentiment(f.comments, f.rating) for f in feedbacks}
+    flagged_count = sum(1 for s in sentiments.values() if s["flag"])
+
     # Statistics
     today = date.today()
     this_month_start = today.replace(day=1)
@@ -2877,7 +2882,9 @@ def feedbacks():
         stats=stats,
         buildings=buildings,
         categories=categories,
-        today=today
+        today=today,
+        sentiments=sentiments,
+        flagged_count=flagged_count,
     )
 
 
