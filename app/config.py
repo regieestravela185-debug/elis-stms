@@ -41,6 +41,13 @@ class Config:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "app/static/uploads")
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH_MB", "10")) * 1024 * 1024
 
+    # Supabase Storage (persistent file uploads).
+    # When SUPABASE_URL + SUPABASE_SERVICE_KEY are set, uploads go to Supabase
+    # Storage instead of the local (ephemeral on Render) filesystem.
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+    SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+    SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "unit-images")
+
     MAIL_SERVER = os.getenv("MAIL_SERVER", "")
     MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "1") == "1"

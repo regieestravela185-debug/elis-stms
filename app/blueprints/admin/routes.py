@@ -825,15 +825,24 @@ def create_unit():
             flash("Maximum 4 images allowed. Only the first 4 images will be uploaded.", "warning")
             image_files = image_files[:4]
         
+        from ... import supabase_storage
+
         upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
         Path(upload_folder).mkdir(parents=True, exist_ok=True)
 
         for image_file in image_files:
             if image_file and image_file.filename:
                 filename = secure_filename(f"{unit_code}_{image_file.filename}")
-                file_path = Path(upload_folder) / filename
-                image_file.save(str(file_path))
-                image_urls.append(f"uploads/{filename}")
+                if supabase_storage.is_enabled():
+                    # Persistent storage (survives Render redeploys)
+                    url = supabase_storage.upload_file_storage(
+                        image_file, f"units/{filename}"
+                    )
+                    image_urls.append(url)
+                else:
+                    file_path = Path(upload_folder) / filename
+                    image_file.save(str(file_path))
+                    image_urls.append(f"uploads/{filename}")
 
     unit = Unit(
         building_id=building_id,
@@ -945,13 +954,21 @@ def update_unit(unit_id: int):
             flash(f"Maximum 4 images total. You have {len(image_urls)} existing images. Only {remaining_slots} new image(s) will be added.", "warning")
             image_files = image_files[:remaining_slots]
 
+        from ... import supabase_storage
+
         for image_file in image_files:
             if image_file and image_file.filename:
                 filename = secure_filename(f"{unit_code}_{image_file.filename}")
-                file_path = Path(upload_folder) / filename
-                image_file.save(str(file_path))
-                image_urls.append(f"uploads/{filename}")
-                
+                if supabase_storage.is_enabled():
+                    url = supabase_storage.upload_file_storage(
+                        image_file, f"units/{filename}"
+                    )
+                    image_urls.append(url)
+                else:
+                    file_path = Path(upload_folder) / filename
+                    image_file.save(str(file_path))
+                    image_urls.append(f"uploads/{filename}")
+
                 # Stop if we reach 4 images
                 if len(image_urls) >= 4:
                     break

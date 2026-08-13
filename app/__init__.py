@@ -1,5 +1,6 @@
 from flask import Flask
 from flask import session
+from flask import url_for
 from flask_login import current_user, logout_user
 from sqlalchemy import text
 from authlib.integrations.flask_client import OAuth
@@ -62,7 +63,19 @@ def create_app(config_object: type[Config] = Config) -> Flask:
 
     @app.context_processor
     def _inject_globals():
-        return {"current_year": datetime.utcnow().year}
+        def media_url(path):
+            """Resolve an image/file path for templates.
+
+            Absolute URLs (e.g. Supabase Storage) are returned as-is; relative
+            paths fall back to the local static folder.
+            """
+            if not path:
+                return ""
+            if str(path).startswith(("http://", "https://", "//")):
+                return path
+            return url_for("static", filename=str(path).lstrip("/"))
+
+        return {"current_year": datetime.utcnow().year, "media_url": media_url}
 
     # Add custom Jinja2 filters
     @app.template_filter('from_json')

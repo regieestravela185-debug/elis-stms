@@ -365,7 +365,7 @@
               <div class="kicker">Current Images ({{ edit_unit.unit_images_json|length }} of 4)</div>
               <div class="unit-images-preview">
                 {% for image_url in edit_unit.unit_images_json %}
-                  <img src="{{ image_url }}" alt="Unit image" class="unit-image-thumb" />
+                  <img src="{{ media_url(image_url) }}" alt="Unit image" class="unit-image-thumb" />
                 {% endfor %}
               </div>
               {% if edit_unit.unit_images_json|length >= 4 %}
