@@ -54,11 +54,22 @@
       });
   }
 
+  var hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hour12: false });
+  function applyOwlMode() {
+    var h = parseInt(hourFmt.format(new Date()), 10) % 24;
+    var day = h >= 6 && h < 18; // 6am–6pm: owl asleep; else awake
+    var root = document.documentElement;
+    root.classList.toggle("is-day", day);
+    root.classList.toggle("is-night", !day);
+  }
+
   function start() {
     tickClock();
     setInterval(tickClock, 1000);
     loadWeather();
     setInterval(loadWeather, 600000); // refresh weather every 10 min
+    applyOwlMode();
+    setInterval(applyOwlMode, 60000); // re-check day/night each minute
   }
 
   if (document.readyState === "loading") {

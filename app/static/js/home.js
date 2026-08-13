@@ -371,7 +371,7 @@
     log.innerHTML = `
       <div class="chat-welcome">
         <div class="chat-welcome__avatar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5 8 7M18 4.5 16 7"/><path d="M12 3.5a7 7 0 0 0-7 7v2.5a7 7 0 0 0 14 0V10.5a7 7 0 0 0-7-7Z"/><circle cx="9" cy="10.5" r="1.9"/><circle cx="15" cy="10.5" r="1.9"/><path d="M12 12.6 10.9 14h2.2Z"/><path d="M8.5 19 7 21M15.5 19 17 21"/></svg>
+          <svg class="owl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 4 8.5 6.5M17.5 4 15.5 6.5"/><path d="M12 3.5c-3.6 0-6.5 2.9-6.5 6.5v2.5a6.5 6.5 0 0 0 13 0V10c0-3.6-2.9-6.5-6.5-6.5Z"/><g class="owl-awake"><circle cx="9.2" cy="10.2" r="2.1"/><circle cx="14.8" cy="10.2" r="2.1"/><circle cx="9.2" cy="10.3" r="0.5" fill="currentColor" stroke="none"/><circle cx="14.8" cy="10.3" r="0.5" fill="currentColor" stroke="none"/></g><g class="owl-asleep"><path d="M7.2 10.6c.6.7 1.6.7 2.2 0"/><path d="M12.6 10.6c.6.7 1.6.7 2.2 0"/><path d="M15.5 5.5h2l-2 2h2" stroke-width="1"/></g><path d="M12 12.4 11 13.7h2Z" fill="currentColor" stroke="none"/><path d="M9 19.5 8 21M15 19.5 16 21"/></svg>
         </div>
         <div class="chat-welcome__bubble">
           <p><strong>Kumusta! Ako si Ellie 🦉</strong> — ang virtual assistant ng The Elis Center. Matutulungan kita sa pricing, location, viewing, requirements, office hours, reservation, maintenance, at iba pa.</p>

@@ -159,23 +159,51 @@ INTENTS = {
             "Reservation requirements: 1 valid government ID, a clear selfie (AI verification), and signed reservation form. / Kailangan: 1 valid government ID, malinaw na selfie, at signed reservation form.",
         ]
     },
+    "identity": {
+        "keywords": [
+            "who are you", "your name", "what's your name", "whats your name", "sino ka", "sino ka ba",
+            "ano pangalan mo", "anong pangalan mo", "name mo", "ano ka", "are you a bot", "robot ka",
+            "bot ka ba", "ellie", "owl", "kwago", "ai ka"
+        ],
+        "responses": [
+            "I'm Ellie, the virtual assistant of The Elis Center. I can help with units, pricing, reservations, payments, and more! / Ako si Ellie, ang virtual assistant ng The Elis Center. Matutulungan kita sa units, presyo, reservation, payment, at iba pa!",
+        ]
+    },
+    "landmarks": {
+        "keywords": [
+            "near", "malapit", "landmark", "school", "eskwela", "university", "lpu", "nu", "waltermart",
+            "sm", "mall", "highway", "student", "estudyante", "accessible", "commute", "jeep", "terminal"
+        ],
+        "responses": [
+            "The Elis Center is along the highway in Calamba, near LPU Laguna, NU Laguna, WalterMart, and SM—convenient for students and businesses. / Nasa highway ng Calamba, malapit sa LPU, NU Laguna, WalterMart, at SM.",
+        ]
+    },
+    "contract_terms": {
+        "keywords": [
+            "contract length", "how long", "term", "minimum", "1 year", "one year", "tagal ng contract",
+            "gaano katagal", "lease term", "duration", "commitment"
+        ],
+        "responses": [
+            "Commercial units have a minimum 1-year contract term. Residential units are all studio type. Power and water are billed separately (exclusive). / Commercial: minimum 1 taon. Residential: studio type. Hiwalay ang bayad sa kuryente at tubig.",
+        ]
+    },
     "greeting": {
         "keywords": ["hello", "hi", "hey", "kumusta", "kamusta", "good morning", "good afternoon", "good evening", "magandang"],
         "responses": [
-            "Hello! Welcome to ELIS Business Center. How can I help? / Kumusta! Paano kita matutulungan?",
-            "Hi! Ask me about units, pricing, reservations, payments, amenities, and more. / Magtanong ka tungkol sa units, presyo, reservation, payment, atbp.",
+            "Hello! I'm Ellie, your Elis Center assistant. How can I help? / Kumusta! Ako si Ellie, ang assistant ng Elis Center. Paano kita matutulungan?",
+            "Hi! Ako si Ellie. Ask me about units, pricing, reservations, payments, amenities, and more. / Magtanong ka tungkol sa units, presyo, reservation, payment, atbp.",
         ]
     },
     "goodbye": {
         "keywords": ["bye", "goodbye", "thanks", "thank you", "salamat", "see you", "later"],
         "responses": [
-            "Thanks for chatting with ELIS! Have a great day. / Salamat sa pag-chat sa ELIS!",
+            "Thanks for chatting! Ako si Ellie—balik ka lang kung may tanong. Have a great day! / Salamat sa pag-chat! Balik ka lang kung may tanong.",
         ]
     },
     "fallback": {
         "keywords": [],
         "responses": [
-            "I'm not sure I understand. Try asking about units, pricing, reservation, payments, amenities, parking, pets, or maintenance. / Pakitanong tungkol sa units, presyo, reservation, payments, amenities, parking, alaga, o maintenance.",
+            "Sorry, hindi ko masyadong nagets. Try asking about units, pricing, reservation, payments, amenities, parking, pets, or maintenance. — Ellie 🦉 / Pakitanong tungkol sa units, presyo, reservation, payments, amenities, parking, alaga, o maintenance.",
             "Could you rephrase that? I can help with reservations, payments, amenities, and more. / Pakiulit ang tanong. Pwede ako tumulong sa reservations, payments, amenities, atbp.",
         ]
     }

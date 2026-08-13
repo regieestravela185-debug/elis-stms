@@ -74,6 +74,15 @@ a{color:inherit}
 .env-widget__time{ font-variant-numeric: tabular-nums; letter-spacing:.02em; min-width:78px; text-align:right }
 .env-widget__sep{ opacity:.4 }
 @media (max-width: 640px){ .env-widget{ display:none } }
+
+/* Ellie the owl: awake at night, asleep by day (owls are nocturnal 🦉) */
+.owl-asleep{ display:none }
+.owl-awake{ display:inline }
+html.is-day .owl-awake{ display:none }
+html.is-day .owl-asleep{ display:inline }
+/* gentle "breathing" while asleep */
+html.is-day .owl-ico{ animation: owlSnooze 3.2s ease-in-out infinite }
+@keyframes owlSnooze{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(0.6px) } }
 .nav__profile{
   font-size:12px;
   font-weight:700;
