@@ -13,28 +13,28 @@
   <section class="dash-panel">
     <!-- Statistics Dashboard -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
-      <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.total }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #3b82f6;">{{ stats.total }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Total Feedback</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.submitted }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #f59e0b;">{{ stats.submitted }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Unreviewed</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.reviewed }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #10b981;">{{ stats.reviewed }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Reviewed</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.avg_rating }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #D7B35B;">{{ stats.avg_rating }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Avg Rating</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.this_month }}</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #8b5cf6;">{{ stats.this_month }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">This Month</div>
 </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); position: relative; overflow: hidden;">
-        <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.satisfaction_score }}%</div>
+      <div class="stat-card" style="position: relative; overflow: hidden;">
+        <div class="stat-card__value" style="position: relative; z-index: 1; color: #ec4899;">{{ stats.satisfaction_score }}%</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Satisfaction</div>
 </div>
 </div>
@@ -270,8 +270,6 @@
 </div>
     {% else %}
       <div class="empty-state" style="text-align: center; padding: 80px 20px;">
-        <div style="width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(215, 179, 91, 0.3);">
-</div>
         <div class="empty-state__title" style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">No Feedback</div>
         <div class="empty-state__text" style="font-size: 16px; color: #666; max-width: 500px; margin: 0 auto; line-height: 1.6;">
           {% if request.args.get('search') or request.args.get('category') or request.args.get('rating') or request.args.get('status') or request.args.get('building') %}
@@ -287,9 +285,25 @@
   <style>
     .stat-card {
       padding: 24px;
-      border-radius: 12px;
-      color: white;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(20,20,23,0.06);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(20,20,23,0.03), 0 12px 28px rgba(20,20,23,0.04);
+      transition: all .3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 2px 4px rgba(20,20,23,0.04), 0 20px 40px rgba(20,20,23,0.07);
+      border-color: rgba(215,179,91,0.28);
+    }
+    .stat-card__value {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 36px; font-weight: 700; margin-bottom: 8px;
+    }
+    .stat-card__label {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .12em; color: var(--muted);
     }
     .stat-card__value {
       font-size: 36px;
