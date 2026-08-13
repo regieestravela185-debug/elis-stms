@@ -244,6 +244,7 @@
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
     
     <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/env_widget.js') }}"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -280,6 +281,7 @@
             {% block topbar_left %}{% endblock %}
 </div>
           <div class="topbar__right">
+            {% include "components/_env_widget.html" %}
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
             <!-- Notification bell (admin only) -->
             <div class="topbar-widget js-dropdown">

@@ -58,6 +58,22 @@ a{color:inherit}
 .brand__title{font-weight:700; letter-spacing:.12em; font-size:12px}
 .brand__subtitle{color:var(--muted); font-size:12px}
 .nav__actions{display:flex; gap:10px; align-items:center}
+
+/* Live time + weather widget (nav + dashboard topbar) */
+.env-widget{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 12px;
+  border-radius:999px;
+  border:1px solid rgba(20,20,23,.10);
+  background: rgba(255,255,255,.6);
+  font-size:12px; font-weight:600;
+  color: rgba(20,20,23,.75);
+  white-space:nowrap;
+}
+.env-widget__weather{ color: rgba(20,20,23,.85) }
+.env-widget__time{ font-variant-numeric: tabular-nums; letter-spacing:.02em; min-width:78px; text-align:right }
+.env-widget__sep{ opacity:.4 }
+@media (max-width: 640px){ .env-widget{ display:none } }
 .nav__profile{
   font-size:12px;
   font-weight:700;

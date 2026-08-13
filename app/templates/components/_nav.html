@@ -19,6 +19,7 @@
     {% endif %}
 
     <div class="nav__actions">
+      {% include "components/_env_widget.html" %}
       {% if current_user.is_authenticated %}
         {% if current_user.role.value == "user" %}
           <span class="nav__profile muted">Hi, {{ current_user.full_name }}</span>

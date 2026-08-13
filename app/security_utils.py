@@ -171,7 +171,7 @@ def apply_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: https: http:; "
-        "connect-src 'self' https://accounts.google.com; "
+        "connect-src 'self' https://accounts.google.com https://api.open-meteo.com; "
         "frame-src https://accounts.google.com https://www.google.com https://maps.google.com;"
     )
     
