@@ -216,8 +216,8 @@
   <section class="dash-panel">
     <!-- Back Button -->
     <a href="{{ url_for('admin.users') }}" class="back-button">
-      ← Back to Customers
-    </a>
+       Back to Customers
+</a>
 
     <!-- User Header -->
     <div class="user-header">
@@ -228,62 +228,62 @@
         <div class="user-badges">
           {% if user.role.value == 'tenant' %}
             <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 14px; padding: 8px 16px;">
-              🏠 Tenant
-            </span>
+               Tenant
+</span>
           {% else %}
             <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3); font-size: 14px; padding: 8px 16px;">
-              👤 User
-            </span>
+               User
+</span>
           {% endif %}
           
           {% if user.is_email_verified %}
             <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 14px; padding: 8px 16px;">
-              ✅ Verified
-            </span>
+               Verified
+</span>
           {% else %}
             <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 14px; padding: 8px 16px;">
-              ⏳ Unverified
-            </span>
+               Unverified
+</span>
           {% endif %}
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Info Grid -->
     <div class="info-grid">
       <div class="info-card">
-        <div class="info-card__label">📅 Joined Date</div>
+        <div class="info-card__label">Joined Date</div>
         <div class="info-card__value">{{ user.created_at.strftime("%B %d, %Y") }}</div>
-      </div>
+</div>
       
       <div class="info-card">
-        <div class="info-card__label">🕐 Last Login</div>
+        <div class="info-card__label">Last Login</div>
         <div class="info-card__value">
           {% if user.last_login_at %}
             {{ user.last_login_at.strftime("%b %d, %Y %I:%M %p") }}
           {% else %}
             <span style="color: #9ca3af;">Never</span>
           {% endif %}
-        </div>
-      </div>
+</div>
+</div>
       
       <div class="info-card">
-        <div class="info-card__label">🔢 User ID</div>
+        <div class="info-card__label">User ID</div>
         <div class="info-card__value">#{{ user.id }}</div>
-      </div>
+</div>
       
       <div class="info-card">
-        <div class="info-card__label">📋 Total Reservations</div>
+        <div class="info-card__label">Total Reservations</div>
         <div class="info-card__value">{{ reservations|length }}</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Tenant Profile (if tenant) -->
     {% if tenant_profile %}
       <div class="tenant-profile-card">
         <div class="section-header" style="border-color: rgba(59, 130, 246, 0.3);">
-          <h3 class="section-title">🏠 Tenant Profile</h3>
-        </div>
+          <h3 class="section-title">Tenant Profile</h3>
+</div>
         
         <div class="info-grid">
           <div class="info-card" style="border-color: rgba(59, 130, 246, 0.3);">
@@ -294,8 +294,8 @@
               {% else %}
                 <span style="color: #9ca3af;">No unit assigned</span>
               {% endif %}
-            </div>
-          </div>
+</div>
+</div>
           
           <div class="info-card" style="border-color: rgba(59, 130, 246, 0.3);">
             <div class="info-card__label">Contract Start</div>
@@ -305,8 +305,8 @@
               {% else %}
                 <span style="color: #9ca3af;">N/A</span>
               {% endif %}
-            </div>
-          </div>
+</div>
+</div>
           
           <div class="info-card" style="border-color: rgba(59, 130, 246, 0.3);">
             <div class="info-card__label">Contract End</div>
@@ -316,23 +316,23 @@
               {% else %}
                 <span style="color: #9ca3af;">N/A</span>
               {% endif %}
-            </div>
-          </div>
+</div>
+</div>
           
           <div class="info-card" style="border-color: rgba(59, 130, 246, 0.3);">
             <div class="info-card__label">Total Payments</div>
             <div class="info-card__value">{{ payments|length }}</div>
-          </div>
-        </div>
-      </div>
+</div>
+</div>
+</div>
     {% endif %}
 
     <!-- Reservations History -->
     <div class="section-card">
       <div class="section-header">
-        <h3 class="section-title">📋 Reservation History</h3>
+        <h3 class="section-title">Reservation History</h3>
         <span class="badge" style="font-size: 14px;">{{ reservations|length }} total</span>
-      </div>
+</div>
       
       {% if reservations %}
         <div style="max-height: 500px; overflow-y: auto;">
@@ -340,7 +340,7 @@
             <div class="timeline-item">
               <div class="timeline-date">
                 {{ reservation.created_at.strftime("%B %d, %Y at %I:%M %p") }}
-              </div>
+</div>
               <div class="timeline-content">
                 <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
                   <div style="flex: 1; min-width: 200px;">
@@ -350,11 +350,11 @@
                       {% else %}
                         Unit N/A
                       {% endif %}
-                    </strong>
+</strong>
                     <div class="muted" style="font-size: 13px; margin-top: 4px;">
                       Reservation ID: #{{ reservation.id }}
-                    </div>
-                  </div>
+</div>
+</div>
                   <div style="text-align: right;">
                     {% if reservation.status.value == 'approved' %}
                       <span class="badge badge--available">Approved</span>
@@ -367,27 +367,27 @@
                     {% else %}
                       <span class="badge">{{ reservation.status.value|title }}</span>
                     {% endif %}
-                  </div>
-                </div>
-              </div>
-            </div>
+</div>
+</div>
+</div>
+</div>
           {% endfor %}
-        </div>
+</div>
       {% else %}
         <div class="empty-state-small">
-          <div class="empty-state-small__icon">📋</div>
+          <div class="empty-state-small__icon"></div>
           <div class="empty-state-small__text">No reservations yet</div>
-        </div>
+</div>
       {% endif %}
-    </div>
+</div>
 
     <!-- Payment History (if tenant) -->
     {% if tenant_profile %}
       <div class="section-card">
         <div class="section-header">
-          <h3 class="section-title">💵 Payment History</h3>
+          <h3 class="section-title">Payment History</h3>
           <span class="badge" style="font-size: 14px;">{{ payments|length }} payments</span>
-        </div>
+</div>
         
         {% if payments %}
           <div style="max-height: 500px; overflow-y: auto;">
@@ -399,41 +399,41 @@
                   {% else %}
                     Date not available
                   {% endif %}
-                </div>
+</div>
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
                       <strong style="font-size: 18px; color: #22c55e;">
                         ₱{{ '{:,.2f}'.format(payment.amount|float) }}
-                      </strong>
+</strong>
                       {% if payment.reference %}
                         <div class="muted mono" style="font-size: 12px; margin-top: 4px;">
                           Ref: {{ payment.reference }}
-                        </div>
+</div>
                       {% endif %}
                       {% if payment.payment_month %}
                         <div class="muted" style="font-size: 12px; margin-top: 4px;">
                           For: {{ payment.payment_month }}
-                        </div>
+</div>
                       {% endif %}
-                    </div>
+</div>
                     <div>
                       <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3);">
-                        ✅ Paid
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                         Paid
+</span>
+</div>
+</div>
+</div>
+</div>
             {% endfor %}
-          </div>
+</div>
         {% else %}
           <div class="empty-state-small">
-            <div class="empty-state-small__icon">💵</div>
+            <div class="empty-state-small__icon"></div>
             <div class="empty-state-small__text">No payment history</div>
-          </div>
+</div>
         {% endif %}
-      </div>
+</div>
     {% endif %}
   </section>
 {% endblock %}

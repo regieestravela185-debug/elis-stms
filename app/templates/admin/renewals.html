@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block topbar_left %}
-  <div class="topbar__title">↻ Renewal Requests</div>
+  <div class="topbar__title">Renewal Requests</div>
 {% endblock %}
 
 {% block content %}
@@ -14,49 +14,43 @@
     <!-- Statistics Dashboard -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
       <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">↻</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.total }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Total Requests</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">⏳</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.pending }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Pending Requests</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">✓</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.approved_this_month }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Approved This Month</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">✗</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.rejected }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Rejected Requests</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">⚠️</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.expiring_soon }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Expiring Soon (30d)</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">📊</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.avg_duration }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Avg Extension (months)</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Expiring Contracts Alert -->
     {% if expiring_without_request %}
       <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.08) 100%); border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
           <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
-            ⚠️
-          </div>
+            
+</div>
           <div>
             <h3 style="margin: 0 0 4px 0; color: #991b1b; font-size: 18px; font-weight: 700;">{{ expiring_without_request|length }} Contracts Expiring Soon</h3>
             <p style="margin: 0; color: #991b1b; font-size: 14px;">These tenants have contracts expiring within 30 days but haven't submitted renewal requests yet.</p>
-          </div>
-        </div>
+</div>
+</div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
           {% for tenant in expiring_without_request[:6] %}
             <div style="background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #ef4444;">
@@ -64,73 +58,73 @@
               <div style="font-size: 13px; color: #666; margin-bottom: 4px;">{{ tenant.unit.unit_code }}</div>
               <div style="font-size: 12px; color: #ef4444; font-weight: 600;">
                 Expires: {{ tenant.contract_end.strftime('%b %d, %Y') }} ({{ (tenant.contract_end - today).days }} days)
-              </div>
-            </div>
+</div>
+</div>
           {% endfor %}
-        </div>
+</div>
         {% if expiring_without_request|length > 6 %}
           <div style="margin-top: 12px; text-align: center; color: #991b1b; font-size: 14px;">
             And {{ expiring_without_request|length - 6 }} more...
-          </div>
+</div>
         {% endif %}
-      </div>
+</div>
     {% endif %}
 
     <!-- Filters and Search -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="section__header">
-        <h3>📋 All Renewal Requests <span style="font-size: 14px; font-weight: normal; color: #666;">({{ renewal_requests|length }} shown)</span></h3>
+        <h3>All Renewal Requests <span style="font-size: 14px; font-weight: normal; color: #666;">({{ renewal_requests|length }} shown)</span></h3>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
-          <a href="{{ url_for('admin.export_renewals') }}" class="btn btn--ghost btn--sm">📊 Export CSV</a>
-        </div>
-      </div>
+          <a href="{{ url_for('admin.export_renewals') }}" class="btn btn--ghost btn--sm">Export CSV</a>
+</div>
+</div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px;">
         <div>
-          <label class="label">🔍 Search</label>
+          <label class="label">Search</label>
           <input type="text" class="input" id="searchInput" placeholder="Tenant name, unit..." value="{{ request.args.get('search', '') }}">
-        </div>
+</div>
 
         <div>
-          <label class="label">📊 Status</label>
+          <label class="label">Status</label>
           <select class="input" id="statusFilter">
             <option value="">All Status</option>
-            <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>⏳ Pending</option>
-            <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>✓ Approved</option>
-            <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>✗ Rejected</option>
+            <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>Approved</option>
+            <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>Rejected</option>
           </select>
-        </div>
+</div>
 
         <div>
-          <label class="label">🏢 Building</label>
+          <label class="label">Building</label>
           <select class="input" id="buildingFilter">
             <option value="">All Buildings</option>
             {% for building in buildings %}
               <option value="{{ building.id }}" {% if request.args.get('building') == building.id|string %}selected{% endif %}>{{ building.code }}</option>
             {% endfor %}
           </select>
-        </div>
+</div>
 
         <div>
-          <label class="label">⚠️ Urgency</label>
+          <label class="label">Urgency</label>
           <select class="input" id="urgencyFilter">
             <option value="">All</option>
-            <option value="urgent" {% if request.args.get('urgency') == 'urgent' %}selected{% endif %}>🚨 Expiring Soon (30d)</option>
+            <option value="urgent" {% if request.args.get('urgency') == 'urgent' %}selected{% endif %}>Expiring Soon (30d)</option>
           </select>
-        </div>
+</div>
 
         <div>
-          <label class="label">🔄 Sort By</label>
+          <label class="label">Sort By</label>
           <select class="input" id="sortFilter">
             <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>Newest First</option>
             <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
             <option value="contract_end" {% if request.args.get('sort') == 'contract_end' %}selected{% endif %}>Contract End Date</option>
             <option value="tenant_az" {% if request.args.get('sort') == 'tenant_az' %}selected{% endif %}>Tenant (A-Z)</option>
           </select>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Renewal Requests -->
     {% if renewal_requests %}
@@ -148,19 +142,19 @@
                   <h4 style="margin: 0; font-size: 18px; font-weight: 700; color: #1a1a1a;">{{ renewal.tenant_profile.user.full_name }}</h4>
                   {% if is_urgent and renewal.status.value == 'pending' %}
                     <span style="background: rgba(239, 68, 68, 0.15); color: #991b1b; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">
-                      🚨 URGENT ({{ days_until_expiry }} days)
-                    </span>
+                       URGENT ({{ days_until_expiry }} days)
+</span>
                   {% endif %}
-                </div>
+</div>
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                   <span class="chip" style="background: rgba(215, 179, 91, 0.15); color: #92400e; font-weight: 700;">
                     {{ renewal.tenant_profile.unit.building.code }}-{{ renewal.tenant_profile.unit.unit_number }}
-                  </span>
+</span>
                   <span style="font-size: 13px; color: #666;">
-                    📅 Requested {{ renewal.created_at.strftime('%b %d, %Y') }}
-                  </span>
-                </div>
-              </div>
+                     Requested {{ renewal.created_at.strftime('%b %d, %Y') }}
+</span>
+</div>
+</div>
               <div>
                 {% set renewal_chip_class = 'renewal-chip-rejected' %}
                 {% if renewal.status.value == 'pending' %}
@@ -169,12 +163,12 @@
                   {% set renewal_chip_class = 'renewal-chip-approved' %}
                 {% endif %}
                 <span class="chip {{ renewal_chip_class }}" style="font-size: 13px; font-weight: 600;">
-                  {% if renewal.status.value == 'pending' %}⏳ Pending
-                  {% elif renewal.status.value == 'approved' %}✓ Approved
-                  {% else %}✗ Rejected{% endif %}
-                </span>
-              </div>
-            </div>
+                  {% if renewal.status.value == 'pending' %} Pending
+                  {% elif renewal.status.value == 'approved' %} Approved
+                  {% else %} Rejected{% endif %}
+</span>
+</div>
+</div>
 
             <!-- Timeline Visualization -->
             <div style="background: rgba(215, 179, 91, 0.08); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
@@ -185,7 +179,7 @@
                   <div style="background: white; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">
                     <div style="font-size: 18px; font-weight: 700; color: #1a1a1a;">
                       {{ renewal.tenant_profile.contract_end.strftime('%b %d, %Y') if renewal.tenant_profile.contract_end else 'N/A' }}
-                    </div>
+</div>
                     {% if days_until_expiry %}
                       {% set urgency_class = 'normal-text' %}
                       {% if is_urgent %}
@@ -193,20 +187,20 @@
                       {% endif %}
                       <div class="{{ urgency_class }}" style="font-size: 11px; margin-top: 4px; font-weight: 600;">
                         {{ days_until_expiry }} days remaining
-                      </div>
+</div>
                     {% endif %}
-                  </div>
-                </div>
+</div>
+</div>
 
                 <!-- Arrow -->
                 <div style="text-align: center;">
-                  <div style="font-size: 32px; color: #D7B35B;">→</div>
+                  <div style="font-size: 32px; color: #D7B35B;"></div>
                   {% if extension_months > 0 %}
                     <div style="font-size: 11px; color: #666; margin-top: 4px; font-weight: 600;">
                       +{{ extension_months }} month{{ 's' if extension_months > 1 else '' }}
-                    </div>
+</div>
                   {% endif %}
-                </div>
+</div>
 
                 <!-- Requested End Date -->
                 <div style="text-align: center;">
@@ -214,23 +208,23 @@
                   <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%); padding: 12px; border-radius: 8px; border: 2px solid rgba(16, 185, 129, 0.3);">
                     <div style="font-size: 18px; font-weight: 700; color: #065f46;">
                       {{ renewal.requested_end_date.strftime('%b %d, %Y') }}
-                    </div>
+</div>
                     {% if extension_months > 0 %}
                       <div style="font-size: 11px; color: #065f46; margin-top: 4px; font-weight: 600;">
                         Extension: {{ extension_months }} month{{ 's' if extension_months > 1 else '' }}
-                      </div>
+</div>
                     {% endif %}
-                  </div>
-                </div>
-              </div>
-            </div>
+</div>
+</div>
+</div>
+</div>
 
             <!-- Notes -->
             {% if renewal.notes %}
               <div style="background: rgba(59, 130, 246, 0.08); padding: 12px; border-radius: 8px; border-left: 3px solid #3b82f6; margin-bottom: 20px;">
-                <div style="font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 4px;">📝 TENANT NOTES:</div>
+                <div style="font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 4px;">TENANT NOTES:</div>
                 <div style="font-size: 14px; color: #1e40af;">{{ renewal.notes }}</div>
-              </div>
+</div>
             {% endif %}
 
             <!-- Actions -->
@@ -238,32 +232,31 @@
               <div style="display: flex; gap: 12px; justify-content: flex-end;">
                 <form method="post" action="{{ url_for('admin.approve_renewal', renewal_id=renewal.id) }}" style="display: inline;" onsubmit="return confirm('Approve this renewal request? Contract end date will be updated and tenant will be notified via email.');">
                   <button class="btn btn--primary" type="submit" style="padding: 10px 24px;">
-                    ✓ Approve & Notify
-                  </button>
+                     Approve & Notify
+</button>
                 </form>
                 <form method="post" action="{{ url_for('admin.reject_renewal', renewal_id=renewal.id) }}" style="display: inline;" onsubmit="return confirm('Reject this renewal request? Tenant will be notified via email.');">
                   <button class="btn btn--danger" type="submit" style="padding: 10px 24px;">
-                    ✗ Reject & Notify
-                  </button>
+                     Reject & Notify
+</button>
                 </form>
-              </div>
+</div>
             {% else %}
               <div style="text-align: right; font-size: 13px; color: #666;">
                 {% if renewal.status.value == 'approved' %}
-                  ✓ Approved on {{ renewal.updated_at.strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
+                   Approved on {{ renewal.updated_at.strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
                 {% else %}
-                  ✗ Rejected on {{ renewal.updated_at.strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
+                   Rejected on {{ renewal.updated_at.strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
                 {% endif %}
-              </div>
+</div>
             {% endif %}
-          </div>
+</div>
         {% endfor %}
-      </div>
+</div>
     {% else %}
       <div class="empty-state" style="text-align: center; padding: 80px 20px;">
         <div style="width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(215, 179, 91, 0.3);">
-          <span style="font-size: 64px;">↻</span>
-        </div>
+</div>
         <div class="empty-state__title" style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">No Renewal Requests</div>
         <div class="empty-state__text" style="font-size: 16px; color: #666; max-width: 500px; margin: 0 auto; line-height: 1.6;">
           {% if request.args.get('search') or request.args.get('status') or request.args.get('building') or request.args.get('urgency') %}
@@ -271,8 +264,8 @@
           {% else %}
             No renewal requests have been submitted yet. Tenants can submit renewal requests from their portal.
           {% endif %}
-        </div>
-      </div>
+</div>
+</div>
     {% endif %}
   </section>
 

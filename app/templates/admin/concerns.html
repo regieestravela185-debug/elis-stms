@@ -14,29 +14,25 @@
     <!-- Statistics Dashboard -->
     <div class="grid grid--4" style="gap: 16px; margin-bottom: 24px;">
       <div class="card card--lift" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">📋</div>
         <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.total }}</div>
         <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Total Concerns</div>
-      </div>
+</div>
       
       <div class="card card--lift" style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">⏳</div>
         <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.pending }}</div>
         <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Pending</div>
-      </div>
+</div>
       
       <div class="card card--lift" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">🔄</div>
         <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.in_progress }}</div>
         <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">In Progress</div>
-      </div>
+</div>
       
       <div class="card card--lift" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 100px; opacity: 0.15;">✓</div>
         <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px; position: relative; z-index: 1;">{{ stats.resolved }}</div>
         <div style="font-size: 14px; opacity: 0.95; font-weight: 600; position: relative; z-index: 1;">Resolved</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Additional Stats -->
     <div class="grid grid--3" style="gap: 16px; margin-bottom: 24px;">
@@ -44,23 +40,23 @@
         <div class="kicker">Average Resolution Time</div>
         <div style="font-size: 24px; font-weight: 700; color: #D7B35B; margin-top: 8px;">
           {{ "%.1f"|format(stats.avg_resolution_days) }} days
-        </div>
-      </div>
+</div>
+</div>
       
       <div class="card card--lift">
         <div class="kicker">Response Rate</div>
         <div style="font-size: 24px; font-weight: 700; color: #10b981; margin-top: 8px;">
           {{ stats.response_rate }}%
-        </div>
-      </div>
+</div>
+</div>
       
       <div class="card card--lift">
         <div class="kicker">Urgent Concerns</div>
         <div style="font-size: 24px; font-weight: 700; color: #ef4444; margin-top: 8px;">
           {{ stats.urgent_count }}
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Concerns by Category Chart -->
     {% if category_stats %}
@@ -71,10 +67,10 @@
           <div style="flex: 1; min-width: 150px; padding: 12px; background: rgba(215, 179, 91, 0.1); border-radius: 8px; border-left: 4px solid #D7B35B;">
             <div style="font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">{{ cat.category|replace('_', ' ')|title }}</div>
             <div style="font-size: 24px; font-weight: 700; color: #D7B35B;">{{ cat.count }}</div>
-          </div>
+</div>
         {% endfor %}
-      </div>
-    </div>
+</div>
+</div>
     {% endif %}
 
     <!-- Filters and Search -->
@@ -82,16 +78,16 @@
       <div class="section__header">
         <h3>All Concerns</h3>
         <div style="display: flex; gap: 8px;">
-          <a href="{{ url_for('admin.export_concerns') }}" class="btn btn--ghost btn--sm">📊 Export CSV</a>
-        </div>
-      </div>
+          <a href="{{ url_for('admin.export_concerns') }}" class="btn btn--ghost btn--sm">Export CSV</a>
+</div>
+</div>
 
       <div class="grid grid--4" style="gap: 12px; margin-top: 16px;">
         <input 
           type="text" 
           id="searchInput" 
           class="input" 
-          placeholder="🔍 Search tenant, unit, or subject..."
+          placeholder=" Search tenant, unit, or subject..."
           value="{{ request.args.get('search', '') }}"
         />
         
@@ -104,24 +100,24 @@
         
         <select id="priorityFilter" class="input">
           <option value="">All Priority</option>
-          <option value="urgent" {% if request.args.get('priority') == 'urgent' %}selected{% endif %}>🔴 Urgent</option>
-          <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>🟠 High</option>
-          <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>🟡 Medium</option>
-          <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>🟢 Low</option>
+          <option value="urgent" {% if request.args.get('priority') == 'urgent' %}selected{% endif %}>Urgent</option>
+          <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>High</option>
+          <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>Medium</option>
+          <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>Low</option>
         </select>
         
         <select id="categoryFilter" class="input">
           <option value="">All Category</option>
-          <option value="maintenance" {% if request.args.get('category') == 'maintenance' %}selected{% endif %}>🔧 Maintenance</option>
-          <option value="billing" {% if request.args.get('category') == 'billing' %}selected{% endif %}>💰 Billing</option>
-          <option value="noise" {% if request.args.get('category') == 'noise' %}selected{% endif %}>🔊 Noise</option>
-          <option value="security" {% if request.args.get('category') == 'security' %}selected{% endif %}>🔒 Security</option>
-          <option value="cleanliness" {% if request.args.get('category') == 'cleanliness' %}selected{% endif %}>🧹 Cleanliness</option>
-          <option value="facilities" {% if request.args.get('category') == 'facilities' %}selected{% endif %}>🏢 Facilities</option>
-          <option value="other" {% if request.args.get('category') == 'other' %}selected{% endif %}>📋 Other</option>
+          <option value="maintenance" {% if request.args.get('category') == 'maintenance' %}selected{% endif %}>Maintenance</option>
+          <option value="billing" {% if request.args.get('category') == 'billing' %}selected{% endif %}>Billing</option>
+          <option value="noise" {% if request.args.get('category') == 'noise' %}selected{% endif %}>Noise</option>
+          <option value="security" {% if request.args.get('category') == 'security' %}selected{% endif %}>Security</option>
+          <option value="cleanliness" {% if request.args.get('category') == 'cleanliness' %}selected{% endif %}>Cleanliness</option>
+          <option value="facilities" {% if request.args.get('category') == 'facilities' %}selected{% endif %}>Facilities</option>
+          <option value="other" {% if request.args.get('category') == 'other' %}selected{% endif %}>Other</option>
         </select>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Concerns List -->
     {% if concerns %}
@@ -142,52 +138,52 @@
               <div>
                 <strong style="font-size: 16px;">{{ concern.tenant_profile.user.full_name }}</strong>
                 <span class="muted" style="margin-left: 8px;">{{ concern.tenant_profile.unit.unit_code }}</span>
-              </div>
+</div>
               <div style="text-align: right; display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
                 <!-- Priority Badge -->
                 {% if concern.priority == 'urgent' %}
-                  <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">🔴 Urgent</span>
+                  <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Urgent</span>
                 {% elif concern.priority == 'high' %}
-                  <span class="badge" style="background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.3);">🟠 High</span>
+                  <span class="badge" style="background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.3);">High</span>
                 {% elif concern.priority == 'medium' %}
-                  <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3);">🟡 Medium</span>
+                  <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3);">Medium</span>
                 {% else %}
-                  <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 Low</span>
+                  <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Low</span>
                 {% endif %}
                 
                 <!-- Status Badge -->
                 {% if concern.status.value == 'pending' %}
-                  <span class="chip" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">⏳ Pending</span>
+                  <span class="chip" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">Pending</span>
                 {% elif concern.status.value == 'in_progress' %}
-                  <span class="chip" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">🔄 In Progress</span>
+                  <span class="chip" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">In Progress</span>
                 {% else %}
-                  <span class="chip" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✓ Resolved</span>
+                  <span class="chip" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Resolved</span>
                 {% endif %}
                 
                 <!-- Category Badge -->
                 <span class="badge" style="background: rgba(215, 179, 91, 0.15); color: #D7B35B; border: 1px solid rgba(215, 179, 91, 0.3);">
-                  {% if concern.category == 'maintenance' %}🔧 Maintenance
-                  {% elif concern.category == 'billing' %}💰 Billing
-                  {% elif concern.category == 'noise' %}🔊 Noise
-                  {% elif concern.category == 'security' %}🔒 Security
-                  {% elif concern.category == 'cleanliness' %}🧹 Cleanliness
-                  {% elif concern.category == 'facilities' %}🏢 Facilities
-                  {% else %}📋 {{ concern.category|title }}{% endif %}
-                </span>
-              </div>
-            </div>
+                  {% if concern.category == 'maintenance' %} Maintenance
+                  {% elif concern.category == 'billing' %} Billing
+                  {% elif concern.category == 'noise' %} Noise
+                  {% elif concern.category == 'security' %} Security
+                  {% elif concern.category == 'cleanliness' %} Cleanliness
+                  {% elif concern.category == 'facilities' %} Facilities
+                  {% else %} {{ concern.category|title }}{% endif %}
+</span>
+</div>
+</div>
 
             <!-- Subject -->
             <div style="margin-bottom: 12px;">
               <div class="kicker">Subject</div>
               <strong style="font-size: 15px;">{{ concern.subject }}</strong>
-            </div>
+</div>
 
             <!-- Description -->
             <div style="margin-bottom: 12px;">
               <div class="kicker">Description</div>
               <p style="line-height: 1.6;">{{ concern.description }}</p>
-            </div>
+</div>
 
             <!-- Attachments -->
             {% if concern.attachments_json %}
@@ -198,11 +194,11 @@
                   <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
                     {% for attachment in attachments %}
                       <a href="{{ url_for('static', filename=attachment) }}" target="_blank" class="btn btn--ghost btn--sm">
-                        📎 {{ attachment.split('/')[-1] }}
-                      </a>
+                         {{ attachment.split('/')[-1] }}
+</a>
                     {% endfor %}
-                  </div>
-                </div>
+</div>
+</div>
               {% endif %}
             {% endif %}
 
@@ -213,36 +209,35 @@
                 <p style="margin-top: 8px; line-height: 1.6;">{{ concern.admin_response }}</p>
                 <div class="muted" style="margin-top: 8px; font-size: 12px;">
                   Responded by {{ concern.responder.full_name if concern.responder else 'Admin' }} on {{ concern.admin_response_at.strftime('%B %d, %Y at %I:%M %p') if concern.admin_response_at else '' }}
-                </div>
-              </div>
+</div>
+</div>
             {% endif %}
 
             <!-- Timeline -->
             <div class="muted" style="font-size: 12px; margin-bottom: 16px;">
-              📅 Created: {{ concern.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+               Created: {{ concern.created_at.strftime('%B %d, %Y at %I:%M %p') }}
               {% if concern.updated_at and concern.updated_at != concern.created_at %}
                 | Updated: {{ concern.updated_at.strftime('%B %d, %Y at %I:%M %p') }}
               {% endif %}
-            </div>
+</div>
 
             <!-- Actions -->
             <div style="border-top: 1px solid #e5e7eb; padding-top: 16px;">
               <button type="button" class="btn btn--primary btn--sm" data-concern-id="{{ concern.id }}" data-subject="{{ concern.subject }}" data-current-response="{{ concern.admin_response or '' }}" onclick="openResponseModal(this.dataset.concernId, this.dataset.subject, this.dataset.currentResponse)">
-                💬 {{ 'Update Response' if concern.admin_response else 'Add Response' }}
-              </button>
+                 {{ 'Update Response' if concern.admin_response else 'Add Response' }}
+</button>
               
               <button type="button" class="btn btn--ghost btn--sm" data-concern-id="{{ concern.id }}" data-status="{{ concern.status.value }}" data-priority="{{ concern.priority }}" onclick="openStatusModal(this.dataset.concernId, this.dataset.status, this.dataset.priority)">
-                🔄 Update Status/Priority
-              </button>
-            </div>
-          </div>
+                 Update Status/Priority
+</button>
+</div>
+</div>
         {% endfor %}
-      </div>
+</div>
     {% else %}
       <div class="card" style="text-align: center; padding: 48px;">
-        <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">📋</div>
         <p class="muted">No concerns found.</p>
-      </div>
+</div>
     {% endif %}
   </section>
 
@@ -258,22 +253,22 @@
         <div class="form-group">
           <label class="label">Response</label>
           <textarea name="admin_response" id="adminResponseText" class="input" rows="5" required placeholder="Type your response to the tenant..."></textarea>
-        </div>
+</div>
         
         <div class="form-group">
           <label class="checkbox-label">
             <input type="checkbox" name="send_email" value="1" checked>
             <span>Send email notification to tenant</span>
-          </label>
-        </div>
+</label>
+</div>
         
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" onclick="closeResponseModal()">Cancel</button>
           <button type="submit" class="btn btn--primary">Save Response</button>
-        </div>
+</div>
       </form>
-    </div>
-  </div>
+</div>
+</div>
 
   <!-- Status/Priority Modal -->
   <div class="modal" id="statusModal" hidden>
@@ -287,36 +282,36 @@
         <div class="form-group">
           <label class="label">Status</label>
           <select name="status" id="statusSelect" class="input" required>
-            <option value="pending">⏳ Pending</option>
-            <option value="in_progress">🔄 In Progress</option>
-            <option value="resolved">✓ Resolved</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
           </select>
-        </div>
+</div>
         
         <div class="form-group">
           <label class="label">Priority</label>
           <select name="priority" id="prioritySelect" class="input" required>
-            <option value="low">🟢 Low</option>
-            <option value="medium">🟡 Medium</option>
-            <option value="high">🟠 High</option>
-            <option value="urgent">🔴 Urgent</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
           </select>
-        </div>
+</div>
         
         <div class="form-group">
           <label class="checkbox-label">
             <input type="checkbox" name="send_email" value="1" checked>
             <span>Send email notification to tenant</span>
-          </label>
-        </div>
+</label>
+</div>
         
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" onclick="closeStatusModal()">Cancel</button>
           <button type="submit" class="btn btn--primary">Update</button>
-        </div>
+</div>
       </form>
-    </div>
-  </div>
+</div>
+</div>
 
   <script>
     // Real-time filtering

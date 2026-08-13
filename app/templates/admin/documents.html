@@ -14,148 +14,144 @@
     <!-- Statistics Dashboard -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
       <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">📄</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.total }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Total Documents</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">📤</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.this_month }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Uploaded This Month</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">👥</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.tenants_with_docs }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Tenants with Documents</div>
-      </div>
+</div>
       <div class="stat-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.15;">🔔</div>
         <div class="stat-card__value" style="position: relative; z-index: 1;">{{ stats.unviewed }}</div>
         <div class="stat-card__label" style="position: relative; z-index: 1;">Unviewed Documents</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Upload Document Card -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="section__header">
-        <h3>📤 Upload New Document</h3>
+        <h3>Upload New Document</h3>
         <p class="muted">Upload bills, receipts, and other documents for tenants (84 units supported)</p>
-      </div>
+</div>
 
       <form method="post" action="{{ url_for('admin.upload_document') }}" class="form mt-16" enctype="multipart/form-data" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
         <div>
           <label class="label">Tenant * <span style="font-size: 12px; color: #666;">({{ tenants|length }} tenants)</span></label>
           <select class="input" name="tenant_profile_id" required id="tenantSelect" style="font-size: 14px;">
-            <option value="">🔍 Search tenant or unit...</option>
+            <option value="">Search tenant or unit...</option>
             {% for tenant in tenants %}
               <option value="{{ tenant.id }}" 
                       data-unit="{{ tenant.unit.unit_code }}" 
                       data-building="{{ tenant.unit.building.code }}"
                       data-search="{{ tenant.user.full_name|lower }} {{ tenant.unit.unit_code|lower }} {{ tenant.unit.building.code|lower }}">
                 {{ tenant.unit.building.code }}-{{ tenant.unit.unit_number }} | {{ tenant.user.full_name }}
-              </option>
+</option>
             {% endfor %}
           </select>
-          <small class="muted" style="display: block; margin-top: 4px;">💡 Tip: Type to search by name, unit, or building</small>
-        </div>
+          <small class="muted" style="display: block; margin-top: 4px;">Tip: Type to search by name, unit, or building</small>
+</div>
 
         <div>
           <label class="label">Document Type *</label>
           <select class="input" name="document_type" required id="docTypeSelect">
             <option value="">Select type...</option>
-            <option value="lease_agreement">📄 Lease Agreement</option>
-            <option value="receipt">🧾 Receipt</option>
-            <option value="certificate">🏆 Certificate</option>
-            <option value="rules">📜 Rules & Regulations</option>
-            <option value="electricity_bill">⚡ Electricity Bill</option>
-            <option value="water_bill">💧 Water Bill</option>
-            <option value="internet_bill">🌐 Internet Bill</option>
+            <option value="lease_agreement">Lease Agreement</option>
+            <option value="receipt">Receipt</option>
+            <option value="certificate">Certificate</option>
+            <option value="rules">Rules & Regulations</option>
+            <option value="electricity_bill">Electricity Bill</option>
+            <option value="water_bill">Water Bill</option>
+            <option value="internet_bill">Internet Bill</option>
           </select>
-        </div>
+</div>
 
         <div>
           <label class="label">Title *</label>
           <input class="input" name="title" id="docTitle" placeholder="e.g., January 2026 Electric Bill" required />
-        </div>
+</div>
 
         <div>
           <label class="label">File (Image or PDF) *</label>
           <input class="input" type="file" name="file" accept="image/*,.pdf" required />
-        </div>
+</div>
 
         <div style="display: flex; align-items: flex-end;">
           <button class="btn btn--primary" type="submit" style="width: 100%;">
-            📤 Upload & Notify Tenant
-          </button>
-        </div>
+             Upload & Notify Tenant
+</button>
+</div>
       </form>
 
       <div id="tenantInfo" style="display: none; margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
         <p style="margin: 0; font-size: 14px; color: #1e40af;">
-          <strong>ℹ️ Selected Tenant:</strong> <span id="tenantName"></span> | <strong>Unit:</strong> <span id="tenantUnit"></span> | <strong>Building:</strong> <span id="tenantBuilding"></span>
-        </p>
-      </div>
-    </div>
+          <strong>ℹ Selected Tenant:</strong> <span id="tenantName"></span> | <strong>Unit:</strong> <span id="tenantUnit"></span> | <strong>Building:</strong> <span id="tenantBuilding"></span>
+</p>
+</div>
+</div>
 
     <!-- Filters and Search -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="section__header">
-        <h3>📋 All Documents <span style="font-size: 14px; font-weight: normal; color: #666;">({{ documents|length }} shown)</span></h3>
+        <h3>All Documents <span style="font-size: 14px; font-weight: normal; color: #666;">({{ documents|length }} shown)</span></h3>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
-          <a href="{{ url_for('admin.export_documents') }}" class="btn btn--ghost btn--sm">📊 Export CSV</a>
-        </div>
-      </div>
+          <a href="{{ url_for('admin.export_documents') }}" class="btn btn--ghost btn--sm">Export CSV</a>
+</div>
+</div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px;">
         <div>
-          <label class="label">🔍 Search</label>
+          <label class="label">Search</label>
           <input type="text" class="input" id="searchInput" placeholder="Title, tenant, unit..." value="{{ request.args.get('search', '') }}">
-        </div>
+</div>
 
         <div>
-          <label class="label">📄 Document Type</label>
+          <label class="label">Document Type</label>
           <select class="input" id="docTypeFilter">
             <option value="">All Types</option>
             {% for type_val, type_label in doc_types %}
               <option value="{{ type_val }}" {% if request.args.get('doc_type') == type_val %}selected{% endif %}>{{ type_label }}</option>
             {% endfor %}
           </select>
-        </div>
+</div>
 
         <div>
-          <label class="label">🏢 Building</label>
+          <label class="label">Building</label>
           <select class="input" id="buildingFilter">
             <option value="">All Buildings</option>
             {% for building in buildings %}
               <option value="{{ building.id }}" {% if request.args.get('building') == building.id|string %}selected{% endif %}>{{ building.code }} ({{ building.name }})</option>
             {% endfor %}
           </select>
-        </div>
+</div>
 
         <div>
-          <label class="label">👤 Tenant <span style="font-size: 11px; color: #666;">({{ tenants|length }})</span></label>
+          <label class="label">Tenant <span style="font-size: 11px; color: #666;">({{ tenants|length }})</span></label>
           <select class="input" id="tenantFilter" style="font-size: 13px;">
             <option value="">All Tenants</option>
             {% for tenant in tenants %}
               <option value="{{ tenant.id }}" {% if request.args.get('tenant') == tenant.id|string %}selected{% endif %}>
                 {{ tenant.unit.building.code }}-{{ tenant.unit.unit_number }} | {{ tenant.user.full_name }}
-              </option>
+</option>
             {% endfor %}
           </select>
-        </div>
+</div>
 
         <div>
-          <label class="label">👁️ Viewed Status</label>
+          <label class="label">Viewed Status</label>
           <select class="input" id="viewedFilter">
             <option value="">All</option>
-            <option value="viewed" {% if request.args.get('viewed') == 'viewed' %}selected{% endif %}>✓ Viewed</option>
-            <option value="unviewed" {% if request.args.get('viewed') == 'unviewed' %}selected{% endif %}>⚠️ Unviewed</option>
+            <option value="viewed" {% if request.args.get('viewed') == 'viewed' %}selected{% endif %}>Viewed</option>
+            <option value="unviewed" {% if request.args.get('viewed') == 'unviewed' %}selected{% endif %}>Unviewed</option>
           </select>
-        </div>
+</div>
 
         <div>
-          <label class="label">🔄 Sort By</label>
+          <label class="label">Sort By</label>
           <select class="input" id="sortFilter">
             <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>Newest First</option>
             <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
@@ -163,16 +159,16 @@
             <option value="title_za" {% if request.args.get('sort') == 'title_za' %}selected{% endif %}>Title (Z-A)</option>
             <option value="tenant_az" {% if request.args.get('sort') == 'tenant_az' %}selected{% endif %}>Tenant (A-Z)</option>
           </select>
-        </div>
-      </div>
+</div>
+</div>
 
       <!-- Quick Stats -->
       <div style="margin-top: 16px; padding: 12px; background: rgba(215, 179, 91, 0.08); border-radius: 8px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px;">
-        <div><strong>📊 Showing:</strong> {{ documents|length }} documents</div>
-        <div><strong>👥 Tenants:</strong> {{ stats.tenants_with_docs }} have documents</div>
-        <div><strong>⚠️ Unviewed:</strong> {{ stats.unviewed }} documents</div>
-      </div>
-    </div>
+        <div><strong>Showing:</strong> {{ documents|length }} documents</div>
+        <div><strong>Tenants:</strong> {{ stats.tenants_with_docs }} have documents</div>
+        <div><strong>Unviewed:</strong> {{ stats.unviewed }} documents</div>
+</div>
+</div>
 
     <!-- Documents Grid -->
     {% if documents %}
@@ -183,7 +179,7 @@
             {% if not doc.is_viewed %}
               <div style="position: absolute; top: 12px; right: 12px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 12px; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);">
                 NEW
-              </div>
+</div>
             {% endif %}
 
             <!-- Document Icon -->
@@ -204,15 +200,15 @@
             {% set doc_icon_class = 'doc-icon-bg-internet' %}
           {% endif %}
             <div class="{{ doc_icon_class }}" style="width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">
-              {% if doc.document_type == 'lease_agreement' %}📄
-              {% elif doc.document_type == 'receipt' %}🧾
-              {% elif doc.document_type == 'certificate' %}🏆
-              {% elif doc.document_type == 'rules' %}📜
-              {% elif doc.document_type == 'electricity_bill' %}⚡
-              {% elif doc.document_type == 'water_bill' %}💧
-              {% elif doc.document_type == 'internet_bill' %}🌐
-              {% else %}📋{% endif %}
-            </div>
+              {% if doc.document_type == 'lease_agreement' %}
+              {% elif doc.document_type == 'receipt' %}
+              {% elif doc.document_type == 'certificate' %}
+              {% elif doc.document_type == 'rules' %}
+              {% elif doc.document_type == 'electricity_bill' %}
+              {% elif doc.document_type == 'water_bill' %}
+              {% elif doc.document_type == 'internet_bill' %}
+              {% else %}{% endif %}
+</div>
 
             <!-- Document Info -->
             <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">{{ doc.title }}</h4>
@@ -236,18 +232,18 @@
           {% endif %}
               <span class="chip {{ doc_chip_class }}">
                 {{ doc.document_type|replace('_', ' ')|title }}
-              </span>
-            </div>
+</span>
+</div>
 
             <div style="margin-bottom: 8px; font-size: 14px; color: #666;">
               <strong>Tenant:</strong> {{ doc.tenant_profile.user.full_name }}
-            </div>
+</div>
             <div style="margin-bottom: 8px; font-size: 14px; color: #666;">
               <strong>Unit:</strong> <span class="chip" style="background: rgba(215, 179, 91, 0.15); color: #92400e; font-weight: 700;">{{ doc.tenant_profile.unit.unit_code }}</span>
-            </div>
+</div>
             <div style="margin-bottom: 16px; font-size: 13px; color: #999;">
-              📅 {{ doc.uploaded_at.strftime('%B %d, %Y at %I:%M %p') }}
-            </div>
+               {{ doc.uploaded_at.strftime('%B %d, %Y at %I:%M %p') }}
+</div>
 
             <!-- Viewed Status -->
           {% set viewed_status_class = 'viewed-status-unviewed' %}
@@ -258,29 +254,28 @@
           {% endif %}
             <div class="{{ viewed_status_class }}" style="margin-bottom: 16px; padding: 8px; border-radius: 6px; font-size: 13px;">
               {% if doc.is_viewed %}
-                <span class="{{ viewed_text_class }}">✓ Viewed by tenant on {{ doc.viewed_at.strftime('%b %d, %Y') if doc.viewed_at else 'N/A' }}</span>
+                <span class="{{ viewed_text_class }}">Viewed by tenant on {{ doc.viewed_at.strftime('%b %d, %Y') if doc.viewed_at else 'N/A' }}</span>
               {% else %}
-                <span class="{{ viewed_text_class }}">⚠️ Not yet viewed by tenant</span>
+                <span class="{{ viewed_text_class }}">Not yet viewed by tenant</span>
               {% endif %}
-            </div>
+</div>
 
             <!-- Actions -->
             <div style="display: flex; gap: 8px;">
               <a href="{{ url_for('static', filename=doc.file_path) }}" target="_blank" class="btn btn--sm" style="flex: 1; text-align: center;">
-                👁️ Preview
-              </a>
+                 Preview
+</a>
               <form method="post" action="{{ url_for('admin.delete_document', document_id=doc.id) }}" style="flex: 1;" onsubmit="return confirm('Delete this document?');">
                 <button type="submit" class="btn btn--danger btn--sm" style="width: 100%;">
-                  🗑️ Delete
-                </button>
+                   Delete
+</button>
               </form>
-            </div>
-          </div>
+</div>
+</div>
         {% endfor %}
-      </div>
+</div>
     {% else %}
       <div class="empty-state">
-        <div class="empty-state__icon">📄</div>
         <div class="empty-state__title">No Documents Found</div>
         <div class="empty-state__text">
           {% if request.args.get('search') or request.args.get('doc_type') or request.args.get('building') or request.args.get('tenant') or request.args.get('viewed') %}
@@ -288,8 +283,8 @@
           {% else %}
             Upload your first document to get started.
           {% endif %}
-        </div>
-      </div>
+</div>
+</div>
     {% endif %}
   </section>
 
@@ -481,13 +476,13 @@
     // Add search hint to tenant selects
     tenantSelect.addEventListener('focus', function() {
       if (this.options.length > 20) {
-        console.log('💡 Tip: Start typing to search through ' + (this.options.length - 1) + ' tenants');
+        console.log(' Tip: Start typing to search through ' + (this.options.length - 1) + ' tenants');
       }
     });
 
     tenantFilter.addEventListener('focus', function() {
       if (this.options.length > 20) {
-        console.log('💡 Tip: Start typing to search through ' + (this.options.length - 1) + ' tenants');
+        console.log(' Tip: Start typing to search through ' + (this.options.length - 1) + ' tenants');
       }
     });
   </script>

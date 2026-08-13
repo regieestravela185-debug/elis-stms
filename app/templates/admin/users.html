@@ -207,39 +207,39 @@
     <!-- Statistics Cards -->
     <div class="customers-stats">
       <div class="stat-card stat-card--total">
-        <span class="stat-card__icon">👥</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number">{{ stats.total }}</div>
         <div class="stat-card__label">Total Customers</div>
-      </div>
+</div>
       <div class="stat-card stat-card--tenants">
-        <span class="stat-card__icon">🏠</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number">{{ stats.tenants }}</div>
         <div class="stat-card__label">Active Tenants</div>
-      </div>
+</div>
       <div class="stat-card stat-card--users">
-        <span class="stat-card__icon">👤</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number">{{ stats.total - stats.tenants }}</div>
         <div class="stat-card__label">Regular Users</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Filters Section -->
     <div class="filters-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">Real-time Search & Filters</h4>
         <div style="display: flex; gap: 10px;">
           <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
           <a href="{{ url_for('admin.export_users') }}" class="btn btn--primary btn--sm">
-            📊 Export CSV
-          </a>
-        </div>
-      </div>
+             Export CSV
+</a>
+</div>
+</div>
       
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
           <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" />
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Role</label>
@@ -248,7 +248,7 @@
             <option value="user">User</option>
             <option value="tenant">Tenant</option>
           </select>
-        </div>
+</div>
 
         <div class="filter-group">
           <label class="filter-label">Status</label>
@@ -258,7 +258,7 @@
             <option value="archived">Archived</option>
             <option value="banned">Banned</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
@@ -268,18 +268,18 @@
             <option value="name">Name (A-Z)</option>
             <option value="name-desc">Name (Z-A)</option>
           </select>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Customers Table -->
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>📋 All Customers</h3>
+          <h3>All Customers</h3>
           <p class="muted" id="results-count">{{ all_users|length }} customer(s) found</p>
-        </div>
-      </div>
+</div>
+</div>
 
       {% if all_users %}
         <div class="customers-table-wrap mt-16">
@@ -309,26 +309,26 @@
                       <div>
                         <strong style="font-size: 15px;">{{ u.full_name }}</strong>
                         <div class="muted" style="font-size: 12px; margin-top: 2px;">ID: #{{ u.id }}</div>
-                      </div>
-                    </div>
-                  </td>
+</div>
+</div>
+</td>
                   <td>
                     <span style="font-size: 14px;">{{ u.email }}</span>
-                  </td>
+</td>
                   <td>
                     {% if u.role.value == 'tenant' %}
                       <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
-                        🏠 Tenant
-                      </span>
+                         Tenant
+</span>
                     {% else %}
                       <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3);">
-                        👤 User
-                      </span>
+                         User
+</span>
                     {% endif %}
-                  </td>
+</td>
                   <td class="muted" style="font-size: 13px;">
                     {{ u.created_at.strftime("%b %d, %Y") }}
-                  </td>
+</td>
                   <td class="muted" style="font-size: 13px;">
                     {% if u.last_login_at %}
                       {{ u.last_login_at.strftime("%b %d, %Y") }}
@@ -336,41 +336,40 @@
                     {% else %}
                       <span style="color: #9ca3af;">Never</span>
                     {% endif %}
-                  </td>
+</td>
                   <td>
                     <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                       {% if u.is_banned %}
-                        <span class="badge badge--rejected" style="font-size: 10px;">🚫 Banned</span>
+                        <span class="badge badge--rejected" style="font-size: 10px;">Banned</span>
                         <form method="post" action="{{ url_for('admin.unban_user', user_id=u.id) }}" style="display: inline;">
                           <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;" onclick="return confirm('Unban {{ u.full_name }}?')">Unban</button>
                         </form>
                       {% elif u.is_archived %}
-                        <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; font-size: 10px;">📦 Archived</span>
+                        <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; font-size: 10px;">Archived</span>
                         <form method="post" action="{{ url_for('admin.unarchive_user', user_id=u.id) }}" style="display: inline;">
                           <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;" onclick="return confirm('Restore {{ u.full_name }} from archive?')">Restore</button>
                         </form>
                       {% else %}
-                        <button type="button" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #ef4444;" data-user-id="{{ u.id }}" data-user-name="{{ u.full_name }}" onclick="openBanModal(this.dataset.userId, this.dataset.userName)">🚫 Ban</button>
+                        <button type="button" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #ef4444;" data-user-id="{{ u.id }}" data-user-name="{{ u.full_name }}" onclick="openBanModal(this.dataset.userId, this.dataset.userName)">Ban</button>
                         <form method="post" action="{{ url_for('admin.archive_user', user_id=u.id) }}" style="display: inline;">
-                          <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #6b7280;" onclick="return confirm('Archive {{ u.full_name }}? This will hide them from active lists and free their unit if they are a tenant.')">📦 Archive</button>
+                          <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #6b7280;" onclick="return confirm('Archive {{ u.full_name }}? This will hide them from active lists and free their unit if they are a tenant.')">Archive</button>
                         </form>
                       {% endif %}
-                      <a href="{{ url_for('admin.user_details', user_id=u.id) }}" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;">👁️ View</a>
-                    </div>
-                  </td>
+                      <a href="{{ url_for('admin.user_details', user_id=u.id) }}" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;">View</a>
+</div>
+</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
-        </div>
+</div>
       {% else %}
         <div class="empty-state">
-          <div class="empty-state__icon">👥</div>
           <div class="empty-state__title">No Customers Found</div>
           <div class="empty-state__text">Try adjusting your filters or search criteria.</div>
-        </div>
+</div>
       {% endif %}
-    </div>
+</div>
   </section>
 
   <script>
@@ -482,10 +481,9 @@
           noResultsRow.id = 'noResultsRow';
           noResultsRow.innerHTML = `
             <td colspan="6" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
               <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Customers Found</div>
               <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-            </td>
+</td>
           `;
           tbody.appendChild(noResultsRow);
         }
@@ -535,20 +533,20 @@
 <!-- Ban Modal -->
 <div id="banModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 9999;">
   <div style="background: var(--bg); padding: 24px; border-radius: 12px; max-width: 450px; width: 90%; border: 2px solid var(--border);">
-    <h3 style="margin: 0 0 12px 0; font-size: 18px;">🚫 Ban User</h3>
+    <h3 style="margin: 0 0 12px 0; font-size: 18px;">Ban User</h3>
     <p class="muted" style="margin: 0 0 20px 0; font-size: 13px;">
       You are about to ban <strong id="banUserName"></strong>. They will no longer be able to log in to the system.
-    </p>
+</p>
     <form method="post" action="" id="banForm">
       <div style="margin-bottom: 16px;">
         <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px;">Reason (optional)</label>
         <textarea name="reason" class="input" rows="3" placeholder="e.g., Violation of terms, non-payment, etc." style="width: 100%;"></textarea>
-      </div>
+</div>
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="btn btn--ghost" onclick="closeBanModal()">Cancel</button>
         <button type="submit" class="btn btn--primary" style="background: #ef4444; border-color: #ef4444;">Confirm Ban</button>
-      </div>
+</div>
     </form>
-  </div>
+</div>
 </div>
 {% endblock %}

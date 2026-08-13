@@ -255,57 +255,57 @@
     <!-- Statistics Cards -->
     <div class="reservations-stats">
       <div class="stat-card stat-card--total">
-        <span class="stat-card__icon">📋</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-total">{{ rows|length }}</div>
         <div class="stat-card__label">Total Reservations</div>
-      </div>
+</div>
       <div class="stat-card stat-card--pending">
-        <span class="stat-card__icon">⏳</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-pending">
           {{ rows|selectattr('status.value', 'equalto', 'pending')|list|length }}
-        </div>
+</div>
         <div class="stat-card__label">Pending</div>
-      </div>
+</div>
       <div class="stat-card stat-card--approved">
-        <span class="stat-card__icon">✅</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-approved">
           {{ rows|selectattr('status.value', 'equalto', 'approved')|list|length }}
-        </div>
+</div>
         <div class="stat-card__label">Approved</div>
-      </div>
+</div>
       <div class="stat-card stat-card--rejected">
-        <span class="stat-card__icon">❌</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-rejected">
           {{ rows|selectattr('status.value', 'equalto', 'rejected')|list|length }}
-        </div>
+</div>
         <div class="stat-card__label">Rejected</div>
-      </div>
+</div>
       <div class="stat-card stat-card--cancelled">
-        <span class="stat-card__icon">🚫</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-cancelled">
           {{ rows|selectattr('status.value', 'equalto', 'cancelled')|list|length }}
-        </div>
+</div>
         <div class="stat-card__label">Cancelled</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Filters Section -->
     <div class="filters-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">Real-time Search & Filters</h4>
         <div style="display: flex; gap: 10px;">
           <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
           <a href="{{ url_for('admin.export_reservations') }}" class="btn btn--primary btn--sm">
-            📊 Export CSV
-          </a>
-        </div>
-      </div>
+             Export CSV
+</a>
+</div>
+</div>
       
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
           <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" />
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Status</label>
@@ -316,7 +316,7 @@
             <option value="rejected">Rejected</option>
             <option value="cancelled">Cancelled</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Building</label>
@@ -326,7 +326,7 @@
               <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
             {% endfor %}
           </select>
-        </div>
+</div>
 
         <div class="filter-group">
           <label class="filter-label">Floor</label>
@@ -337,7 +337,7 @@
             <option value="3">Floor 3</option>
             <option value="4">Floor 4</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
@@ -347,18 +347,18 @@
             <option value="move-in">Move-in Date</option>
             <option value="name">Name (A-Z)</option>
           </select>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Reservations Table -->
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>📋 All Reservations</h3>
+          <h3>All Reservations</h3>
           <p class="muted" id="results-count">{{ rows|length }} reservation(s) found</p>
-        </div>
-      </div>
+</div>
+</div>
 
       {% if rows %}
         <div class="reservations-table-wrap mt-16">
@@ -393,24 +393,24 @@
                   <td class="muted" style="font-size: 12px;">
                     {{ r.created_at.strftime("%b %d, %Y") }}
                     <div style="font-size: 10px; margin-top: 2px;">{{ r.created_at.strftime("%I:%M %p") }}</div>
-                  </td>
+</td>
                   <td>
                     <strong style="font-size: 14px;">{{ r.full_name }}</strong>
                     <div class="muted" style="font-size: 12px; margin-top: 2px;">{{ r.email }}</div>
-                  </td>
+</td>
                   <td class="mono" style="font-size: 13px;">{{ r.contact }}</td>
                   <td>
                     <span class="badge" style="background: rgba(215, 179, 91, 0.25); color: #B8962E; border: 1px solid rgba(215, 179, 91, 0.5); font-size: 12px; font-weight: 700; text-transform: uppercase;">
                       {{ r.unit.building.code }}
-                    </span>
-                  </td>
+</span>
+</td>
                   <td class="mono" style="font-size: 14px; font-weight: 600;">{{ r.unit.unit_code }}</td>
                   <td>
                     <div style="font-size: 13px;">{{ r.move_in_date.strftime("%b %d, %Y") if r.move_in_date else "—" }}</div>
-                  </td>
+</td>
                   <td class="muted" style="font-size: 13px;">
                     {{ r.move_out_date.strftime("%b %d, %Y") if r.move_out_date else "—" }}
-                  </td>
+</td>
                   <td class="muted" style="font-size: 13px;">
                     {% if duration_days %}
                       {{ duration_days }} days
@@ -418,26 +418,26 @@
                     {% else %}
                       —
                     {% endif %}
-                  </td>
+</td>
                   <td>
                     {% if r.status.value == 'pending' %}
                       <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3);">
-                        ⏳ Pending
-                      </span>
+                         Pending
+</span>
                     {% elif r.status.value == 'approved' %}
                       <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3);">
-                        ✅ Approved
-                      </span>
+                         Approved
+</span>
                     {% elif r.status.value == 'rejected' %}
                       <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
-                        ❌ Rejected
-                      </span>
+                         Rejected
+</span>
                     {% elif r.status.value == 'cancelled' %}
                       <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3);">
-                        🚫 Cancelled
-                      </span>
+                         Cancelled
+</span>
                     {% endif %}
-                  </td>
+</td>
                   <td>
                     <div style="font-size: 12px;">
                       <strong>{{ r.id_type or "—" }}</strong>
@@ -445,71 +445,70 @@
                         <div class="mono muted" style="font-size: 11px; margin-top: 2px;">{{ r.id_number }}</div>
                       {% endif %}
                       {% if r.id_upload_path %}
-                        <a href="{{ url_for('static', filename=r.id_upload_path) }}" target="_blank" style="font-size: 11px; color: #3b82f6; margin-top: 4px; display: block;">📄 View ID</a>
+                        <a href="{{ url_for('static', filename=r.id_upload_path) }}" target="_blank" style="font-size: 11px; color: #3b82f6; margin-top: 4px; display: block;">View ID</a>
                       {% endif %}
                       
                       <!-- AI Verification Status -->
                       {% if r.verification_status %}
                         {% if r.verification_status.value == 'verified' %}
                           <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
-                            ✓ AI Verified
-                          </span>
+                             AI Verified
+</span>
                         {% elif r.verification_status.value == 'failed' %}
                           <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
-                            ✗ Failed
-                          </span>
+                             Failed
+</span>
                         {% elif r.verification_status.value == 'manual_review' %}
                           <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
-                            👁 Manual Review
-                          </span>
+                             Manual Review
+</span>
                         {% else %}
                           <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3); font-size: 10px; margin-top: 4px; display: inline-block;">
-                            ⏳ Pending
-                          </span>
+                             Pending
+</span>
                         {% endif %}
                       {% endif %}
                       
                       {% if r.fake_id_flag %}
                         <span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 10px; margin-top: 4px; display: inline-block;">
-                          ⚠️ Fake ID Flag
-                        </span>
+                           Fake ID Flag
+</span>
                       {% endif %}
                       
                       <button type="button" class="btn btn--ghost btn--sm view-verification-btn" data-reservation-id="{{ r.id }}" style="font-size: 10px; padding: 4px 8px; margin-top: 6px;">
-                        🔍 View Details
-                      </button>
-                    </div>
-                  </td>
+                         View Details
+</button>
+</div>
+</td>
                   <td>
                     <div class="action-buttons">
                       {% if r.status.value == 'pending' %}
                         <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Approve this reservation? This will create a tenant profile and mark the unit as occupied.');">
-                          <button class="btn--approve" type="submit">✅ Approve</button>
+                          <button class="btn--approve" type="submit">Approve</button>
                         </form>
                         <form method="post" action="{{ url_for('admin.reject_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Reject this reservation? The unit will become available again.');">
-                          <button class="btn--reject" type="submit">❌ Reject</button>
+                          <button class="btn--reject" type="submit">Reject</button>
                         </form>
                         <form method="post" action="{{ url_for('admin.cancel_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Cancel this reservation?');">
-                          <button class="btn--cancel" type="submit">🚫 Cancel</button>
+                          <button class="btn--cancel" type="submit">Cancel</button>
                         </form>
                       {% else %}
                         <span class="muted" style="font-size: 12px;">No actions</span>
                       {% endif %}
-                    </div>
-                  </td>
+</div>
+</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
-        </div>
+</div>
       {% else %}
         <div class="empty-state">
-          <div class="empty-state__icon">📋</div>
           <div class="empty-state__title">No Reservations</div>
           <div class="empty-state__text">There are no reservations in the system yet.</div>
-        </div>
+</div>
       {% endif %}
-    </div>
+</div>
   </section>
 
   <script>
@@ -620,10 +619,9 @@
           noResultsRow.id = 'noResultsRow';
           noResultsRow.innerHTML = `
             <td colspan="11" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
               <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Reservations Found</div>
               <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-            </td>
+</td>
           `;
           tbody.appendChild(noResultsRow);
         }
@@ -675,13 +673,13 @@
           
           let statusBadge = '';
           if (data.verification_status === 'verified') {
-            statusBadge = '<span style="background:#d1fae5; color:#065f46; padding:4px 12px; border-radius:20px; font-weight:600;">✓ Verified</span>';
+            statusBadge = '<span style="background:#d1fae5; color:#065f46; padding:4px 12px; border-radius:20px; font-weight:600;">Verified</span>';
           } else if (data.verification_status === 'failed') {
-            statusBadge = '<span style="background:#fee2e2; color:#991b1b; padding:4px 12px; border-radius:20px; font-weight:600;">✗ Failed</span>';
+            statusBadge = '<span style="background:#fee2e2; color:#991b1b; padding:4px 12px; border-radius:20px; font-weight:600;">Failed</span>';
           } else if (data.verification_status === 'manual_review') {
-            statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-weight:600;">👁 Manual Review</span>';
+            statusBadge = '<span style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-weight:600;">Manual Review</span>';
           } else {
-            statusBadge = '<span style="background:#f3f4f6; color:#6b7280; padding:4px 12px; border-radius:20px; font-weight:600;">⏳ Pending</span>';
+            statusBadge = '<span style="background:#f3f4f6; color:#6b7280; padding:4px 12px; border-radius:20px; font-weight:600;">Pending</span>';
           }
           
           let reasonsHtml = '';
@@ -692,7 +690,7 @@
                 <ul style="margin:8px 0 0 20px; color:#991b1b; font-size:13px;">
                   ${log.detection_reasons.map(r => `<li>${r}</li>`).join('')}
                 </ul>
-              </div>
+</div>
             `;
           }
           
@@ -700,7 +698,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
               <h3 style="margin:0;">Verification Details</h3>
               ${statusBadge}
-            </div>
+</div>
             
             <!-- ID Document Only -->
             <div>
@@ -711,14 +709,14 @@
                   <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
                     <span class="muted">ID Type:</span>
                     <strong>${data.id_type || '—'}</strong>
-                  </div>
+</div>
                   <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
                     <span class="muted">ID Number:</span>
                     <strong class="mono">${data.id_number || '—'}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
+</div>
+</div>
+</div>
+</div>
           `;
         } catch (err) {
           verificationContent.innerHTML = `<div style="text-align:center; padding:40px; color:#ef4444;">Error loading verification details: ${err.message}</div>`;
@@ -743,8 +741,8 @@
     <div style="background:#fff; border-radius:16px; padding:24px; max-width:700px; width:95%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <button type="button" id="closeVerificationModal" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
       <div id="verificationContent"></div>
-    </div>
-  </div>
+</div>
+</div>
   
   <style>
     .spinner {

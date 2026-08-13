@@ -387,31 +387,31 @@
       <div>
         <h2>Floorplan (Admin)</h2>
         <p class="muted">Real-time unit status monitoring with automatic updates</p>
-      </div>
+</div>
       <div class="realtime-indicator">
         <span>Live Updates</span>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Stats Summary -->
     <div class="floorplan-stats mt-16">
       <div class="stat-card stat-card--available">
         <div class="stat-card__number" id="stat-available">{{ units|selectattr('status.value', 'equalto', 'available')|list|length }}</div>
         <div class="stat-card__label">Available</div>
-      </div>
+</div>
       <div class="stat-card stat-card--occupied">
         <div class="stat-card__number" id="stat-occupied">{{ units|selectattr('status.value', 'equalto', 'occupied')|list|length }}</div>
         <div class="stat-card__label">Occupied</div>
-      </div>
+</div>
       <div class="stat-card stat-card--reserved">
         <div class="stat-card__number" id="stat-reserved">{{ units|selectattr('status.value', 'equalto', 'reserved')|list|length }}</div>
         <div class="stat-card__label">Reserved</div>
-      </div>
+</div>
       <div class="stat-card stat-card--unpaid">
         <div class="stat-card__number" id="stat-unpaid">{{ units|selectattr('status.value', 'equalto', 'unpaid')|list|length }}</div>
         <div class="stat-card__label">Unpaid</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Legend -->
     <div class="legend-container">
@@ -420,7 +420,7 @@
       <span class="legend oc">Occupied</span>
       <span class="legend rs">Reserved</span>
       <span class="legend up">Unpaid</span>
-    </div>
+</div>
 
     <div class="floorplan mt-16">
       <div class="floorplan__sidebar card">
@@ -429,17 +429,17 @@
           {% for b in buildings %}
             <button class="building-btn {% if loop.first %}is-active{% endif %}" data-building="{{ b.id }}">
               <span class="mono">{{ b.code }}</span> — {{ b.name }}
-            </button>
+</button>
           {% endfor %}
-        </div>
-      </div>
+</div>
+</div>
 
       <div class="floorplan__main card">
         <!-- Floor filter pills -->
         <div id="floorFilterBar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
           <strong style="font-size: 13px; align-self: center; margin-right: 4px;">Floor:</strong>
           <button class="floor-pill is-active" data-floor="all" type="button">All Floors</button>
-        </div>
+</div>
 
         {# Group units by floor #}
         {% set floors_grouped = {} %}
@@ -454,9 +454,9 @@
               <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 8px 14px; background: linear-gradient(135deg, rgba(215,179,91,0.12), rgba(215,179,91,0.04)); border-left: 4px solid #D7B35B; border-radius: 6px;">
                 <strong style="font-size: 15px; color: #B8962E;">
                   {% if floor_num == 0 %}Ground / Unassigned{% else %}Floor {{ floor_num }}{% endif %}
-                </strong>
+</strong>
                 <span class="muted" style="font-size: 12px;">{{ floors_grouped[floor_num]|length }} unit(s)</span>
-              </div>
+</div>
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
                 {% for u in floors_grouped[floor_num] %}
                   <button
@@ -469,14 +469,14 @@
                   >
                     <div class="unit-tile__code">{{ u.unit_number }}</div>
                     <div class="unit-tile__meta mono">{{ u.unit_code }}</div>
-                  </button>
+</button>
                 {% endfor %}
-              </div>
-            </div>
+</div>
+</div>
           {% endfor %}
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
   </section>
 {% endblock %}
 

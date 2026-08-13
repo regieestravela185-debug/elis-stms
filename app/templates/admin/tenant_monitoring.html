@@ -201,48 +201,48 @@
   <!-- Statistics Cards -->
   <div class="monitoring-stats">
     <div class="stat-card stat-card--total">
-      <span class="stat-card__icon">👥</span>
+      <span class="stat-card__icon"></span>
       <div class="stat-card__number" id="stat-total">{{ monitoring_data|length }}</div>
       <div class="stat-card__label">Total Tenants</div>
-    </div>
+</div>
     <div class="stat-card stat-card--active">
-      <span class="stat-card__icon">✅</span>
+      <span class="stat-card__icon"></span>
       <div class="stat-card__number" id="stat-active">
         {{ monitoring_data|selectattr('status', 'equalto', 'Normal')|list|length }}
-      </div>
+</div>
       <div class="stat-card__label">Active</div>
-    </div>
+</div>
     <div class="stat-card stat-card--urgent">
-      <span class="stat-card__icon">🚨</span>
+      <span class="stat-card__icon"></span>
       <div class="stat-card__number" id="stat-urgent">
         {{ monitoring_data|selectattr('status', 'equalto', 'Urgent')|list|length }}
-      </div>
+</div>
       <div class="stat-card__label">Urgent (≤7 days)</div>
-    </div>
+</div>
     <div class="stat-card stat-card--expiring">
-      <span class="stat-card__icon">⚠️</span>
+      <span class="stat-card__icon"></span>
       <div class="stat-card__number" id="stat-expiring">
         {{ monitoring_data|selectattr('status', 'equalto', 'Near Expiry')|list|length }}
-      </div>
+</div>
       <div class="stat-card__label">Near Expiry (≤30 days)</div>
-    </div>
+</div>
     <div class="stat-card stat-card--expired">
-      <span class="stat-card__icon">❌</span>
+      <span class="stat-card__icon"></span>
       <div class="stat-card__number" id="stat-expired">
         {{ monitoring_data|selectattr('status', 'equalto', 'Expired')|list|length }}
-      </div>
+</div>
       <div class="stat-card__label">Expired</div>
-    </div>
-  </div>
+</div>
+</div>
 
   <!-- Filters Section -->
   <div class="filters-section">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-      <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+      <h4 style="margin: 0; font-size: 17px; font-weight: 700;">Real-time Search & Filters</h4>
       <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">
         Clear Filters
-      </button>
-    </div>
+</button>
+</div>
     
     <div class="filters-grid">
       <div class="filter-group">
@@ -254,7 +254,7 @@
           placeholder="Tenant name or unit code..." 
           autocomplete="off"
         />
-      </div>
+</div>
       
       <div class="filter-group">
         <label class="filter-label">Building</label>
@@ -264,7 +264,7 @@
             <option value="{{ b.code }}">{{ b.code }} - {{ b.name }}</option>
           {% endfor %}
         </select>
-      </div>
+</div>
 
       <div class="filter-group">
         <label class="filter-label">Floor</label>
@@ -275,26 +275,26 @@
           <option value="3">Floor 3</option>
           <option value="4">Floor 4</option>
         </select>
-      </div>
+</div>
       
       <div class="filter-group">
         <label class="filter-label">Status Filter</label>
         <label class="filter-checkbox">
           <input type="checkbox" id="urgentCheckbox" />
-          <span>🚨 Show Only Urgent (≤7 days)</span>
-        </label>
-      </div>
-    </div>
-  </div>
+          <span>Show Only Urgent (≤7 days)</span>
+</label>
+</div>
+</div>
+</div>
 
   <!-- Tenants Table -->
   <div class="card">
     <div class="section__header">
       <div>
-        <h3>📋 Tenant Contracts</h3>
+        <h3>Tenant Contracts</h3>
         <p class="muted" id="results-count">{{ monitoring_data|length }} tenant(s) found</p>
-      </div>
-    </div>
+</div>
+</div>
 
     {% if monitoring_data %}
       <div class="monitoring-table-wrap mt-16">
@@ -318,94 +318,93 @@
                     <strong style="font-size: 15px;">{{ item.profile.user.full_name }}</strong>
                     {% if item.has_pending_renewal %}
                       <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 10px; margin-left: 6px;">
-                        🔄 Renewal Pending
-                      </span>
+                         Renewal Pending
+</span>
                     {% endif %}
-                  </div>
-                </div>
-              </td>
+</div>
+</div>
+</td>
               <td>
                 <span class="mono" style="font-size: 14px; font-weight: 600;">
                   {{ item.profile.unit.building.code }} - {{ item.profile.unit.unit_code }}
-                </span>
-              </td>
+</span>
+</td>
               <td>
                 <span class="muted" style="font-size: 13px;">
                   {{ item.profile.contract_start.strftime('%b %d, %Y') }}
-                </span>
-              </td>
+</span>
+</td>
               <td>
                 <span class="muted" style="font-size: 13px;">
                   {{ item.profile.contract_end.strftime('%b %d, %Y') }}
-                </span>
+</span>
                 <div style="font-size: 11px; margin-top: 4px;">
                   {% if item.days_remaining != none %}
                     {% if item.days_remaining < 0 %}
                       <span style="color: #9ca3af; font-weight: 700;">
                         Expired {{ item.days_remaining|abs }} days ago
-                      </span>
+</span>
                     {% elif item.days_remaining <= 7 %}
                       <span style="color: #ef4444; font-weight: 700;">
                         {{ item.days_remaining }} days remaining
-                      </span>
+</span>
                     {% elif item.days_remaining <= 30 %}
                       <span style="color: #eab308; font-weight: 700;">
                         {{ item.days_remaining }} days remaining
-                      </span>
+</span>
                     {% else %}
                       <span class="muted">
                         {{ item.days_remaining }} days remaining
-                      </span>
+</span>
                     {% endif %}
                   {% endif %}
-                </div>
-              </td>
+</div>
+</td>
               <td>
                 {% if item.status == 'Urgent' %}
                   <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
-                    🚨 Urgent
-                  </span>
+                     Urgent
+</span>
                 {% elif item.status == 'Near Expiry' %}
                   <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3);">
-                    ⚠️ Near Expiry
-                  </span>
+                     Near Expiry
+</span>
                 {% elif item.status == 'Expired' %}
                   <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3);">
-                    ❌ Expired
-                  </span>
+                     Expired
+</span>
                 {% else %}
                   <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3);">
-                    ✅ Active
-                  </span>
+                     Active
+</span>
                 {% endif %}
-              </td>
+</td>
               <td>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <a href="{{ url_for('admin.user_details', user_id=item.profile.user.id) }}" class="btn btn--ghost btn--sm">
-                    👁️ View
-                  </a>
+                     View
+</a>
                   {% if item.status == 'Urgent' or item.status == 'Near Expiry' %}
                     <form action="{{ url_for('admin.send_renewal_reminders') }}" method="post" style="display: inline;">
                       <button type="submit" class="btn--notify">
-                        📧 Notify
-                      </button>
+                         Notify
+</button>
                     </form>
                   {% endif %}
-                </div>
-              </td>
+</div>
+</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-      </div>
+</div>
     {% else %}
       <div class="empty-state">
-        <div class="empty-state__icon">👥</div>
         <div class="empty-state__title">No Active Tenants</div>
         <div class="empty-state__text">There are no active tenant contracts to monitor.</div>
-      </div>
+</div>
     {% endif %}
-  </div>
+</div>
 </section>
 
 <script>
@@ -501,10 +500,9 @@ document.addEventListener('DOMContentLoaded', function() {
         noResultsRow.id = 'noResultsRow';
         noResultsRow.innerHTML = `
           <td colspan="6" style="text-align: center; padding: 60px 20px;">
-            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
             <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Tenants Found</div>
             <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-          </td>
+</td>
         `;
         tenantTable.querySelector('tbody').appendChild(noResultsRow);
       }

@@ -194,12 +194,11 @@
     {% if session.get('blockchain_verification') and not session.get('blockchain_verification').valid %}
     <div class="blockchain-alert">
       <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
-        <span style="font-size: 48px;">🚨</span>
         <div>
           <h3 style="color: #ff5050; margin: 0; font-size: 18px; font-weight: 900;">Blockchain Integrity Issues Detected</h3>
           <p style="margin: 4px 0 0 0; color: #dc2626; font-size: 14px;">Some payment records have been manually altered in the database.</p>
-        </div>
-      </div>
+</div>
+</div>
       <div class="table-wrap">
         <table class="table">
           <thead>
@@ -219,26 +218,26 @@
               <td>
                 <span style="color: #ff5050;">{{ issue.issue }}</span><br>
                 <a href="{{ url_for('admin.view_ledger', payment_id=issue.payment_id) }}" style="font-size: 11px;">View Hash Details</a>
-              </td>
+</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-      </div>
-    </div>
+</div>
+</div>
     {% endif %}
 
     <!-- Statistics Cards -->
     <div class="payments-stats">
       <div class="stat-card stat-card--total">
-        <span class="stat-card__icon">💰</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-total">
           ₱{{ '{:,.0f}'.format(payments|sum(attribute='amount')|float) if payments else '0' }}
-        </div>
+</div>
         <div class="stat-card__label">Total Revenue</div>
-      </div>
+</div>
       <div class="stat-card stat-card--month">
-        <span class="stat-card__icon">📅</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-month">
           {% set this_month_total = namespace(value=0) %}
           {% for p in payments %}
@@ -247,11 +246,11 @@
             {% endif %}
           {% endfor %}
           ₱{{ '{:,.0f}'.format(this_month_total.value|float) }}
-        </div>
+</div>
         <div class="stat-card__label">This Month</div>
-      </div>
+</div>
       <div class="stat-card stat-card--last">
-        <span class="stat-card__icon">📈</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-last">
           {% set last_month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1) %}
           {% set last_month_end = today.replace(day=1) %}
@@ -262,34 +261,34 @@
             {% endif %}
           {% endfor %}
           ₱{{ '{:,.0f}'.format(last_month_total.value|float) }}
-        </div>
+</div>
         <div class="stat-card__label">Last Month</div>
-      </div>
+</div>
       <div class="stat-card stat-card--tenants">
-        <span class="stat-card__icon">🏠</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-tenants">
           {{ payments|map(attribute='tenant_profile_id')|unique|list|length if payments else 0 }}
-        </div>
+</div>
         <div class="stat-card__label">Tenants Paid</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Add Payment Form -->
     <div class="add-payment-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <div>
-          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #22c55e;">➕ Add New Payment</h3>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #22c55e;">Add New Payment</h3>
           <p class="muted" style="margin: 4px 0 0 0; font-size: 13px;">Record tenant payment - blockchain ledger generated automatically</p>
-        </div>
+</div>
         <div style="display: flex; gap: 8px;">
           <a href="{{ url_for('admin.verify_blockchain') }}" class="btn btn--ghost btn--sm" style="border: 1px solid #D7B35B; color: #D7B35B;">
-            🔐 Verify Blockchain
-          </a>
+             Verify Blockchain
+</a>
           <a href="{{ url_for('admin.export_payments') }}" class="btn btn--ghost btn--sm">
-            📊 Export CSV
-          </a>
-        </div>
-      </div>
+             Export CSV
+</a>
+</div>
+</div>
       
       <form method="post" action="{{ url_for('admin.add_payment') }}" class="grid grid--4" style="gap: 16px;">
         <div>
@@ -302,27 +301,27 @@
                       data-unit="{{ t.unit.unit_code }}"
                       data-building="{{ t.unit.building.code }}">
                 {{ t.user.full_name }} • {{ t.unit.building.code }}-{{ t.unit.unit_code }}
-              </option>
+</option>
             {% endfor %}
           </select>
-        </div>
+</div>
         <div>
           <label class="label">Payment Month *</label>
           <input class="input" name="payment_month" id="paymentMonthInput" type="month" required />
-        </div>
+</div>
         <div>
           <label class="label">Amount (₱) *</label>
           <input class="input" name="amount" id="paymentAmountInput" type="number" step="0.01" min="0" required />
-        </div>
+</div>
         <div>
           <label class="label">Reference</label>
           <input class="input" name="reference" placeholder="OR / Txn ref (optional)" />
-        </div>
+</div>
         <div class="align-end">
           <button class="btn btn--primary w-full" type="submit" style="background: #22c55e; border-color: #22c55e;">
-            ➕ Add Payment
-          </button>
-        </div>
+             Add Payment
+</button>
+</div>
       </form>
       
       <div id="tenantInfo" style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.5); border-radius: 8px; display: none;">
@@ -331,27 +330,27 @@
           <div>
             <span style="font-size: 11px; color: var(--muted);">Unit:</span>
             <strong id="infoUnit" style="margin-left: 6px;">-</strong>
-          </div>
+</div>
           <div>
             <span style="font-size: 11px; color: var(--muted);">Monthly Rate:</span>
             <strong id="infoPrice" style="margin-left: 6px; color: #22c55e;">-</strong>
-          </div>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
+</div>
 
     <!-- Filters Section -->
     <div class="filters-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">Real-time Search & Filters</h4>
         <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
-      </div>
+</div>
       
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
           <input class="input" id="searchInput" placeholder="Tenant name or unit..." autocomplete="off" />
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Payment Type</label>
@@ -360,7 +359,7 @@
             <option value="monthly">Monthly Payment</option>
             <option value="deposit">Deposit</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Building</label>
@@ -370,7 +369,7 @@
               <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
             {% endfor %}
           </select>
-        </div>
+</div>
 
         <div class="filter-group">
           <label class="filter-label">Floor</label>
@@ -381,7 +380,7 @@
             <option value="3">Floor 3</option>
             <option value="4">Floor 4</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
@@ -392,18 +391,18 @@
             <option value="amount-low">Amount (Low-High)</option>
             <option value="tenant">Tenant Name (A-Z)</option>
           </select>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Payments Table -->
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>💳 Payment History & Blockchain Ledger</h3>
+          <h3>Payment History & Blockchain Ledger</h3>
           <p class="muted" id="results-count">{{ payments|length }} payment(s) found</p>
-        </div>
-      </div>
+</div>
+</div>
 
       {% if payments %}
         <div class="payments-table-wrap mt-16">
@@ -433,60 +432,59 @@
                   <td class="muted" style="font-size: 12px;">
                     {{ payment.paid_at.strftime("%b %d, %Y") }}
                     <div style="font-size: 10px; margin-top: 2px;">{{ payment.paid_at.strftime("%I:%M %p") }}</div>
-                  </td>
+</td>
                   <td>
                     <strong style="font-size: 14px;">{{ payment.tenant_profile.user.full_name }}</strong>
-                  </td>
+</td>
                   <td>
                     <span class="badge" style="background: rgba(215, 179, 91, 0.25); color: #B8962E; border: 1px solid rgba(215, 179, 91, 0.5); font-size: 12px; font-weight: 700; text-transform: uppercase;">
                       {{ payment.tenant_profile.unit.building.code }}
-                    </span>
-                  </td>
+</span>
+</td>
                   <td class="mono" style="font-size: 14px; font-weight: 600;">
                     {{ payment.tenant_profile.unit.unit_code }}
-                  </td>
+</td>
                   <td>
                     {% if payment.is_deposit %}
                       {% if payment.deposit_transaction_type == 'deposit_returned' %}
-                        <span class="badge badge--return">🔄 Return</span>
+                        <span class="badge badge--return">Return</span>
                       {% else %}
-                        <span class="badge badge--deposit">💵 Deposit</span>
+                        <span class="badge badge--deposit">Deposit</span>
                       {% endif %}
                     {% else %}
-                      <span class="badge badge--monthly">💰 Monthly</span>
+                      <span class="badge badge--monthly">Monthly</span>
                     {% endif %}
-                  </td>
+</td>
                   <td class="mono" style="font-size: 16px; font-weight: 700; color: #22c55e;">
                     ₱{{ '{:,.2f}'.format(payment.amount|float) }}
-                  </td>
+</td>
                   <td class="muted" style="font-size: 13px;">
                     {{ payment.reference or '—' }}
-                  </td>
+</td>
                   <td class="mono" style="font-size: 11px;">
                     {% if payment.ledger %}
-                      <span style="color: #22c55e;">✓</span> {{ payment.ledger.hash[:12] }}...
+                      <span style="color: #22c55e;"></span> {{ payment.ledger.hash[:12] }}...
                     {% else %}
                       <span class="muted">Pending</span>
                     {% endif %}
-                  </td>
+</td>
                   <td>
                     <a href="{{ url_for('admin.view_ledger', payment_id=payment.id) }}" class="btn btn--sm btn--ghost" style="font-size: 12px;" title="View Blockchain Ledger">
-                      🔐 Ledger
-                    </a>
-                  </td>
+                       Ledger
+</a>
+</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
-        </div>
+</div>
       {% else %}
         <div class="empty-state">
-          <div class="empty-state__icon">💳</div>
           <div class="empty-state__title">No Payments Yet</div>
           <div class="empty-state__text">Start recording tenant payments using the form above.</div>
-        </div>
+</div>
       {% endif %}
-    </div>
+</div>
   </section>
 
   <script>
@@ -629,10 +627,9 @@
           noResultsRow.id = 'noResultsRow';
           noResultsRow.innerHTML = `
             <td colspan="9" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
               <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Payments Found</div>
               <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-            </td>
+</td>
           `;
           tbody.appendChild(noResultsRow);
         }

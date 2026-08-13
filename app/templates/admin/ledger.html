@@ -15,7 +15,7 @@
     }
     
     .ledger-hero::before {
-      content: '🔐';
+      content: '';
       position: absolute;
       top: -20px;
       right: -20px;
@@ -228,7 +228,7 @@
 {% endblock %}
 
 {% block topbar_left %}
-  <div class="topbar__title">🔐 Payment Blockchain Ledger</div>
+  <div class="topbar__title">Payment Blockchain Ledger</div>
 {% endblock %}
 
 {% block content %}
@@ -236,9 +236,9 @@
     <!-- Back Button -->
     <div style="margin-bottom: 20px;">
       <a href="{{ url_for('admin.payments') }}" class="btn btn--ghost btn--sm">
-        ← Back to Payments
-      </a>
-    </div>
+         Back to Payments
+</a>
+</div>
 
     <!-- Hero Section -->
     <div class="ledger-hero">
@@ -247,114 +247,113 @@
       
       <div class="ledger-hero__grid">
         <div class="ledger-hero__item">
-          <div class="ledger-hero__label">👤 Tenant</div>
+          <div class="ledger-hero__label">Tenant</div>
           <div class="ledger-hero__value">{{ payment.tenant_profile.user.full_name }}</div>
-        </div>
+</div>
         <div class="ledger-hero__item">
-          <div class="ledger-hero__label">🏠 Unit</div>
+          <div class="ledger-hero__label">Unit</div>
           <div class="ledger-hero__value">{{ payment.tenant_profile.unit.building.code|upper }}-{{ payment.tenant_profile.unit.unit_code }}</div>
-        </div>
+</div>
         <div class="ledger-hero__item">
-          <div class="ledger-hero__label">💰 Amount</div>
+          <div class="ledger-hero__label">Amount</div>
           <div class="ledger-hero__value ledger-hero__value--amount">₱{{ '{:,.2f}'.format(payment.amount|float) }}</div>
-        </div>
+</div>
         <div class="ledger-hero__item">
-          <div class="ledger-hero__label">📅 Date</div>
+          <div class="ledger-hero__label">Date</div>
           <div class="ledger-hero__value" style="font-size: 14px;">{{ payment.paid_at.strftime('%b %d, %Y') }}</div>
           <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">{{ payment.paid_at.strftime('%I:%M %p') }}</div>
-        </div>
+</div>
         <div class="ledger-hero__item">
-          <div class="ledger-hero__label">🔖 Reference</div>
+          <div class="ledger-hero__label">Reference</div>
           <div class="ledger-hero__value" style="font-size: 14px;">{{ payment.reference or '—' }}</div>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Info Banner -->
     <div class="info-banner">
-      <div class="info-banner__icon">ℹ️</div>
+      <div class="info-banner__icon">ℹ</div>
       <div class="info-banner__text">
         <strong>What is a Blockchain Ledger?</strong><br>
         Each payment is cryptographically hashed and linked to the previous payment, creating an immutable chain. 
         Any tampering with payment data will break the chain and be immediately detected.
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Current Ledger Entry -->
     {% if ledger %}
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>🔐 Cryptographic Hash</h3>
+          <h3>Cryptographic Hash</h3>
           <p class="muted">This payment's unique blockchain signature</p>
-        </div>
+</div>
         <span class="status-badge status-badge--verified">
-          <span>✓</span>
+          <span></span>
           <span>Verified</span>
-        </span>
-      </div>
+</span>
+</div>
 
       <div class="hash-card">
         <div class="hash-label">
-          <span class="hash-icon">🔑</span>
+          <span class="hash-icon"></span>
           <span>Current Hash (SHA-256)</span>
-        </div>
+</div>
         <div class="hash-display">{{ ledger.hash }}</div>
-      </div>
+</div>
 
       <div class="hash-card" style="background: linear-gradient(135deg, rgba(215, 179, 91, 0.08) 0%, rgba(215, 179, 91, 0.03) 100%); border-color: rgba(215, 179, 91, 0.3);">
         <div class="hash-label">
-          <span class="hash-icon">🔗</span>
+          <span class="hash-icon"></span>
           <span>Previous Hash (Chain Link)</span>
-        </div>
+</div>
         <div class="hash-display">
           {% if ledger.previous_hash %}
             {{ ledger.previous_hash }}
           {% else %}
             <span style="color: #D7B35B; font-weight: 700;">Genesis Block (First payment in chain)</span>
           {% endif %}
-        </div>
-      </div>
+</div>
+</div>
 
       <div class="payload-details">
         <details>
           <summary class="payload-summary">
-            📋 View Technical Payload (JSON Data)
+             View Technical Payload (JSON Data)
           </summary>
           <div class="payload-content">
             <pre>{{ ledger.payload_json }}</pre>
-          </div>
+</div>
         </details>
-      </div>
+</div>
 
       <div style="margin-top: 20px; padding: 16px; background: rgba(215, 179, 91, 0.08); border-radius: 10px; border: 1px solid rgba(215, 179, 91, 0.2);">
         <div style="font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">LEDGER CREATED</div>
         <div style="font-size: 15px; font-weight: 600;">{{ ledger.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
-      </div>
-    </div>
+</div>
+</div>
     {% else %}
     <div class="hash-card hash-card--warning">
       <div style="display: flex; align-items: center; gap: 16px;">
-        <span style="font-size: 48px;">⚠️</span>
         <div>
           <h3 style="margin: 0 0 8px 0; color: #ef4444;">No Ledger Entry Found</h3>
           <p style="margin: 0; color: #dc2626;">This payment has not been added to the blockchain yet. Ledger entries are generated automatically.</p>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
     {% endif %}
 
     <!-- Full Blockchain Chain -->
     <div class="card mt-28">
       <div class="section__header">
         <div>
-          <h3>⛓️ Complete Blockchain Chain</h3>
+          <h3>Complete Blockchain Chain</h3>
           <p class="muted">All payments in chronological order with hash verification</p>
-        </div>
+</div>
         <div style="font-size: 14px; color: var(--muted);">
           <strong>{{ ledger_chain|length }}</strong> blocks in chain
-        </div>
-      </div>
+</div>
+</div>
 
       {% if ledger_chain %}
         <div class="chain-table-wrap mt-16">
@@ -377,46 +376,45 @@
                     {% if entry.payment_id == payment.id %}
                       <span style="margin-left: 8px; font-size: 10px; background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px;">YOU ARE HERE</span>
                     {% endif %}
-                  </td>
+</td>
                   <td class="mono" style="font-size: 13px;">
                     <a href="{{ url_for('admin.view_ledger', payment_id=entry.payment_id) }}" style="color: #3b82f6; text-decoration: none; font-weight: 600;">
                       #{{ entry.payment_id }}
-                    </a>
-                  </td>
+</a>
+</td>
                   <td class="mono" style="font-size: 11px; color: var(--muted);">
                     {{ entry.hash[:32] }}...
-                  </td>
+</td>
                   <td class="mono" style="font-size: 11px; color: var(--muted);">
                     {% if entry.previous_hash %}
                       {{ entry.previous_hash[:32] }}...
                     {% else %}
                       <span class="status-badge status-badge--genesis" style="font-size: 10px; padding: 4px 8px;">
-                        🌟 Genesis
-                      </span>
+                         Genesis
+</span>
                     {% endif %}
-                  </td>
+</td>
                   <td class="muted" style="font-size: 12px;">
                     {{ entry.created_at.strftime('%b %d, %Y') }}
                     <div style="font-size: 10px; margin-top: 2px;">{{ entry.created_at.strftime('%I:%M %p') }}</div>
-                  </td>
+</td>
                   <td>
                     <span class="status-badge status-badge--verified">
-                      <span>✓</span>
+                      <span></span>
                       <span>Verified</span>
-                    </span>
-                  </td>
+</span>
+</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
-        </div>
+</div>
       {% else %}
         <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
-          <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">⛓️</div>
           <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">No Blockchain Entries</div>
           <div style="font-size: 14px;">The blockchain ledger is empty.</div>
-        </div>
+</div>
       {% endif %}
-    </div>
+</div>
   </section>
 {% endblock %}

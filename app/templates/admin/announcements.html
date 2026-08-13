@@ -254,7 +254,7 @@
 {% endblock %}
 
 {% block topbar_left %}
-  <div class="topbar__title">📢 Announcements Management</div>
+  <div class="topbar__title">Announcements Management</div>
 {% endblock %}
 
 {% block content %}
@@ -262,19 +262,19 @@
     <!-- Statistics Cards -->
     <div class="announcements-stats">
       <div class="stat-card stat-card--total">
-        <span class="stat-card__icon">📋</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-total">{{ announcements|length }}</div>
         <div class="stat-card__label">Total Announcements</div>
-      </div>
+</div>
       <div class="stat-card stat-card--active">
-        <span class="stat-card__icon">✅</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-active">
           {{ announcements|selectattr('is_active', 'equalto', true)|list|length }}
-        </div>
+</div>
         <div class="stat-card__label">Active</div>
-      </div>
+</div>
       <div class="stat-card stat-card--month">
-        <span class="stat-card__icon">📅</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-month">
           {% set this_month_count = namespace(value=0) %}
           {% for a in announcements %}
@@ -283,96 +283,96 @@
             {% endif %}
           {% endfor %}
           {{ this_month_count.value }}
-        </div>
+</div>
         <div class="stat-card__label">This Month</div>
-      </div>
+</div>
       <div class="stat-card stat-card--pinned">
-        <span class="stat-card__icon">📌</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-pinned">
           {{ announcements|selectattr('is_pinned', 'equalto', true)|list|length }}
-        </div>
+</div>
         <div class="stat-card__label">Pinned</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Create Announcement Form -->
     <div class="create-form-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <div>
-          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #22c55e;">➕ Create New Announcement</h3>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #22c55e;">Create New Announcement</h3>
           <p class="muted" style="margin: 4px 0 0 0; font-size: 13px;">Broadcast important updates to tenants and visitors</p>
-        </div>
+</div>
         <a href="{{ url_for('admin.export_announcements') }}" class="btn btn--ghost btn--sm">
-          📊 Export CSV
-        </a>
-      </div>
+           Export CSV
+</a>
+</div>
       
       <form method="post" action="{{ url_for('admin.create_announcement') }}" class="mt-16">
         <div class="grid grid--2" style="gap: 16px;">
           <div>
             <label class="label">Title *</label>
             <input class="input" name="title" placeholder="Announcement title..." required />
-          </div>
+</div>
 
           <div>
             <label class="label">Category</label>
             <select class="input" name="category">
               <option value="">General</option>
-              <option value="rule_update">📜 Rule Update</option>
-              <option value="maintenance">🔧 Maintenance</option>
-              <option value="emergency">🚨 Emergency</option>
-              <option value="event">🎉 Event</option>
+              <option value="rule_update">Rule Update</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="emergency">Emergency</option>
+              <option value="event">Event</option>
             </select>
-          </div>
-        </div>
+</div>
+</div>
 
         <div class="grid grid--2 mt-16" style="gap: 16px;">
           <div>
             <label class="label">Target Audience</label>
             <select class="input" name="target_audience">
-              <option value="all">👥 All (Public + Tenants)</option>
-              <option value="tenants">🏠 Tenants Only</option>
-              <option value="public">🌐 Public Only</option>
+              <option value="all">All (Public + Tenants)</option>
+              <option value="tenants">Tenants Only</option>
+              <option value="public">Public Only</option>
             </select>
-          </div>
+</div>
 
           <div>
             <label class="label">Expires On (Optional)</label>
             <input class="input" name="expires_at" type="date" />
             <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Auto-deactivate after this date</div>
-          </div>
-        </div>
+</div>
+</div>
 
         <div class="mt-16">
           <label class="label">Content *</label>
           <textarea class="input" name="content" rows="5" placeholder="Announcement content..." required></textarea>
-        </div>
+</div>
 
         <div class="mt-16">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
             <input type="checkbox" name="is_pinned" />
-            <span style="font-weight: 600;">📌 Pin this announcement (shows at top)</span>
-          </label>
-        </div>
+            <span style="font-weight: 600;">Pin this announcement (shows at top)</span>
+</label>
+</div>
 
         <button class="btn btn--primary mt-16" type="submit" style="background: #22c55e; border-color: #22c55e;">
-          ➕ Publish Announcement
-        </button>
+           Publish Announcement
+</button>
       </form>
-    </div>
+</div>
 
     <!-- Filters Section -->
     <div class="filters-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">Real-time Search & Filters</h4>
         <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
-      </div>
+</div>
       
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
           <input class="input" id="searchInput" placeholder="Title or content..." autocomplete="off" />
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Category</label>
@@ -384,7 +384,7 @@
             <option value="emergency">Emergency</option>
             <option value="event">Event</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Status</label>
@@ -394,7 +394,7 @@
             <option value="inactive">Inactive</option>
             <option value="pinned">Pinned</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
@@ -403,18 +403,18 @@
             <option value="oldest">Oldest First</option>
             <option value="pinned">Pinned First</option>
           </select>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Announcements List -->
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>📢 All Announcements</h3>
+          <h3>All Announcements</h3>
           <p class="muted" id="results-count">{{ announcements|length }} announcement(s) found</p>
-        </div>
-      </div>
+</div>
+</div>
 
       {% if announcements %}
         <div class="mt-16" id="announcementsList">
@@ -429,89 +429,88 @@
               <div class="announcement-header">
                 <div style="flex: 1;">
                   <h4 class="announcement-title">
-                    {% if announcement.is_pinned %}📌{% endif %}
+                    {% if announcement.is_pinned %}{% endif %}
                     {{ announcement.title }}
-                  </h4>
+</h4>
                   
                   <div class="announcement-meta">
                     {% if announcement.category %}
                       <span class="category-badge category-badge--{{ announcement.category }}">
-                        {% if announcement.category == 'rule_update' %}📜 Rule Update
-                        {% elif announcement.category == 'maintenance' %}🔧 Maintenance
-                        {% elif announcement.category == 'emergency' %}🚨 Emergency
-                        {% elif announcement.category == 'event' %}🎉 Event
-                        {% else %}📋 {{ announcement.category|title }}
+                        {% if announcement.category == 'rule_update' %} Rule Update
+                        {% elif announcement.category == 'maintenance' %} Maintenance
+                        {% elif announcement.category == 'emergency' %} Emergency
+                        {% elif announcement.category == 'event' %} Event
+                        {% else %} {{ announcement.category|title }}
                         {% endif %}
-                      </span>
+</span>
                     {% else %}
-                      <span class="category-badge category-badge--general">📋 General</span>
+                      <span class="category-badge category-badge--general">General</span>
                     {% endif %}
                     
                     <span class="audience-badge">
-                      {% if announcement.target_audience == 'tenants' %}🏠 Tenants Only
-                      {% elif announcement.target_audience == 'public' %}🌐 Public Only
-                      {% else %}👥 All
+                      {% if announcement.target_audience == 'tenants' %} Tenants Only
+                      {% elif announcement.target_audience == 'public' %} Public Only
+                      {% else %} All
                       {% endif %}
-                    </span>
+</span>
                     
                     {% if announcement.is_pinned %}
-                      <span class="pin-badge">📌 Pinned</span>
+                      <span class="pin-badge">Pinned</span>
                     {% endif %}
                     
                     {% if announcement.expires_at %}
                       <span style="font-size: 11px; color: var(--muted);">
-                        ⏰ Expires: {{ announcement.expires_at.strftime('%b %d, %Y') }}
-                      </span>
+                         Expires: {{ announcement.expires_at.strftime('%b %d, %Y') }}
+</span>
                     {% endif %}
-                  </div>
-                </div>
-              </div>
+</div>
+</div>
+</div>
               
               <div class="announcement-content" id="content-{{ announcement.id }}">
                 {{ announcement.content }}
-              </div>
+</div>
               
               <button class="btn btn--ghost btn--sm" data-announcement-id="{{ announcement.id }}" onclick="toggleContent(this.dataset.announcementId)" style="margin-bottom: 12px;">
                 <span id="toggle-text-{{ announcement.id }}">Show More</span>
-              </button>
+</button>
               
               <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border);">
                 <div style="font-size: 12px; color: var(--muted);">
-                  📅 {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}
-                </div>
+                   {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+</div>
                 
                 <div class="announcement-actions">
                   <form method="post" action="{{ url_for('admin.pin_announcement', announcement_id=announcement.id) }}" style="display: inline;">
                     <button class="btn btn--ghost btn--sm" type="submit">
-                      {% if announcement.is_pinned %}📌 Unpin{% else %}📌 Pin{% endif %}
-                    </button>
+                      {% if announcement.is_pinned %} Unpin{% else %} Pin{% endif %}
+</button>
                   </form>
                   
                   <form method="post" action="{{ url_for('admin.toggle_announcement', announcement_id=announcement.id) }}" style="display: inline;">
                     <button class="btn btn--ghost btn--sm" type="submit">
-                      {% if announcement.is_active %}❌ Deactivate{% else %}✅ Activate{% endif %}
-                    </button>
+                      {% if announcement.is_active %} Deactivate{% else %} Activate{% endif %}
+</button>
                   </form>
                   
                   <form method="post" action="{{ url_for('admin.delete_announcement', announcement_id=announcement.id) }}" 
                         onsubmit="return confirm('Delete this announcement permanently?')" style="display: inline;">
                     <button class="btn btn--ghost btn--sm" type="submit" style="color: #ef4444;">
-                      🗑️ Delete
-                    </button>
+                       Delete
+</button>
                   </form>
-                </div>
-              </div>
-            </div>
+</div>
+</div>
+</div>
           {% endfor %}
-        </div>
+</div>
       {% else %}
         <div style="text-align: center; padding: 80px 20px; color: var(--muted);">
-          <div style="font-size: 72px; margin-bottom: 20px; opacity: 0.3;">📢</div>
           <div style="font-size: 20px; font-weight: 700; margin-bottom: 10px;">No Announcements Yet</div>
           <div style="font-size: 15px;">Create your first announcement using the form above.</div>
-        </div>
+</div>
       {% endif %}
-    </div>
+</div>
   </section>
 
   <script>
@@ -618,10 +617,9 @@
           noResults.id = 'noResults';
           noResults.innerHTML = `
             <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
-              <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
               <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">No Announcements Found</div>
               <div style="font-size: 14px;">Try adjusting your search or filters</div>
-            </div>
+</div>
           `;
           announcementsList.appendChild(noResults);
         }

@@ -303,7 +303,7 @@
     <!-- Statistics Cards -->
     <div class="deposits-stats">
       <div class="stat-card stat-card--held">
-        <span class="stat-card__icon">💰</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-held">
           {% set total_held = namespace(value=0) %}
           {% for r in reservations %}
@@ -312,11 +312,11 @@
             {% endif %}
           {% endfor %}
           ₱{{ '{:,.0f}'.format(total_held.value|float) }}
-        </div>
+</div>
         <div class="stat-card__label">Total Held</div>
-      </div>
+</div>
       <div class="stat-card stat-card--returned">
-        <span class="stat-card__icon">💵</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-returned">
           {% set total_returned = namespace(value=0) %}
           {% for r in reservations %}
@@ -325,11 +325,11 @@
             {% endif %}
           {% endfor %}
           ₱{{ '{:,.0f}'.format(total_returned.value|float) }}
-        </div>
+</div>
         <div class="stat-card__label">Total Returned</div>
-      </div>
+</div>
       <div class="stat-card stat-card--deductions">
-        <span class="stat-card__icon">📉</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-deductions">
           {% set total_deductions = namespace(value=0) %}
           {% for r in reservations %}
@@ -339,18 +339,18 @@
             {% endif %}
           {% endfor %}
           ₱{{ '{:,.0f}'.format(total_deductions.value|float) }}
-        </div>
+</div>
         <div class="stat-card__label">Total Deductions</div>
-      </div>
+</div>
       <div class="stat-card stat-card--active">
-        <span class="stat-card__icon">🏠</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-active">
           {{ reservations|selectattr('deposit_status', 'equalto', 'held')|list|length }}
-        </div>
+</div>
         <div class="stat-card__label">Active Deposits</div>
-      </div>
+</div>
       <div class="stat-card stat-card--pending">
-        <span class="stat-card__icon">⏳</span>
+        <span class="stat-card__icon"></span>
         <div class="stat-card__number" id="stat-pending">
           {% set pending_count = namespace(value=0) %}
           {% for r in reservations %}
@@ -362,28 +362,28 @@
             {% endif %}
           {% endfor %}
           {{ pending_count.value }}
-        </div>
+</div>
         <div class="stat-card__label">Expiring Soon</div>
-      </div>
-    </div>
+</div>
+</div>
 
     <!-- Filters Section -->
     <div class="filters-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">🔍 Real-time Search & Filters</h4>
+        <h4 style="margin: 0; font-size: 17px; font-weight: 700;">Real-time Search & Filters</h4>
         <div style="display: flex; gap: 10px;">
           <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
           <a href="{{ url_for('admin.export_deposits') }}" class="btn btn--primary btn--sm">
-            📊 Export CSV
-          </a>
-        </div>
-      </div>
+             Export CSV
+</a>
+</div>
+</div>
       
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
           <input class="input" id="searchInput" placeholder="Tenant name or unit..." autocomplete="off" />
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Status</label>
@@ -393,7 +393,7 @@
             <option value="partial_return">Partial Return</option>
             <option value="full_return">Full Return</option>
           </select>
-        </div>
+</div>
         
         <div class="filter-group">
           <label class="filter-label">Building</label>
@@ -403,7 +403,7 @@
               <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
             {% endfor %}
           </select>
-        </div>
+</div>
 
         <div class="filter-group">
           <label class="filter-label">Floor</label>
@@ -414,7 +414,7 @@
             <option value="3">Floor 3</option>
             <option value="4">Floor 4</option>
           </select>
-        </div>
+</div>
 
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
@@ -425,18 +425,18 @@
             <option value="amount-low">Amount (Low-High)</option>
             <option value="expiring">Expiring Soon</option>
           </select>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
 
     <!-- Deposits Table -->
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>💰 All Deposits</h3>
+          <h3>All Deposits</h3>
           <p class="muted" id="results-count">{{ reservations|length }} deposit(s) found</p>
-        </div>
-      </div>
+</div>
+</div>
 
       {% if reservations %}
         <div class="deposits-table-wrap mt-16">
@@ -472,53 +472,53 @@
                   <td>
                     <strong style="font-size: 14px;">{{ r.full_name }}</strong>
                     <div class="muted" style="font-size: 12px; margin-top: 2px;">{{ r.email }}</div>
-                  </td>
+</td>
                   <td>
                     <span class="badge" style="background: rgba(215, 179, 91, 0.25); color: #B8962E; border: 1px solid rgba(215, 179, 91, 0.5); font-size: 12px; font-weight: 700; text-transform: uppercase;">
                       {{ r.unit.building.code|upper }}
-                    </span>
-                  </td>
+</span>
+</td>
                   <td class="mono" style="font-size: 14px; font-weight: 600;">{{ r.unit.unit_code }}</td>
                   <td class="muted" style="font-size: 13px;">
                     {{ r.move_in_date.strftime("%b %d, %Y") if r.move_in_date else "—" }}
-                  </td>
+</td>
                   <td>
                     <div style="font-size: 13px;">{{ r.move_out_date.strftime("%b %d, %Y") if r.move_out_date else "—" }}</div>
                     {% if is_expiring %}
-                      <span class="warning-badge">⚠️ {{ days_until }} days</span>
+                      <span class="warning-badge">{{ days_until }} days</span>
                     {% endif %}
-                  </td>
+</td>
                   <td class="mono" style="font-size: 16px; font-weight: 700; color: #D7B35B;">
                     ₱{{ '{:,.2f}'.format(r.deposit_amount|float) }}
-                  </td>
+</td>
                   <td>
                     {% if r.deposit_deductions %}
                       <div class="deduction-list">
                         {{ r.deposit_deductions }}
-                      </div>
+</div>
                       <div style="margin-top: 4px; font-weight: 700; color: #ef4444; font-size: 13px;">
                         Total: ₱{{ '{:,.2f}'.format(deducted_amount|float) }}
-                      </div>
+</div>
                     {% else %}
                       <span class="muted" style="font-size: 13px;">None</span>
                     {% endif %}
-                  </td>
+</td>
                   <td class="mono" style="font-size: 15px; font-weight: 700; color: #22c55e;">
                     {% if r.deposit_return_amount %}
                       ₱{{ '{:,.2f}'.format(r.deposit_return_amount|float) }}
                     {% else %}
                       ₱{{ '{:,.2f}'.format(r.deposit_amount|float) }}
                     {% endif %}
-                  </td>
+</td>
                   <td>
                     {% if r.deposit_status == 'held' %}
-                      <span class="badge badge--held">💰 Held</span>
+                      <span class="badge badge--held">Held</span>
                     {% elif r.deposit_status == 'partial_return' %}
-                      <span class="badge badge--partial">⚠️ Partial</span>
+                      <span class="badge badge--partial">Partial</span>
                     {% elif r.deposit_status == 'full_return' %}
-                      <span class="badge badge--returned">✅ Returned</span>
+                      <span class="badge badge--returned">Returned</span>
                     {% endif %}
-                  </td>
+</td>
                   <td>
                     <div class="action-buttons">
                       {% if r.deposit_status == 'held' %}
@@ -527,16 +527,16 @@
                                 data-tenant-name="{{ r.full_name }}" 
                                 data-deposit-amount="{{ r.deposit_amount }}"
                                 onclick="openDeductModal(this.dataset.reservationId, this.dataset.tenantName, parseFloat(this.dataset.depositAmount))">
-                          📉 Add Deduction
-                        </button>
+                           Add Deduction
+</button>
                         <button class="btn--return" 
                                 data-reservation-id="{{ r.id }}" 
                                 data-tenant-name="{{ r.full_name }}" 
                                 data-deposit-amount="{{ r.deposit_amount }}"
                                 data-return-amount="{{ r.deposit_return_amount if r.deposit_return_amount else r.deposit_amount }}"
                                 onclick="openReturnModal(this.dataset.reservationId, this.dataset.tenantName, parseFloat(this.dataset.depositAmount), parseFloat(this.dataset.returnAmount))">
-                          💵 Return Deposit
-                        </button>
+                           Return Deposit
+</button>
                       {% elif r.deposit_status == 'partial_return' %}
                         <button class="btn--return" 
                                 data-reservation-id="{{ r.id }}" 
@@ -544,35 +544,34 @@
                                 data-deposit-amount="{{ r.deposit_amount }}"
                                 data-return-amount="{{ r.deposit_return_amount }}"
                                 onclick="openReturnModal(this.dataset.reservationId, this.dataset.tenantName, parseFloat(this.dataset.depositAmount), parseFloat(this.dataset.returnAmount))">
-                          💵 Return Remaining
-                        </button>
+                           Return Remaining
+</button>
                       {% else %}
                         <span class="muted" style="font-size: 12px;">Completed</span>
                       {% endif %}
-                    </div>
-                  </td>
+</div>
+</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
-        </div>
+</div>
       {% else %}
         <div class="empty-state">
-          <div class="empty-state__icon">💰</div>
           <div class="empty-state__title">No Deposits</div>
           <div class="empty-state__text">There are no approved reservations with deposits yet.</div>
-        </div>
+</div>
       {% endif %}
-    </div>
+</div>
   </section>
 
   <!-- Deduction Modal -->
   <div class="modal" id="deductModal">
     <div class="modal__content">
       <div class="modal__header">
-        <h3 class="modal__title">📉 Add Deduction</h3>
+        <h3 class="modal__title">Add Deduction</h3>
         <p class="modal__subtitle" id="deductTenantName">Tenant Name</p>
-      </div>
+</div>
       
       <form method="post" id="deductForm" action="">
         <input type="hidden" name="action" value="add_deduction" />
@@ -582,38 +581,38 @@
           <input class="input" type="number" name="deduction_amount" id="deductAmount" step="0.01" min="0" required />
           <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
             Original Deposit: <strong id="deductOriginal">₱0.00</strong>
-          </div>
-        </div>
+</div>
+</div>
         
         <div style="margin-bottom: 16px;">
           <label class="label">Reason for Deduction *</label>
           <textarea class="input" name="deduction_reason" rows="3" placeholder="e.g., Damaged furniture, unpaid utilities..." required></textarea>
-        </div>
+</div>
         
         <div style="background: rgba(239, 68, 68, 0.08); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); margin-bottom: 16px;">
-          <div style="font-size: 12px; font-weight: 700; color: #ef4444; margin-bottom: 4px;">⚠️ DEDUCTION SUMMARY</div>
+          <div style="font-size: 12px; font-weight: 700; color: #ef4444; margin-bottom: 4px;">DEDUCTION SUMMARY</div>
           <div style="font-size: 13px; color: var(--text);">
             Return Amount: <strong id="deductReturnAmount" style="color: #22c55e;">₱0.00</strong>
-          </div>
-        </div>
+</div>
+</div>
         
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost w-full" onclick="closeDeductModal()">Cancel</button>
           <button type="submit" class="btn btn--primary w-full" style="background: #ef4444; border-color: #ef4444;">
             Add Deduction
-          </button>
-        </div>
+</button>
+</div>
       </form>
-    </div>
-  </div>
+</div>
+</div>
 
   <!-- Return Deposit Modal -->
   <div class="modal" id="returnModal">
     <div class="modal__content">
       <div class="modal__header">
-        <h3 class="modal__title">💵 Return Deposit</h3>
+        <h3 class="modal__title">Return Deposit</h3>
         <p class="modal__subtitle" id="returnTenantName">Tenant Name</p>
-      </div>
+</div>
       
       <form method="post" id="returnForm" action="">
         <input type="hidden" name="action" value="return_deposit" />
@@ -623,29 +622,29 @@
             <div>
               <div style="font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px;">ORIGINAL DEPOSIT</div>
               <div style="font-size: 20px; font-weight: 900; color: #D7B35B;" id="returnOriginal">₱0.00</div>
-            </div>
+</div>
             <div>
               <div style="font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px;">RETURN AMOUNT</div>
               <div style="font-size: 20px; font-weight: 900; color: #22c55e;" id="returnAmount">₱0.00</div>
-            </div>
-          </div>
-        </div>
+</div>
+</div>
+</div>
         
         <div style="background: rgba(59, 130, 246, 0.08); padding: 12px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2); margin-bottom: 20px;">
           <div style="font-size: 12px; line-height: 1.6; color: #1e40af;">
-            <strong>ℹ️ Note:</strong> This action will create a payment record in the blockchain ledger and mark the deposit as returned.
-          </div>
-        </div>
+            <strong>ℹ Note:</strong> This action will create a payment record in the blockchain ledger and mark the deposit as returned.
+</div>
+</div>
         
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost w-full" onclick="closeReturnModal()">Cancel</button>
           <button type="submit" class="btn btn--primary w-full" style="background: #22c55e; border-color: #22c55e;">
             Confirm Return
-          </button>
-        </div>
+</button>
+</div>
       </form>
-    </div>
-  </div>
+</div>
+</div>
 
   <script>
   document.addEventListener('DOMContentLoaded', function() {
@@ -770,10 +769,9 @@
           noResultsRow.id = 'noResultsRow';
           noResultsRow.innerHTML = `
             <td colspan="10" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🔍</div>
               <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Deposits Found</div>
               <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-            </td>
+</td>
           `;
           tbody.appendChild(noResultsRow);
         }
