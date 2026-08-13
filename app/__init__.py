@@ -77,6 +77,75 @@ def create_app(config_object: type[Config] = Config) -> Flask:
 
         return {"current_year": datetime.utcnow().year, "media_url": media_url}
 
+    @app.context_processor
+    def _inject_admin_nav():
+        """Pending-item counts + recent notifications for the admin shell.
+
+        Powers sidebar badges and the topbar notification bell. Runs only for
+        authenticated admins; any DB hiccup degrades to empty (never breaks a page).
+        """
+        empty = {"nav_counts": {}, "nav_notifications": [], "nav_notif_total": 0}
+        try:
+            from flask_login import current_user
+            from .models import Role
+            if not (current_user.is_authenticated and current_user.role == Role.ADMIN):
+                return empty
+
+            from .extensions import db
+            from .models import (
+                Reservation, ReservationStatus, Concern, ConcernStatus,
+                RenewalRequest, RenewalRequestStatus, Inquiry, InquiryStatus,
+            )
+
+            counts = {
+                "reservations": db.session.query(Reservation).filter(
+                    Reservation.status == ReservationStatus.PENDING).count(),
+                "concerns": db.session.query(Concern).filter(
+                    Concern.status != ConcernStatus.RESOLVED).count(),
+                "renewals": db.session.query(RenewalRequest).filter(
+                    RenewalRequest.status == RenewalRequestStatus.PENDING).count(),
+                "inquiries": db.session.query(Inquiry).filter(
+                    Inquiry.status == InquiryStatus.PENDING).count(),
+            }
+
+            notifs = []
+            for r in (db.session.query(Reservation)
+                      .filter(Reservation.status == ReservationStatus.PENDING)
+                      .order_by(Reservation.created_at.desc()).limit(5).all()):
+                notifs.append({
+                    "type": "Reservation",
+                    "title": getattr(r, "full_name", None) or "New reservation",
+                    "subtitle": (r.unit.unit_code if getattr(r, "unit", None) else "Pending review"),
+                    "time": r.created_at, "url": url_for("admin.reservations"),
+                })
+            for c in (db.session.query(Concern)
+                      .filter(Concern.status != ConcernStatus.RESOLVED)
+                      .order_by(Concern.created_at.desc()).limit(5).all()):
+                notifs.append({
+                    "type": "Concern", "title": c.subject or "Concern",
+                    "subtitle": "Needs attention", "time": c.created_at,
+                    "url": url_for("admin.concerns"),
+                })
+            for i in (db.session.query(Inquiry)
+                      .filter(Inquiry.status == InquiryStatus.PENDING)
+                      .order_by(Inquiry.created_at.desc()).limit(5).all()):
+                notifs.append({
+                    "type": "Inquiry",
+                    "title": getattr(i, "full_name", None) or getattr(i, "subject", None) or "New inquiry",
+                    "subtitle": "Awaiting response", "time": i.created_at,
+                    "url": url_for("admin.inquiries"),
+                })
+            notifs.sort(key=lambda n: n["time"] or datetime.min, reverse=True)
+            notifs = notifs[:8]
+
+            return {
+                "nav_counts": counts,
+                "nav_notifications": notifs,
+                "nav_notif_total": counts["reservations"] + counts["concerns"] + counts["inquiries"],
+            }
+        except Exception:
+            return empty
+
     # Add custom Jinja2 filters
     @app.template_filter('from_json')
     def from_json_filter(value):

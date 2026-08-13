@@ -70,6 +70,8 @@
       .dash__side{
         background: linear-gradient(180deg, #faf8f2 0%, #f4efe4 100%);
         border-right: 1px solid rgba(215,179,91,0.16);
+        max-height: 100vh;
+        overflow-y: auto;
       }
       .dash__brandTitle{ font-weight: 700; letter-spacing: .04em; }
       .side-link{
@@ -129,6 +131,113 @@
       /* Section headers: elegant serif with small gold rule */
       .dash-body .section__header h2,
       .dash-body .section__header h3{ font-weight: 600; }
+
+      /* ---- Topbar widgets: notification bell + profile dropdown ---- */
+      .topbar__right{ display: flex; align-items: center; gap: 6px; }
+      .topbar-widget{ position: relative; }
+      .topbar-iconbtn{
+        position: relative;
+        width: 42px; height: 42px;
+        display: grid; place-items: center;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: rgba(20,20,23,0.7);
+        cursor: pointer;
+        transition: background .2s ease, border-color .2s ease, color .2s ease;
+      }
+      .topbar-iconbtn:hover{ background: rgba(215,179,91,0.1); color: #8a6d1e; border-color: rgba(215,179,91,0.25); }
+      .topbar-dot{
+        position: absolute; top: 4px; right: 4px;
+        min-width: 17px; height: 17px; padding: 0 4px;
+        border-radius: 999px;
+        background: #dc2626; color: #fff;
+        font-size: 10px; font-weight: 700;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 2px solid #fff; line-height: 1;
+      }
+      button.topbar__user{
+        border: 1px solid transparent; background: transparent;
+        border-radius: 12px; padding: 5px 8px; cursor: pointer;
+        transition: background .2s ease, border-color .2s ease;
+      }
+      button.topbar__user:hover{ background: rgba(215,179,91,0.1); border-color: rgba(215,179,91,0.25); }
+
+      .topbar-menu{
+        position: absolute; top: calc(100% + 10px); right: 0;
+        width: 320px; max-width: calc(100vw - 32px);
+        background: #fff;
+        border: 1px solid rgba(20,20,23,0.08);
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(20,20,23,0.14);
+        z-index: 60;
+        overflow: hidden;
+        animation: menuPop .18s ease;
+      }
+      .topbar-menu[hidden]{ display: none !important; }
+      .topbar-menu--profile{ width: 240px; }
+      @keyframes menuPop{ from{ opacity:0; transform: translateY(-6px); } to{ opacity:1; transform:none; } }
+      .topbar-menu__head{
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px; border-bottom: 1px solid rgba(20,20,23,0.06);
+        font-weight: 600; font-size: 14px;
+      }
+      .topbar-menu__head--profile{ display:block; }
+      .topbar-menu__count{ font-size: 11px; font-weight: 600; color: #8a6d1e; }
+      .topbar-menu__body{ max-height: 360px; overflow-y: auto; }
+      .notif-item{
+        display: block; padding: 12px 16px; text-decoration: none;
+        border-bottom: 1px solid rgba(20,20,23,0.05);
+        transition: background .15s ease;
+      }
+      .notif-item:hover{ background: rgba(215,179,91,0.06); }
+      .notif-item__type{
+        display: inline-block; font-size: 10px; font-weight: 700;
+        letter-spacing: .08em; text-transform: uppercase;
+        padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;
+        background: rgba(215,179,91,0.14); color: #8a6d1e;
+      }
+      .notif-item__type--concern{ background: rgba(239,68,68,0.12); color: #dc2626; }
+      .notif-item__type--inquiry{ background: rgba(59,130,246,0.12); color: #2563eb; }
+      .notif-item__title{ display: block; font-weight: 600; font-size: 13px; color: var(--text); }
+      .notif-item__sub{ display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+      .notif-empty{ padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+      .menu-link{
+        display: block; width: 100%; text-align: left;
+        padding: 11px 16px; text-decoration: none;
+        color: var(--text); font-size: 13px; font-weight: 500;
+        background: none; border: none; cursor: pointer;
+        transition: background .15s ease;
+      }
+      .menu-link:hover{ background: rgba(215,179,91,0.08); }
+      .menu-link--danger{ color: #dc2626; }
+      .menu-link--danger:hover{ background: rgba(239,68,68,0.08); }
+      @keyframes bellPulse{ 0%{ transform: scale(1); } 50%{ transform: scale(1.35); } 100%{ transform: scale(1); } }
+
+      /* ---- Toasts: flash messages as bottom-right cards on dashboards ---- */
+      .dash-body .flash-stack{
+        top: auto; bottom: 22px;
+        left: auto; right: 22px;
+        transform: none;
+        width: auto; max-width: 380px;
+        pointer-events: none;
+      }
+      .dash-body .flash{
+        pointer-events: auto;
+        background: #fff;
+        border: 1px solid rgba(20,20,23,0.08);
+        border-left: 4px solid var(--gold);
+        border-radius: 12px;
+        padding: 13px 16px;
+        font-size: 13px; font-weight: 500;
+        box-shadow: 0 12px 34px rgba(20,20,23,0.14);
+        animation: toastIn .35s cubic-bezier(.16,1,.3,1);
+      }
+      .dash-body .flash--success{ border-left-color: #10b981; }
+      .dash-body .flash--danger{ border-left-color: #ef4444; }
+      .dash-body .flash--warning{ border-left-color: #f59e0b; }
+      .dash-body .flash--info{ border-left-color: #3b82f6; }
+      @keyframes toastIn{ from{ opacity:0; transform: translateX(24px); } to{ opacity:1; transform:none; } }
     </style>
     
     <!-- Socket.IO Client -->
@@ -171,14 +280,65 @@
             {% block topbar_left %}{% endblock %}
 </div>
           <div class="topbar__right">
-            <div class="topbar__user">
-              <div class="topbar__avatar">{{ (current_user.full_name[:1] if current_user.is_authenticated else "U") }}</div>
-              <div class="topbar__meta">
-                <div class="topbar__name">{{ current_user.full_name if current_user.is_authenticated else "Guest" }}</div>
-                <div class="topbar__role muted">{{ current_user.role.value if current_user.is_authenticated else "" }}</div>
-</div>
-</div>
-</div>
+            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
+            <!-- Notification bell (admin only) -->
+            <div class="topbar-widget js-dropdown">
+              <button type="button" class="topbar-iconbtn js-dropdown-toggle" aria-label="Notifications">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                {% if nav_notif_total %}<span class="topbar-dot">{{ nav_notif_total if nav_notif_total < 100 else '99+' }}</span>{% endif %}
+              </button>
+              <div class="topbar-menu topbar-menu--notif js-dropdown-menu" hidden>
+                <div class="topbar-menu__head">
+                  <span>Notifications</span>
+                  {% if nav_notif_total %}<span class="topbar-menu__count">{{ nav_notif_total }} pending</span>{% endif %}
+                </div>
+                <div class="topbar-menu__body">
+                  {% for n in nav_notifications %}
+                    <a href="{{ n.url }}" class="notif-item">
+                      <span class="notif-item__type notif-item__type--{{ n.type|lower }}">{{ n.type }}</span>
+                      <span class="notif-item__title">{{ n.title }}</span>
+                      <span class="notif-item__sub">{{ n.subtitle }}{% if n.time %} • {{ n.time.strftime('%b %d, %I:%M %p') }}{% endif %}</span>
+                    </a>
+                  {% else %}
+                    <div class="notif-empty">You're all caught up.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Profile dropdown -->
+            <div class="topbar-widget js-dropdown">
+              <button type="button" class="topbar__user js-dropdown-toggle">
+                <div class="topbar__avatar">{{ (current_user.full_name[:1] if current_user.is_authenticated else "U") }}</div>
+                <div class="topbar__meta">
+                  <div class="topbar__name">{{ current_user.full_name if current_user.is_authenticated else "Guest" }}</div>
+                  <div class="topbar__role muted">{{ current_user.role.value if current_user.is_authenticated else "" }}</div>
+                </div>
+              </button>
+              <div class="topbar-menu topbar-menu--profile js-dropdown-menu" hidden>
+                <div class="topbar-menu__head topbar-menu__head--profile">
+                  <div class="topbar__name">{{ current_user.full_name if current_user.is_authenticated else "Guest" }}</div>
+                  {% if current_user.is_authenticated %}<div class="muted" style="font-size:12px">{{ current_user.email }}</div>{% endif %}
+                </div>
+                <div class="topbar-menu__body">
+                  {% if current_user.is_authenticated %}
+                    {% set _r = current_user.role.value %}
+                    {% if _r == 'admin' %}
+                      <a href="{{ url_for('admin.dashboard') }}" class="menu-link">Dashboard</a>
+                    {% elif _r == 'tenant' %}
+                      <a href="{{ url_for('tenant.dashboard') }}" class="menu-link">Dashboard</a>
+                    {% else %}
+                      <a href="{{ url_for('user.dashboard') }}" class="menu-link">Dashboard</a>
+                    {% endif %}
+                  {% endif %}
+                  <form method="post" action="{{ url_for('auth.logout') }}" style="margin:0">
+                    <button type="submit" class="menu-link menu-link--danger">Logout</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
         </header>
 
         <main class="dash__content">
@@ -214,6 +374,56 @@
       window.socket.on('error', function(data) {
         console.error('SocketIO Error:', data);
       });
+    </script>
+
+    <!-- Topbar dropdowns (notifications + profile) and real-time bell -->
+    <script>
+      (function(){
+        // --- Dropdown open/close ---
+        document.querySelectorAll('.js-dropdown-toggle').forEach(function(btn){
+          btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            var menu = btn.parentElement.querySelector('.js-dropdown-menu');
+            var isOpen = !menu.hasAttribute('hidden');
+            document.querySelectorAll('.js-dropdown-menu').forEach(function(m){ m.setAttribute('hidden',''); });
+            if (!isOpen) menu.removeAttribute('hidden');
+          });
+        });
+        document.querySelectorAll('.js-dropdown-menu').forEach(function(m){
+          m.addEventListener('click', function(e){ e.stopPropagation(); });
+        });
+        document.addEventListener('click', function(){
+          document.querySelectorAll('.js-dropdown-menu').forEach(function(m){ m.setAttribute('hidden',''); });
+        });
+        document.addEventListener('keydown', function(e){
+          if (e.key === 'Escape') document.querySelectorAll('.js-dropdown-menu').forEach(function(m){ m.setAttribute('hidden',''); });
+        });
+
+        // --- Real-time bell via SocketIO ---
+        function bump(type, title, subtitle, url){
+          var bell = document.querySelector('.topbar-iconbtn');
+          if (!bell) return;
+          var dot = bell.querySelector('.topbar-dot');
+          if (!dot){ dot = document.createElement('span'); dot.className = 'topbar-dot'; dot.textContent = '0'; bell.appendChild(dot); }
+          var n = (parseInt((dot.textContent || '0').replace('+',''), 10) || 0) + 1;
+          dot.textContent = n < 100 ? n : '99+';
+          dot.style.animation = 'none'; void dot.offsetWidth; dot.style.animation = 'bellPulse .5s ease';
+          var body = document.querySelector('.topbar-menu--notif .topbar-menu__body');
+          if (body){
+            var empty = body.querySelector('.notif-empty'); if (empty) empty.remove();
+            var a = document.createElement('a'); a.href = url || '#'; a.className = 'notif-item';
+            a.innerHTML = '<span class="notif-item__type notif-item__type--' + type.toLowerCase() + '">' + type + '</span>' +
+              '<span class="notif-item__title">' + (title || ('New ' + type)) + '</span>' +
+              '<span class="notif-item__sub">' + (subtitle || 'Just now') + '</span>';
+            body.insertBefore(a, body.firstChild);
+          }
+        }
+        if (window.socket){
+          window.socket.on('new_concern', function(d){ bump('Concern', (d && d.subject) || 'New concern', 'Just now', '/admin/concerns'); });
+          window.socket.on('new_renewal', function(d){ bump('Renewal', 'New renewal request', 'Just now', '/admin/renewals'); });
+          window.socket.on('new_feedback', function(d){ bump('Feedback', 'New feedback received', 'Just now', '/admin/feedbacks'); });
+        }
+      })();
     </script>
     
     <script>

@@ -1,35 +1,32 @@
 <nav class="side-nav">
-  <a class="side-link side-link--dashboard {% if request.path.startswith('/admin/dashboard') %}is-active{% endif %}" href="{{ url_for('admin.dashboard') }}">Dashboard
-</a>
-  <a class="side-link side-link--floorplan {% if request.path.startswith('/admin/floorplan') %}is-active{% endif %}" href="{{ url_for('admin.floorplan') }}">Floorplan
-</a>
-  <a class="side-link side-link--units {% if request.path.startswith('/admin/units') %}is-active{% endif %}" href="{{ url_for('admin.units') }}">Units
-</a>
-  <a class="side-link side-link--users {% if request.path.startswith('/admin/users') %}is-active{% endif %}" href="{{ url_for('admin.users') }}">Customers
-</a>
-  <a class="side-link side-link--monitoring {% if request.path.startswith('/admin/tenants/monitoring') %}is-active{% endif %}" href="{{ url_for('admin.tenant_monitoring') }}">Monitoring
-</a>
-  <a class="side-link side-link--reservations {% if request.path.startswith('/admin/reservations') %}is-active{% endif %}" href="{{ url_for('admin.reservations') }}">Reservations
-</a>
-  <a class="side-link side-link--payments {% if request.path.startswith('/admin/payments') %}is-active{% endif %}" href="{{ url_for('admin.payments') }}">Payments
-</a>
-  <a class="side-link side-link--deposits {% if request.path.startswith('/admin/deposits') %}is-active{% endif %}" href="{{ url_for('admin.deposits') }}">Deposits
-</a>
-  <a class="side-link side-link--announcements {% if request.path.startswith('/admin/announcements') %}is-active{% endif %}" href="{{ url_for('admin.announcements') }}">Announcements
-</a>
-  <a class="side-link side-link--documents {% if request.path.startswith('/admin/documents') %}is-active{% endif %}" href="{{ url_for('admin.documents') }}">Documents
-</a>
-  <a class="side-link side-link--renewals {% if request.path.startswith('/admin/renewals') %}is-active{% endif %}" href="{{ url_for('admin.renewals') }}">Renewals
-</a>
-  <a class="side-link side-link--feedbacks {% if request.path.startswith('/admin/feedbacks') %}is-active{% endif %}" href="{{ url_for('admin.feedbacks') }}">Feedbacks
-</a>
-  <a class="side-link side-link--concerns {% if request.path.startswith('/admin/concerns') %}is-active{% endif %}" href="{{ url_for('admin.concerns') }}">Concerns
-</a>
-  <a class="side-link side-link--inquiries {% if request.path.startswith('/admin/inquiries') %}is-active{% endif %}" href="{{ url_for('admin.inquiries') }}">Inquiries
-</a>
+  <div class="side-group__label">Overview</div>
+  <a class="side-link side-link--dashboard {% if request.path.startswith('/admin/dashboard') %}is-active{% endif %}" href="{{ url_for('admin.dashboard') }}"><span>Dashboard</span></a>
+
+  <div class="side-group__label">Property</div>
+  <a class="side-link side-link--floorplan {% if request.path.startswith('/admin/floorplan') %}is-active{% endif %}" href="{{ url_for('admin.floorplan') }}"><span>Floorplan</span></a>
+  <a class="side-link side-link--units {% if request.path.startswith('/admin/units') %}is-active{% endif %}" href="{{ url_for('admin.units') }}"><span>Units</span></a>
+
+  <div class="side-group__label">People</div>
+  <a class="side-link side-link--users {% if request.path.startswith('/admin/users') %}is-active{% endif %}" href="{{ url_for('admin.users') }}"><span>Customers</span></a>
+  <a class="side-link side-link--monitoring {% if request.path.startswith('/admin/tenants/monitoring') %}is-active{% endif %}" href="{{ url_for('admin.tenant_monitoring') }}"><span>Monitoring</span></a>
+
+  <div class="side-group__label">Requests</div>
+  <a class="side-link side-link--reservations {% if request.path.startswith('/admin/reservations') %}is-active{% endif %}" href="{{ url_for('admin.reservations') }}"><span>Reservations</span>{% if nav_counts.reservations %}<span class="side-badge">{{ nav_counts.reservations }}</span>{% endif %}</a>
+  <a class="side-link side-link--renewals {% if request.path.startswith('/admin/renewals') %}is-active{% endif %}" href="{{ url_for('admin.renewals') }}"><span>Renewals</span>{% if nav_counts.renewals %}<span class="side-badge">{{ nav_counts.renewals }}</span>{% endif %}</a>
+  <a class="side-link side-link--concerns {% if request.path.startswith('/admin/concerns') %}is-active{% endif %}" href="{{ url_for('admin.concerns') }}"><span>Concerns</span>{% if nav_counts.concerns %}<span class="side-badge side-badge--alert">{{ nav_counts.concerns }}</span>{% endif %}</a>
+  <a class="side-link side-link--inquiries {% if request.path.startswith('/admin/inquiries') %}is-active{% endif %}" href="{{ url_for('admin.inquiries') }}"><span>Inquiries</span>{% if nav_counts.inquiries %}<span class="side-badge">{{ nav_counts.inquiries }}</span>{% endif %}</a>
+
+  <div class="side-group__label">Finance</div>
+  <a class="side-link side-link--payments {% if request.path.startswith('/admin/payments') %}is-active{% endif %}" href="{{ url_for('admin.payments') }}"><span>Payments</span></a>
+  <a class="side-link side-link--deposits {% if request.path.startswith('/admin/deposits') %}is-active{% endif %}" href="{{ url_for('admin.deposits') }}"><span>Deposits</span></a>
+
+  <div class="side-group__label">Communication</div>
+  <a class="side-link side-link--announcements {% if request.path.startswith('/admin/announcements') %}is-active{% endif %}" href="{{ url_for('admin.announcements') }}"><span>Announcements</span></a>
+  <a class="side-link side-link--documents {% if request.path.startswith('/admin/documents') %}is-active{% endif %}" href="{{ url_for('admin.documents') }}"><span>Documents</span></a>
+  <a class="side-link side-link--feedbacks {% if request.path.startswith('/admin/feedbacks') %}is-active{% endif %}" href="{{ url_for('admin.feedbacks') }}"><span>Feedbacks</span></a>
+
   <form method="post" action="{{ url_for('auth.logout') }}" style="display:contents">
-    <button class="side-link side-link--logout" type="submit">Logout
-</button>
+    <button class="side-link side-link--logout" type="submit"><span>Logout</span></button>
   </form>
 </nav>
 
@@ -70,6 +67,46 @@
   background: rgba(239, 68, 68, 0.1) !important;
   color: #dc2626 !important;
   border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Section labels */
+.side-group__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(20, 20, 23, 0.38);
+  padding: 14px 14px 6px;
+}
+.side-group__label:first-child { padding-top: 4px; }
+
+/* Links: space label + badge apart */
+.side-link { justify-content: space-between; }
+.side-link > span:first-child { flex: 1; }
+
+/* Count badges */
+.side-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(215, 179, 91, 0.18);
+  color: #8a6d1e;
+  border: 1px solid rgba(215, 179, 91, 0.4);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.side-badge--alert {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.side-link.is-active .side-badge {
+  background: rgba(255, 255, 255, 0.6);
 }
 </style>
 
