@@ -193,7 +193,7 @@
                   <div class="kicker">Attachments</div>
                   <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
                     {% for attachment in attachments %}
-                      <a href="{{ url_for('static', filename=attachment) }}" target="_blank" class="btn btn--ghost btn--sm">
+                      <a href="{{ media_url(attachment) }}" target="_blank" class="btn btn--ghost btn--sm">
                          {{ attachment.split('/')[-1] }}
 </a>
                     {% endfor %}

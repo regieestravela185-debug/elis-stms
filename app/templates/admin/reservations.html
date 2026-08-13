@@ -445,7 +445,7 @@
                         <div class="mono muted" style="font-size: 11px; margin-top: 2px;">{{ r.id_number }}</div>
                       {% endif %}
                       {% if r.id_upload_path %}
-                        <a href="{{ url_for('static', filename=r.id_upload_path) }}" target="_blank" style="font-size: 11px; color: #3b82f6; margin-top: 4px; display: block;">View ID</a>
+                        <a href="{{ media_url(r.id_upload_path) }}" target="_blank" style="font-size: 11px; color: #3b82f6; margin-top: 4px; display: block;">View ID</a>
                       {% endif %}
                       
                       <!-- AI Verification Status -->
@@ -704,7 +704,7 @@
             <div>
               <h4 style="margin:0 0 12px 0; color:#64748b; font-size:12px; text-transform:uppercase;">ID Document</h4>
               <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0;">
-                ${data.id_upload_path ? `<img src="/static/${data.id_upload_path}" style="width:100%; max-width:500px; border-radius:8px; margin-bottom:12px;" alt="ID Image"/>` : '<div style="text-align:center; padding:20px; color:#94a3b8;">No ID image</div>'}
+                ${data.id_upload_path ? `<img src="${data.id_upload_path.startsWith('http') ? data.id_upload_path : '/static/' + data.id_upload_path}" style="width:100%; max-width:500px; border-radius:8px; margin-bottom:12px;" alt="ID Image"/>` : '<div style="text-align:center; padding:20px; color:#94a3b8;">No ID image</div>'}
                 <div style="font-size:13px;">
                   <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
                     <span class="muted">ID Type:</span>

@@ -163,14 +163,14 @@
 
             <!-- Actions -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <button type="button" class="btn btn--sm" style="text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; font-weight: 600;" data-doc-url="{{ url_for('static', filename=doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="previewDocument(this.dataset.docUrl, this.dataset.docTitle)">
+              <button type="button" class="btn btn--sm" style="text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; font-weight: 600;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="previewDocument(this.dataset.docUrl, this.dataset.docTitle)">
                 👁️ Preview
               </button>
-              <a href="{{ url_for('static', filename=doc.file_path) }}" download class="btn btn--primary btn--sm" style="text-align: center; font-weight: 600;" data-doc-id="{{ doc.id }}" onclick="trackDownload(this.dataset.docId)">
+              <a href="{{ media_url(doc.file_path) }}" download class="btn btn--primary btn--sm" style="text-align: center; font-weight: 600;" data-doc-id="{{ doc.id }}" onclick="trackDownload(this.dataset.docId)">
                 ⬇️ Download
               </a>
             </div>
-            <button type="button" class="btn btn--ghost btn--sm" style="width: 100%; margin-top: 8px;" data-doc-url="{{ url_for('static', filename=doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="printDocument(this.dataset.docUrl, this.dataset.docTitle)">
+            <button type="button" class="btn btn--ghost btn--sm" style="width: 100%; margin-top: 8px;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="printDocument(this.dataset.docUrl, this.dataset.docTitle)">
               🖨️ Print
             </button>
           </div>

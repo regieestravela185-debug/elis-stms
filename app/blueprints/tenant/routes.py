@@ -393,10 +393,11 @@ def create_concern():
                 
                 filepath = os.path.join(upload_dir, filename)
                 file.save(filepath)
-                
-                # Store relative path for database
-                relative_path = f"uploads/concerns/{filename}"
-                attachments_list.append(relative_path)
+
+                # Persist to Supabase Storage when configured; else local path
+                from ... import supabase_storage
+                _url = supabase_storage.upload_local_file(filepath, f"attachments/{filename}")
+                attachments_list.append(_url or f"uploads/concerns/{filename}")
     
     # Convert attachments list to JSON
     import json
@@ -480,9 +481,10 @@ def add_concern_follow_up(concern_id: int):
                 
                 filepath = os.path.join(upload_dir, filename)
                 file.save(filepath)
-                
-                relative_path = f"uploads/concerns/{filename}"
-                attachments_list.append(relative_path)
+
+                from ... import supabase_storage
+                _url = supabase_storage.upload_local_file(filepath, f"attachments/{filename}")
+                attachments_list.append(_url or f"uploads/concerns/{filename}")
     
     import json
     attachments_json = json.dumps(attachments_list) if attachments_list else None

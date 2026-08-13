@@ -204,13 +204,13 @@
                       {% for attachment in attachments %}
                         {% if attachment.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
                           <div style="position: relative;">
-                            <img src="{{ url_for('static', filename=attachment) }}" 
+                            <img src="{{ media_url(attachment) }}" 
                                  style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer;"
-                                 data-image-url="{{ url_for('static', filename=attachment) }}"
+                                 data-image-url="{{ media_url(attachment) }}"
                                  onclick="showImagePreview(this.dataset.imageUrl)" />
                           </div>
                         {% else %}
-                          <a href="{{ url_for('static', filename=attachment) }}" target="_blank" class="btn btn--ghost btn--sm">
+                          <a href="{{ media_url(attachment) }}" target="_blank" class="btn btn--ghost btn--sm">
                             📎 {{ attachment.split('/')[-1] }}
                           </a>
                         {% endif %}

@@ -2298,8 +2298,11 @@ def upload_document():
     file_path = upload_folder / unique_filename
     file.save(str(file_path))
 
-    # Store relative path for serving (without 'static/' prefix for url_for)
-    relative_path = f"uploads/{unique_filename}"
+    # Persist to Supabase Storage when configured (survives Render redeploys);
+    # otherwise keep the local relative path.
+    from ... import supabase_storage
+    _url = supabase_storage.upload_local_file(str(file_path), f"documents/{unique_filename}")
+    relative_path = _url or f"uploads/{unique_filename}"
 
     document = Document(
         tenant_profile_id=profile.id,

@@ -262,7 +262,7 @@
 
             <!-- Actions -->
             <div style="display: flex; gap: 8px;">
-              <a href="{{ url_for('static', filename=doc.file_path) }}" target="_blank" class="btn btn--sm" style="flex: 1; text-align: center;">
+              <a href="{{ media_url(doc.file_path) }}" target="_blank" class="btn btn--sm" style="flex: 1; text-align: center;">
                  Preview
 </a>
               <form method="post" action="{{ url_for('admin.delete_document', document_id=doc.id) }}" style="flex: 1;" onsubmit="return confirm('Delete this document?');">

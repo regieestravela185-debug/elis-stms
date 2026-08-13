@@ -77,6 +77,24 @@ def upload_bytes(data: bytes, dest_path: str, content_type: str | None = None) -
     return public_url(dest_path)
 
 
+def upload_local_file(local_path, dest_path: str):
+    """Upload an already-saved local file to `dest_path`.
+
+    Returns the public URL when Supabase Storage is enabled, otherwise None
+    (so callers can fall back to the local relative path). Never raises — a
+    storage hiccup shouldn't break an upload flow; it just falls back to local.
+    """
+    if not is_enabled():
+        return None
+    try:
+        with open(local_path, "rb") as f:
+            data = f.read()
+        return upload_bytes(data, dest_path)
+    except Exception as e:  # pragma: no cover
+        logger.warning("Supabase upload_local_file failed (%s): %s", dest_path, e)
+        return None
+
+
 def upload_file_storage(file_storage, dest_path: str) -> str:
     """
     Upload a Werkzeug FileStorage (request.files item) to `dest_path` and return

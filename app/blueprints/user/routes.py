@@ -138,6 +138,8 @@ def reserve_post(unit_id: int):
     selfie_data_url = (request.form.get("selfie_data_url") or "").strip()
     upload_path = None
     selfie_path = None
+    id_local_path = None      # local file (for OCR / face verification)
+    selfie_local_path = None  # local file (for face verification)
     ocr_result: dict[str, str] = {"id_type": "", "id_number": ""}
     
     # Handle ID upload
@@ -147,8 +149,11 @@ def reserve_post(unit_id: int):
         uploads_dir.mkdir(parents=True, exist_ok=True)
         save_path = uploads_dir / filename
         upload.save(save_path)
-        upload_path = str(save_path).replace("app/static/", "")  # for static serving
-        ocr_result = scan_id_fields(save_path)
+        id_local_path = str(save_path)
+        ocr_result = scan_id_fields(save_path)  # OCR needs the local file
+        from ... import supabase_storage
+        _url = supabase_storage.upload_local_file(str(save_path), f"ids/{filename}")
+        upload_path = _url or str(save_path).replace("app/static/", "")
     
     # Handle selfie - prefer live-captured base64 data URL over file upload
     uploads_dir = Path(current_app.config["UPLOAD_FOLDER"])
@@ -161,14 +166,20 @@ def reserve_post(unit_id: int):
             save_path = uploads_dir / filename
             with open(save_path, "wb") as f:
                 f.write(base64.b64decode(encoded))
-            selfie_path = str(save_path).replace("app/static/", "")
+            selfie_local_path = str(save_path)
+            from ... import supabase_storage
+            _surl = supabase_storage.upload_local_file(str(save_path), f"selfies/{filename}")
+            selfie_path = _surl or str(save_path).replace("app/static/", "")
         except Exception as e:
             current_app.logger.warning(f"Failed to decode selfie data URL: {e}")
     elif selfie_upload and selfie_upload.filename:
         filename = secure_filename(selfie_upload.filename)
         save_path = uploads_dir / filename
         selfie_upload.save(save_path)
-        selfie_path = str(save_path).replace("app/static/", "")  # for static serving
+        selfie_local_path = str(save_path)
+        from ... import supabase_storage
+        _surl = supabase_storage.upload_local_file(str(save_path), f"selfies/{filename}")
+        selfie_path = _surl or str(save_path).replace("app/static/", "")
     
     # AI-Assisted Identity Verification
     face_match_score = None
@@ -177,20 +188,15 @@ def reserve_post(unit_id: int):
     id_authenticity_score = None
     fake_detection_data = {}
     
-    # Run fake ID detection on uploaded ID
-    if upload_path and FACE_VERIFICATION_AVAILABLE and detect_fake_id:
-        full_id_path = Path(upload_path)
-        fake_detection_data = detect_fake_id(str(full_id_path))
+    # Run fake ID detection on uploaded ID (uses the LOCAL file)
+    if id_local_path and FACE_VERIFICATION_AVAILABLE and detect_fake_id:
+        fake_detection_data = detect_fake_id(id_local_path)
         fake_id_flag = fake_detection_data.get("is_fake", False)
         id_authenticity_score = 1.0 - fake_detection_data.get("fake_score", 0.0)
-    
-    if upload_path and selfie_path and FACE_VERIFICATION_AVAILABLE and verify_identity:
-        # Full paths for verification
-        full_id_path = Path(upload_path)
-        full_selfie_path = Path(selfie_path)
-        
-        # Run face verification
-        verification_result = verify_identity(str(full_id_path), str(full_selfie_path))
+
+    if id_local_path and selfie_local_path and FACE_VERIFICATION_AVAILABLE and verify_identity:
+        # Run face verification on the LOCAL files
+        verification_result = verify_identity(id_local_path, selfie_local_path)
         
         if verification_result.get("success"):
             face_match_score = verification_result.get("face_match_score")
