@@ -95,6 +95,30 @@ def global_search():
     return jsonify(results)
 
 
+@bp.get("/api/suggest-reply")
+@login_required
+def suggest_reply_api():
+    """Rule-based draft reply for a concern or inquiry (no LLM)."""
+    _ensure_admin()
+    from flask import jsonify
+    from ...ai_utils import suggest_reply
+    from ...models import Concern, Inquiry
+
+    cid = request.args.get("concern_id", type=int)
+    iid = request.args.get("inquiry_id", type=int)
+    if cid:
+        c = db.session.get(Concern, cid)
+        if c:
+            text = " ".join(x for x in [c.subject, c.description] if x)
+            return jsonify({"reply": suggest_reply(c.category, text)})
+    if iid:
+        i = db.session.get(Inquiry, iid)
+        if i:
+            text = " ".join(x for x in [i.subject, i.message] if x)
+            return jsonify({"reply": suggest_reply(getattr(i, "category", None), text)})
+    return jsonify({"reply": ""})
+
+
 def _get_building_floor_limit(building_id: int) -> int:
     building = db.session.get(Building, building_id)
     if not building:

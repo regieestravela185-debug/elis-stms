@@ -251,8 +251,12 @@
         <input type="hidden" name="concern_id" id="responseConcernId">
         
         <div class="form-group">
-          <label class="label">Response</label>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <label class="label">Response</label>
+            <button type="button" class="btn btn--ghost btn--sm" id="suggestReplyBtn" onclick="suggestConcernReply()">Suggest reply</button>
+          </div>
           <textarea name="admin_response" id="adminResponseText" class="input" rows="5" required placeholder="Type your response to the tenant..."></textarea>
+          <small class="muted" style="display:block; margin-top:4px;">Tip: “Suggest reply” drafts a professional response you can edit before sending.</small>
 </div>
         
         <div class="form-group">
@@ -357,7 +361,21 @@
     function closeResponseModal() {
       document.getElementById('responseModal').hidden = true;
     }
-    
+
+    function suggestConcernReply() {
+      var id = document.getElementById('responseConcernId').value;
+      var ta = document.getElementById('adminResponseText');
+      var btn = document.getElementById('suggestReplyBtn');
+      if (!id) return;
+      if (ta.value.trim() && !confirm('Replace the current text with a suggested draft?')) return;
+      var orig = btn.textContent; btn.textContent = 'Drafting…'; btn.disabled = true;
+      fetch('/admin/api/suggest-reply?concern_id=' + encodeURIComponent(id))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d && d.reply) { ta.value = d.reply; ta.focus(); } })
+        .catch(function () {})
+        .finally(function () { btn.textContent = orig; btn.disabled = false; });
+    }
+
     // Status Modal
     function openStatusModal(concernId, currentStatus, currentPriority) {
       document.getElementById('statusModal').hidden = false;

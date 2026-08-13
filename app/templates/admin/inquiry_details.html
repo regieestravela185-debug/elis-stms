@@ -124,15 +124,32 @@
 
       <form method="POST" action="{{ url_for('admin.reply_inquiry', inquiry_id=inquiry.id) }}" style="margin-top: 16px;">
         <div class="form-group">
-          <label for="message" class="form-label">Your Reply <span style="color: #ff5050;">*</span></label>
-          <textarea 
-            id="message" 
-            name="message" 
-            class="input" 
-            rows="6" 
-            required 
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <label for="message" class="form-label">Your Reply <span style="color: #ff5050;">*</span></label>
+            <button type="button" class="btn btn--ghost btn--sm" id="suggestReplyBtn"
+                    onclick="suggestInquiryReply({{ inquiry.id }})">Suggest reply</button>
+          </div>
+          <textarea
+            id="message"
+            name="message"
+            class="input"
+            rows="6"
+            required
             placeholder="Type your reply here. This will be sent to {{ inquiry.email }} via email."
           ></textarea>
+          <script>
+            function suggestInquiryReply(id) {
+              var ta = document.getElementById('message');
+              var btn = document.getElementById('suggestReplyBtn');
+              if (ta.value.trim() && !confirm('Replace the current text with a suggested draft?')) return;
+              var orig = btn.textContent; btn.textContent = 'Drafting…'; btn.disabled = true;
+              fetch('/admin/api/suggest-reply?inquiry_id=' + encodeURIComponent(id))
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) { if (d && d.reply) { ta.value = d.reply; ta.focus(); } })
+                .catch(function () {})
+                .finally(function () { btn.textContent = orig; btn.disabled = false; });
+            }
+          </script>
           <p class="muted" style="margin-top: 8px; font-size: 13px;">
              This reply will be sent to <strong>{{ inquiry.email }}</strong> and the inquiry status will be updated to "Responded".
 </p>
