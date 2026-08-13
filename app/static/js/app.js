@@ -19,7 +19,12 @@ function appendChatBubble(role, text) {
 
   const avatar = document.createElement("div");
   avatar.className = "chat-bubble__avatar";
-  avatar.textContent = role === "You" ? "You" : "E";
+  if (role === "You") {
+    avatar.textContent = "You";
+  } else {
+    // Ellie the owl
+    avatar.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5 8 7M18 4.5 16 7"/><path d="M12 3.5a7 7 0 0 0-7 7v2.5a7 7 0 0 0 14 0V10.5a7 7 0 0 0-7-7Z"/><circle cx="9" cy="10.5" r="1.9"/><circle cx="15" cy="10.5" r="1.9"/><path d="M12 12.6 10.9 14h2.2Z"/><path d="M8.5 19 7 21M15.5 19 17 21"/></svg>';
+  }
 
   const content = document.createElement("div");
   content.className = "chat-bubble__text";

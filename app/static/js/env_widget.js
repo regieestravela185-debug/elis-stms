@@ -42,9 +42,9 @@
       .then(function (data) {
         if (!data || !data.current) return;
         var temp = Math.round(data.current.temperature_2m);
-        var label = WMO[data.current.weather_code] || "Calamba";
+        var label = WMO[data.current.weather_code] || "";
         document.querySelectorAll(".js-weather").forEach(function (el) {
-          el.textContent = temp + "°C " + label;
+          el.textContent = "Calamba " + temp + "°C" + (label ? " · " + label : "");
         });
       })
       .catch(function () {

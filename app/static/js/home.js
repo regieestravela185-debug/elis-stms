@@ -371,10 +371,10 @@
     log.innerHTML = `
       <div class="chat-welcome">
         <div class="chat-welcome__avatar">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5 8 7M18 4.5 16 7"/><path d="M12 3.5a7 7 0 0 0-7 7v2.5a7 7 0 0 0 14 0V10.5a7 7 0 0 0-7-7Z"/><circle cx="9" cy="10.5" r="1.9"/><circle cx="15" cy="10.5" r="1.9"/><path d="M12 12.6 10.9 14h2.2Z"/><path d="M8.5 19 7 21M15.5 19 17 21"/></svg>
         </div>
         <div class="chat-welcome__bubble">
-          <p><strong>Kumusta!</strong> I can help with pricing, location, viewing, requirements, office hours, reservation, maintenance, and more.</p>
+          <p><strong>Kumusta! Ako si Ellie 🦉</strong> — ang virtual assistant ng The Elis Center. Matutulungan kita sa pricing, location, viewing, requirements, office hours, reservation, maintenance, at iba pa.</p>
         </div>
       </div>
       <div class="chat-suggestions" id="chatSuggestions">
