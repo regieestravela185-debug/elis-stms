@@ -17,8 +17,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=2" />
+
     <style>
       /* ============================================================
          ELEGANT ADMIN UI — modern, airy, refined (matches landing)
@@ -285,13 +285,17 @@
     <!-- Socket.IO Client -->
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
     
-    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/env_widget.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
+    <script defer src="{{ url_for('static', filename='js/env_widget.js') }}?v=2"></script>
     <script>
       if ('serviceWorker' in navigator) {
+        let __swRefreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (__swRefreshing) return; __swRefreshing = true; window.location.reload();
+        });
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/static/sw.js')
-            .then(registration => console.log('SW registered'))
+            .then(reg => { reg.update(); console.log('SW registered'); })
             .catch(err => console.log('SW registration failed'));
         });
       }

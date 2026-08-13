@@ -21,14 +21,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
-    <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/env_widget.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=2" />
+    <script defer src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
+    <script defer src="{{ url_for('static', filename='js/env_widget.js') }}?v=2"></script>
     <script>
       if ('serviceWorker' in navigator) {
+        // Reload once the updated service worker takes control (fresh assets).
+        let __swRefreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (__swRefreshing) return; __swRefreshing = true; window.location.reload();
+        });
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/static/sw.js')
-            .then(registration => console.log('SW registered'))
+            .then(reg => { reg.update(); console.log('SW registered'); })
             .catch(err => console.log('SW registration failed'));
         });
       }
