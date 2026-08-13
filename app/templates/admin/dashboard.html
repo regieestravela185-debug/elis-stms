@@ -233,16 +233,146 @@
     .page-admin-dashboard .grid--2 {
       gap: 24px !important;
     }
+
+    /* ============================================================
+       PROFESSIONAL STATISTICS — accent bars, glow, count-up, meters
+       ============================================================ */
+    .metric{
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+    }
+    /* animated gold accent bar on top */
+    .metric::before{
+      content: "";
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #E7C56B, #C9A84A);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform .45s cubic-bezier(.4,0,.2,1);
+    }
+    .metric:hover::before{ transform: scaleX(1); }
+    /* soft radial sheen that fades in on hover */
+    .metric::after{
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(240px 120px at 85% -20%, rgba(215,179,91,0.14), transparent 70%);
+      opacity: 0; transition: opacity .4s ease;
+      pointer-events: none;
+    }
+    .metric:hover::after{ opacity: 1; }
+    .metric__num{
+      font-size: 30px;
+      line-height: 1.1;
+      transition: transform .3s ease;
+    }
+    .metric:hover .metric__num{ transform: translateY(-1px); }
+    .metric__num.is-counting{ font-variant-numeric: tabular-nums; }
+
+    /* KPI tiles */
+    .kpi-tile{
+      position: relative;
+      overflow: hidden;
+      padding: 20px !important;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid rgba(20,20,23,0.07);
+      box-shadow: 0 1px 2px rgba(20,20,23,0.03), 0 10px 24px rgba(20,20,23,0.04);
+      transition: transform .3s cubic-bezier(.4,0,.2,1), box-shadow .3s ease, border-color .3s ease;
+    }
+    .kpi-tile:hover{
+      transform: translateY(-5px);
+      box-shadow: 0 2px 4px rgba(20,20,23,0.04), 0 22px 44px rgba(20,20,23,0.09);
+      border-color: rgba(215,179,91,0.3);
+    }
+    .kpi-tile__label{
+      font-size: 11px; font-weight: 600; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .kpi-tile__value{
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 30px; font-weight: 700; margin-top: 6px; line-height: 1;
+    }
+    .kpi-tile__sub{ font-size: 11px; color: var(--muted); margin-top: 6px; }
+    .kpi-bar{
+      height: 6px; border-radius: 999px;
+      background: rgba(20,20,23,0.06);
+      margin-top: 14px; overflow: hidden;
+    }
+    .kpi-bar__fill{
+      height: 100%; width: 0;
+      border-radius: 999px;
+      transition: width 1.2s cubic-bezier(.4,0,.2,1);
+    }
   </style>
   <script>
-    // Apply animation delays after page load
     document.addEventListener('DOMContentLoaded', function() {
+      // Staggered row/item entrance delays
       document.querySelectorAll('.fade-in-row, .fade-in-item').forEach(function(el) {
         var delay = el.getAttribute('data-delay');
-        if (delay) {
-          el.style.animationDelay = delay + 's';
-        }
+        if (delay) { el.style.animationDelay = delay + 's'; }
       });
+
+      // ---- Animated count-up for statistics ----
+      var seen = new WeakSet();
+      function fmt(val, dec, group){
+        return val.toLocaleString('en-US', {
+          minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: group !== false
+        });
+      }
+      function countUp(el, target, o){
+        o = o || {}; var dur = 1100, start = null;
+        var dec = o.decimals || 0, prefix = o.prefix || '', suffix = o.suffix || '';
+        el.classList.add('is-counting');
+        function step(ts){
+          if (!start) start = ts;
+          var p = Math.min((ts - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+          el.textContent = prefix + fmt(target * eased, dec, o.group) + suffix;
+          if (p < 1) requestAnimationFrame(step);
+          else el.textContent = prefix + fmt(target, dec, o.group) + suffix;
+        }
+        requestAnimationFrame(step);
+      }
+      function triggerCount(el){
+        if (seen.has(el)) return; seen.add(el);
+        if (el.classList.contains('js-countup')){
+          countUp(el, parseFloat(el.getAttribute('data-target')) || 0, {
+            decimals: parseInt(el.getAttribute('data-decimals') || '0', 10),
+            prefix: el.getAttribute('data-prefix') || '',
+            suffix: el.getAttribute('data-suffix') || ''
+          });
+        } else { // .metric__num (parse rendered text; keep ₱ / %)
+          var raw = el.textContent.trim();
+          var numStr = raw.replace(/[₱,%\s]/g, '');
+          var dec = (numStr.split('.')[1] || '').length;
+          countUp(el, parseFloat(numStr) || 0, {
+            decimals: dec,
+            prefix: raw.charAt(0) === '₱' ? '₱' : '',
+            suffix: raw.indexOf('%') > -1 ? '%' : ''
+          });
+        }
+      }
+      function triggerMeter(el){
+        if (seen.has(el)) return; seen.add(el);
+        var pct = parseFloat(el.getAttribute('data-pct')) || 0;
+        pct = Math.max(0, Math.min(100, pct));
+        requestAnimationFrame(function(){ el.style.width = pct + '%'; });
+      }
+
+      var nums = document.querySelectorAll('.metric__num, .js-countup');
+      var meters = document.querySelectorAll('.js-meter');
+      if ('IntersectionObserver' in window){
+        var io = new IntersectionObserver(function(entries){
+          entries.forEach(function(e){ if (e.isIntersecting){ triggerCount(e.target); io.unobserve(e.target); } });
+        }, { threshold: 0.35 });
+        nums.forEach(function(el){ io.observe(el); });
+        var io2 = new IntersectionObserver(function(entries){
+          entries.forEach(function(e){ if (e.isIntersecting){ triggerMeter(e.target); io2.unobserve(e.target); } });
+        }, { threshold: 0.2 });
+        meters.forEach(function(el){ io2.observe(el); });
+      } else {
+        nums.forEach(triggerCount); meters.forEach(triggerMeter);
+      }
     });
   </script>
 {% endblock %}
@@ -675,35 +805,40 @@
 </div>
         <div class="grid grid--4" style="gap: 16px;">
           <!-- Occupancy Rate -->
-          <div style="padding: 18px; background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02)); border: 2px solid rgba(59,130,246,0.25); border-radius: 12px;">
-            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Occupancy Rate</div>
-            <div style="font-size: 28px; font-weight: 900; color: #3b82f6; margin-top: 6px;">{{ occupancy_rate }}%</div>
-            <div class="muted" style="font-size: 11px; margin-top: 4px;">{{ cards.occupied }} of {{ cards.total_units }} units</div>
-</div>
+          <div class="kpi-tile">
+            <div class="kpi-tile__label">Occupancy Rate</div>
+            <div class="kpi-tile__value" style="color: #3b82f6;"><span class="js-countup" data-target="{{ occupancy_rate }}" data-suffix="%" data-decimals="0">0%</span></div>
+            <div class="kpi-tile__sub">{{ cards.occupied }} of {{ cards.total_units }} units</div>
+            <div class="kpi-bar"><div class="kpi-bar__fill js-meter" data-pct="{{ occupancy_rate }}" style="background: linear-gradient(90deg,#60a5fa,#3b82f6);"></div></div>
+          </div>
           <!-- Revenue Growth -->
-          <div style="padding: 18px; background: linear-gradient(135deg, rgba(64,201,120,0.08), rgba(64,201,120,0.02)); border: 2px solid rgba(64,201,120,0.25); border-radius: 12px;">
-            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Revenue Growth</div>
+          <div class="kpi-tile">
+            <div class="kpi-tile__label">Revenue Growth</div>
             {% if revenue_growth_pct > 0 %}
-              <div style="font-size: 28px; font-weight: 900; margin-top: 6px; color: #40c978;">{{ revenue_growth_pct|abs }}%</div>
+              {% set rg_color = '#40c978' %}
             {% elif revenue_growth_pct < 0 %}
-              <div style="font-size: 28px; font-weight: 900; margin-top: 6px; color: #ef4444;">{{ revenue_growth_pct|abs }}%</div>
+              {% set rg_color = '#ef4444' %}
             {% else %}
-              <div style="font-size: 28px; font-weight: 900; margin-top: 6px; color: #6b7280;">{{ revenue_growth_pct|abs }}%</div>
+              {% set rg_color = '#6b7280' %}
             {% endif %}
-            <div class="muted" style="font-size: 11px; margin-top: 4px;">vs last month</div>
-</div>
+            <div class="kpi-tile__value" style="color: {{ rg_color }};"><span class="js-countup" data-target="{{ revenue_growth_pct|abs }}" data-suffix="%" data-decimals="0">0%</span></div>
+            <div class="kpi-tile__sub">vs last month</div>
+            <div class="kpi-bar"><div class="kpi-bar__fill js-meter" data-pct="{{ [revenue_growth_pct|abs, 100]|min }}" style="background: {{ rg_color }};"></div></div>
+          </div>
           <!-- Resolution Rate -->
-          <div style="padding: 18px; background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(168,85,247,0.02)); border: 2px solid rgba(168,85,247,0.25); border-radius: 12px;">
-            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Concern Resolution</div>
-            <div style="font-size: 28px; font-weight: 900; color: #a855f7; margin-top: 6px;">{{ resolution_rate }}%</div>
-            <div class="muted" style="font-size: 11px; margin-top: 4px;">resolved on time</div>
-</div>
+          <div class="kpi-tile">
+            <div class="kpi-tile__label">Concern Resolution</div>
+            <div class="kpi-tile__value" style="color: #a855f7;"><span class="js-countup" data-target="{{ resolution_rate }}" data-suffix="%" data-decimals="0">0%</span></div>
+            <div class="kpi-tile__sub">resolved on time</div>
+            <div class="kpi-bar"><div class="kpi-bar__fill js-meter" data-pct="{{ resolution_rate }}" style="background: linear-gradient(90deg,#c084fc,#a855f7);"></div></div>
+          </div>
           <!-- Satisfaction -->
-          <div style="padding: 18px; background: linear-gradient(135deg, rgba(215,179,91,0.08), rgba(215,179,91,0.02)); border: 2px solid rgba(215,179,91,0.25); border-radius: 12px;">
-            <div class="muted" style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Tenant Satisfaction</div>
-            <div style="font-size: 28px; font-weight: 900; color: #D7B35B; margin-top: 6px;">{{ avg_rating }}</div>
-            <div class="muted" style="font-size: 11px; margin-top: 4px;">average rating</div>
-</div>
+          <div class="kpi-tile">
+            <div class="kpi-tile__label">Tenant Satisfaction</div>
+            <div class="kpi-tile__value" style="color: #D7B35B;"><span class="js-countup" data-target="{{ avg_rating }}" data-suffix=" / 5" data-decimals="1">0</span></div>
+            <div class="kpi-tile__sub">average rating</div>
+            <div class="kpi-bar"><div class="kpi-bar__fill js-meter" data-pct="{{ (avg_rating|float / 5 * 100)|round(0, 'floor')|int }}" style="background: linear-gradient(90deg,#E7C56B,#C9A84A);"></div></div>
+          </div>
 </div>
 </div>
 
