@@ -31,8 +31,8 @@
     .hero--premium .hero__scrim{
       position: absolute; inset: 0; z-index: 1;
       background:
-        linear-gradient(90deg, rgba(10,9,7,0.86) 0%, rgba(10,9,7,0.62) 42%, rgba(10,9,7,0.18) 100%),
-        linear-gradient(0deg, rgba(10,9,7,0.85) 0%, rgba(10,9,7,0) 40%);
+        linear-gradient(90deg, rgba(18,16,12,0.74) 0%, rgba(18,16,12,0.48) 45%, rgba(18,16,12,0.12) 100%),
+        linear-gradient(0deg, rgba(18,16,12,0.72) 0%, rgba(18,16,12,0) 45%);
     }
     .hero--premium .hero__inner{
       position: relative; z-index: 2;
@@ -46,86 +46,88 @@
     @keyframes heroRise{ from{ opacity:0; transform: translateY(26px);} to{ opacity:1; transform:none;} }
     .hero__eyebrow{
       display: inline-flex; align-items:center;
-      font-size: 12px; font-weight: 700;
-      letter-spacing: .28em; text-transform: uppercase;
-      color: #E8CE86;
-      padding-bottom: 18px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .34em; text-transform: uppercase;
+      color: rgba(232,206,134,0.92);
+      padding-bottom: 22px;
       position: relative;
     }
     .hero__eyebrow::before{
       content:""; display:inline-block;
-      width: 34px; height: 1px; margin-right: 14px;
+      width: 40px; height: 1px; margin-right: 16px;
       background: linear-gradient(90deg, #D7B35B, transparent);
     }
     .hero__headline{
       font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 800;
-      font-size: clamp(44px, 6.4vw, 82px);
-      line-height: 1.02;
-      letter-spacing: -0.02em;
-      margin: 0 0 22px;
+      font-weight: 500;
+      font-size: clamp(42px, 6vw, 78px);
+      line-height: 1.08;
+      letter-spacing: -0.015em;
+      margin: 0 0 26px;
       color: #fff;
-      text-shadow: 0 8px 40px rgba(0,0,0,0.45);
-      max-width: 16ch;
+      text-shadow: 0 6px 34px rgba(0,0,0,0.38);
+      max-width: 17ch;
     }
     .hero__headline-accent{
       font-style: italic;
-      font-weight: 600;
-      background: linear-gradient(120deg, #F7DE94 0%, #D7B35B 45%, #B8922F 100%);
-      -webkit-background-clip: text; background-clip: text;
-      color: transparent;
+      font-weight: 500;
+      color: #EBD79B;
     }
     .hero__sub{
-      font-size: clamp(15px, 1.4vw, 19px);
-      line-height: 1.7;
-      color: rgba(255,255,255,0.86);
-      max-width: 60ch;
-      margin: 0 0 30px;
-      text-shadow: 0 2px 14px rgba(0,0,0,0.45);
+      font-size: clamp(15px, 1.3vw, 18px);
+      font-weight: 300;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.82);
+      max-width: 58ch;
+      margin: 0 0 34px;
+      text-shadow: 0 2px 14px rgba(0,0,0,0.4);
     }
     .hero__trust{
       display: flex; flex-wrap: wrap; gap: 10px;
-      margin: 0 0 34px;
+      margin: 0 0 38px;
     }
     .hero__chip{
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 9px 16px;
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 8px 16px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.14);
       backdrop-filter: blur(12px);
-      color: #fff;
-      font-size: 13px; font-weight: 600;
-      letter-spacing: .01em;
+      color: rgba(255,255,255,0.9);
+      font-size: 12.5px; font-weight: 400;
+      letter-spacing: .02em;
     }
-    .hero__chip svg{ color: #E8CE86; }
-    .hero__cta{ display: flex; gap: 14px; flex-wrap: wrap; }
+    .hero__chip svg{ color: #E8CE86; opacity: 0.9; }
+    .hero__cta{ display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
     .btn--gold{
-      background: linear-gradient(135deg, #E7C56B 0%, #D7B35B 50%, #B8922F 100%);
-      color: #201a08 !important;
-      border: none !important;
-      font-weight: 700;
-      padding: 13px 30px;
-      border-radius: 12px;
-      box-shadow: 0 12px 34px rgba(215,179,91,0.42);
-      letter-spacing: .01em;
+      background: #D7B35B;
+      color: #211a08 !important;
+      border: 1px solid rgba(255,255,255,0.15) !important;
+      font-weight: 600;
+      padding: 14px 34px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(215,179,91,0.28);
+      letter-spacing: .02em;
+      transition: background .3s ease, transform .3s ease, box-shadow .3s ease;
     }
     .btn--gold:hover{
+      background: #E4C878;
       transform: translateY(-2px);
-      box-shadow: 0 18px 44px rgba(215,179,91,0.55);
+      box-shadow: 0 14px 38px rgba(215,179,91,0.4);
     }
     .btn--glass{
-      background: rgba(255,255,255,0.08);
+      background: transparent;
       color: #fff !important;
-      border: 1px solid rgba(255,255,255,0.28) !important;
-      backdrop-filter: blur(12px);
-      font-weight: 600;
-      padding: 13px 28px;
-      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.35) !important;
+      font-weight: 500;
+      padding: 14px 30px;
+      border-radius: 10px;
+      letter-spacing: .02em;
+      transition: background .3s ease, border-color .3s ease, transform .3s ease;
     }
     .btn--glass:hover{
-      background: rgba(255,255,255,0.16);
-      border-color: rgba(255,255,255,0.5) !important;
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.6) !important;
       transform: translateY(-2px);
     }
     .hero__scroll{
@@ -318,19 +320,20 @@
 
     .section__header h2 {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(30px, 4vw, 46px);
-      font-weight: 800;
+      font-size: clamp(30px, 4vw, 44px);
+      font-weight: 500;
       color: var(--text);
-      letter-spacing: -0.02em;
-      line-height: 1.1;
+      letter-spacing: -0.01em;
+      line-height: 1.15;
     }
     .section__header h2::after{
       content: "";
       display: block;
-      width: 56px; height: 3px;
-      margin: 16px auto 0;
+      width: 44px; height: 2px;
+      margin: 20px auto 0;
       border-radius: 999px;
-      background: linear-gradient(90deg, #E7C56B, #B8922F);
+      background: linear-gradient(90deg, #E7C56B, #C9A84A);
+      opacity: 0.9;
     }
 
     .section__header p {
@@ -897,16 +900,17 @@
     }
 
     .how-step__icon {
-      width: 64px;
-      height: 64px;
-      background: linear-gradient(135deg, #D7B35B, #C9A84A);
-      color: white;
+      width: 60px;
+      height: 60px;
+      background: rgba(215, 179, 91, 0.08);
+      color: #B8922F;
+      border: 1px solid rgba(215, 179, 91, 0.35);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto 20px;
-      box-shadow: 0 4px 12px rgba(215, 179, 91, 0.25);
+      box-shadow: none;
     }
 
     .how-step__n {
@@ -1761,94 +1765,118 @@
     /* ============================================================
        PREMIUM SECTION POLISH — cohesive bold/high-end treatment
        ============================================================ */
-    .page-home{ background: #faf8f3; }
+    /* Soft ivory canvas — modern, airy, elegant */
+    .page-home{ background: #fbfaf7; }
 
-    /* Serif headings for feature/about/contact cards */
+    /* Refined card system: hairline border, soft low shadow */
+    .page-home .card,
+    .feature-strip,
+    .building-header,
+    .about-prose,
+    .home-stat,
+    .contact-card,
+    .acc,
+    .how-step{
+      border: 1px solid rgba(20,20,23,0.06) !important;
+      box-shadow: 0 1px 2px rgba(20,20,23,0.03), 0 12px 28px rgba(20,20,23,0.04) !important;
+      border-radius: 18px;
+    }
+
+    /* Serif headings for feature/about/contact cards — light, elegant */
     #about .card h3,
     #contact .card h3,
     .feature__title{
       font-family: 'Playfair Display', Georgia, serif;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.005em;
+      font-weight: 500;
     }
-    #about .card h3, #contact .card h3{ font-size: 21px; font-weight: 700; }
+    #about .card h3, #contact .card h3{ font-size: 20px; }
 
-    /* Section vertical rhythm + hairline dividers between bands */
+    /* Section rhythm: quiet hairline dividers between bands */
     #units, #how, #announcements, #about, #faq, #contact{
-      border-top: 1px solid rgba(215,179,91,0.14);
+      border-top: 1px solid rgba(20,20,23,0.05);
     }
+    .section__header p{ font-weight: 300; }
 
-    /* Premium stat tiles */
+    /* Elegant stat tiles */
     .home-stat{
-      background: linear-gradient(180deg, #ffffff 0%, #fbf8f0 100%);
-      border: 1px solid rgba(215,179,91,0.2);
+      background: #fff;
       position: relative;
       overflow: hidden;
     }
     .home-stat::before{
-      content:""; position:absolute; top:0; left:0; right:0; height:3px;
-      background: linear-gradient(90deg, #E7C56B, #B8922F);
-      opacity:0; transition: opacity .3s ease;
+      content:""; position:absolute; top:0; left:0; right:0; height:2px;
+      background: linear-gradient(90deg, #E7C56B, #C9A84A);
+      opacity:0; transition: opacity .35s ease;
     }
     .home-stat:hover::before{ opacity:1; }
     .home-stat__value{
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 38px; font-weight: 800;
-      background: linear-gradient(120deg, #D7B35B, #B8922F);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
+      font-size: 40px; font-weight: 500;
+      color: #B8922F;
     }
     .home-stat__label{
-      text-transform: uppercase; letter-spacing: .12em; font-size: 11px;
+      text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 500;
     }
 
-    /* How-it-works: gold top accent on hover + refined number chip */
+    /* How-it-works: quiet gold top accent on hover + refined number chip */
     .how-step{ overflow: hidden; }
     .how-step::before{
-      content:""; position:absolute; top:0; left:0; right:0; height:3px;
-      background: linear-gradient(90deg, #E7C56B, #B8922F);
-      transform: scaleX(0); transform-origin: left; transition: transform .35s cubic-bezier(0.4,0,0.2,1);
+      content:""; position:absolute; top:0; left:0; right:0; height:2px;
+      background: linear-gradient(90deg, #E7C56B, #C9A84A);
+      transform: scaleX(0); transform-origin: left; transition: transform .4s cubic-bezier(0.4,0,0.2,1);
     }
     .how-step:hover::before{ transform: scaleX(1); }
     .how-step__n{
-      background: rgba(215,179,91,0.14) !important;
+      background: transparent !important;
       color: #B8922F !important;
-      border: 1px solid rgba(215,179,91,0.4);
+      border: 1px solid rgba(215,179,91,0.45);
       font-family: 'Playfair Display', Georgia, serif;
-      width: 40px; height: 40px; font-size: 18px;
+      font-weight: 500;
+      width: 42px; height: 42px; font-size: 18px;
     }
 
-    /* Feature strip: elevate, add gold hairline */
-    .feature-strip{
-      background: linear-gradient(180deg, #ffffff 0%, #fbf8f0 100%);
-      border: 1px solid rgba(215,179,91,0.2);
-    }
+    /* Feature strip */
+    .feature-strip{ background: #fff; }
     .feature__ico{
-      box-shadow: 0 8px 22px rgba(215,179,91,0.3);
+      background: #fff !important;
+      color: #B8922F !important;
+      border: 1px solid rgba(215,179,91,0.4) !important;
+      box-shadow: none !important;
     }
 
-    /* Unit price: serif, gold gradient for a premium listing feel */
+    /* Unit price: elegant serif, solid refined gold */
     .unit-card__price{
       font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 800;
-      background: linear-gradient(120deg, #D7B35B, #B8922F);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
+      font-weight: 500;
+      color: #B8922F;
+      background: none;
+      -webkit-text-fill-color: currentColor;
     }
 
-    /* FAQ: warmer premium card + serif question */
+    /* FAQ: elegant serif question */
     .acc summary{
       font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
+      font-weight: 500;
     }
 
-    /* Contact cards: gold accent bar on hover */
+    /* Contact cards: quiet gold accent bar on hover */
     .contact-card{ position: relative; overflow: hidden; }
     .contact-card::before{
-      content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
-      background: linear-gradient(180deg, #E7C56B, #B8922F);
-      transform: scaleY(0); transform-origin: top; transition: transform .35s cubic-bezier(0.4,0,0.2,1);
+      content:""; position:absolute; left:0; top:0; bottom:0; width:2px;
+      background: linear-gradient(180deg, #E7C56B, #C9A84A);
+      transform: scaleY(0); transform-origin: top; transition: transform .4s cubic-bezier(0.4,0,0.2,1);
     }
     .contact-card:hover::before{ transform: scaleY(1); }
+    .contact-card h3{ font-family: 'Playfair Display', Georgia, serif; font-weight: 500; }
 
-    /* Reveal animation smoothing already handled by .reveal */
+    /* Softer, slower hover lifts for a calmer, elegant feel */
+    .page-home .card--lift:hover,
+    .home-stat:hover,
+    .how-step:hover{
+      transform: translateY(-5px);
+      box-shadow: 0 2px 4px rgba(20,20,23,0.04), 0 22px 44px rgba(20,20,23,0.08) !important;
+    }
   </style>
 {% endblock %}
 
