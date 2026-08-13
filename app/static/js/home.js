@@ -406,11 +406,13 @@
   // Homepage units realtime status (database-connected polling)
   const unitCards = Array.from(document.querySelectorAll(".unit-card[data-unit-id]"));
   const canReserve = !!document.getElementById("reserveForm");
+  let pollDelay = 30000; // start at 30s; backs off on errors/429
   async function pollHomeUnits() {
     if (!unitCards.length) return;
     try {
       const res = await fetch("/api/units");
-      if (!res.ok) return;
+      if (!res.ok) { pollDelay = Math.min(pollDelay * 2, 300000); return; }
+      pollDelay = 30000; // reset on success
       const data = await res.json();
       const map = new Map((data.units || []).map((u) => [String(u.id), u]));
       unitCards.forEach((card) => {
@@ -449,10 +451,12 @@
           }
         }
       });
-    } catch (_) {}
+    } catch (_) { pollDelay = Math.min(pollDelay * 2, 300000); }
   }
+  (function scheduleHomePoll() {
+    setTimeout(async function () { await pollHomeUnits(); scheduleHomePoll(); }, pollDelay);
+  })();
   pollHomeUnits();
-  setInterval(pollHomeUnits, 5000);
 
   // Horizontal unit scroller
   const unitsScroll = document.getElementById("unitsScroll");
