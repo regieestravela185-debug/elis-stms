@@ -75,8 +75,24 @@ a{color:inherit}
 .env-widget__sep{ opacity:.4 }
 @media (max-width: 640px){ .env-widget{ display:none } }
 
-/* Ellie the owl 🦉 — clean, simple round avatar (AI-assistant style) */
-.chat-fab svg{ width: 26px; height: 26px }
+/* Ellie the owl 🦉 — no gold circle, slightly 3D, awake(night)/asleep(day) */
+.chat-fab,
+.chat-panel__avatar,
+.chat-welcome__avatar,
+.chat-bubble--bot .chat-bubble__avatar{
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible;
+}
+.chat-fab__pulse{ display:none !important }
+.chat-fab svg{ width: 52px; height: 52px; filter: drop-shadow(0 3px 6px rgba(0,0,0,.30)) }
+.chat-panel__avatar svg{ width: 34px !important; height: 34px !important }
+.chat-welcome__avatar svg{ width: 28px !important; height: 28px !important }
+.chat-bubble--bot .chat-bubble__avatar svg{ width: 26px; height: 26px }
+/* day/night eyes */
+.owl-asleep{ display:none } .owl-awake{ display:inline }
+html.is-day .owl-awake{ display:none } html.is-day .owl-asleep{ display:inline }
 .nav__profile{
   font-size:12px;
   font-weight:700;
