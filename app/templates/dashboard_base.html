@@ -238,6 +238,48 @@
       .dash-body .flash--warning{ border-left-color: #f59e0b; }
       .dash-body .flash--info{ border-left-color: #3b82f6; }
       @keyframes toastIn{ from{ opacity:0; transform: translateX(24px); } to{ opacity:1; transform:none; } }
+
+      /* ---- Global search ---- */
+      .topbar__left{ display: flex; align-items: center; gap: 12px; min-width: 0; }
+      .topbar-search{ position: relative; margin-left: 4px; }
+      .topbar-search__icon{
+        position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+        color: rgba(20,20,23,0.4); pointer-events: none;
+      }
+      .topbar-search__input{
+        width: 300px; max-width: 38vw;
+        padding: 9px 12px 9px 36px;
+        border-radius: 10px;
+        border: 1px solid rgba(20,20,23,0.12);
+        background: rgba(255,255,255,0.7);
+        font-size: 13px; color: var(--text);
+        transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+      }
+      .topbar-search__input:focus{
+        outline: none; background: #fff;
+        border-color: rgba(215,179,91,0.55);
+        box-shadow: 0 0 0 3px rgba(215,179,91,0.14);
+      }
+      .topbar-search__results{
+        position: absolute; top: calc(100% + 8px); left: 0;
+        width: 380px; max-width: 90vw;
+        background: #fff; border: 1px solid rgba(20,20,23,0.08);
+        border-radius: 14px; box-shadow: 0 20px 50px rgba(20,20,23,0.14);
+        z-index: 70; overflow-y: auto; max-height: 420px;
+        animation: menuPop .16s ease;
+      }
+      .topbar-search__results[hidden]{ display: none !important; }
+      .search-group__label{
+        font-size: 10px; font-weight: 700; letter-spacing: .12em;
+        text-transform: uppercase; color: rgba(20,20,23,0.4);
+        padding: 12px 16px 4px;
+      }
+      .search-item{ display: block; padding: 9px 16px; text-decoration: none; transition: background .15s ease; }
+      .search-item:hover, .search-item.is-active{ background: rgba(215,179,91,0.08); }
+      .search-item__label{ display: block; font-weight: 600; font-size: 13px; color: var(--text); }
+      .search-item__sub{ display: block; font-size: 11px; color: var(--muted); }
+      .search-empty{ padding: 24px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+      @media (max-width: 900px){ .topbar-search{ display: none; } }
     </style>
     
     <!-- Socket.IO Client -->
@@ -279,6 +321,13 @@
               <span></span>
 </button>
             {% block topbar_left %}{% endblock %}
+            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
+            <div class="topbar-search js-search" data-url="{{ url_for('admin.global_search') }}">
+              <svg class="topbar-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input type="text" class="topbar-search__input js-search-input" placeholder="Search customers, units, payments…" autocomplete="off" aria-label="Global search" />
+              <div class="topbar-search__results js-search-results" hidden></div>
+            </div>
+            {% endif %}
 </div>
           <div class="topbar__right">
             {% include "components/_env_widget.html" %}
@@ -424,6 +473,48 @@
           window.socket.on('new_concern', function(d){ bump('Concern', (d && d.subject) || 'New concern', 'Just now', '/admin/concerns'); });
           window.socket.on('new_renewal', function(d){ bump('Renewal', 'New renewal request', 'Just now', '/admin/renewals'); });
           window.socket.on('new_feedback', function(d){ bump('Feedback', 'New feedback received', 'Just now', '/admin/feedbacks'); });
+        }
+
+        // --- Global search ---
+        var wrap = document.querySelector('.js-search');
+        if (wrap){
+          var input = wrap.querySelector('.js-search-input');
+          var box = wrap.querySelector('.js-search-results');
+          var endpoint = wrap.getAttribute('data-url');
+          var timer;
+          var GROUPS = [['customers','Customers'],['units','Units'],['reservations','Reservations'],['payments','Payments']];
+          function esc(s){ var d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
+          function render(data){
+            var html = '', total = 0;
+            GROUPS.forEach(function(g){
+              var items = data[g[0]] || [];
+              if (!items.length) return;
+              total += items.length;
+              html += '<div class="search-group__label">' + g[1] + '</div>';
+              items.forEach(function(it){
+                html += '<a class="search-item" href="' + esc(it.url) + '">' +
+                  '<span class="search-item__label">' + esc(it.label) + '</span>' +
+                  '<span class="search-item__sub">' + esc(it.sub) + '</span></a>';
+              });
+            });
+            box.innerHTML = total ? html : '<div class="search-empty">No matches found.</div>';
+            box.removeAttribute('hidden');
+          }
+          function run(q){
+            fetch(endpoint + '?q=' + encodeURIComponent(q))
+              .then(function(r){ return r.ok ? r.json() : null; })
+              .then(function(d){ if (d) render(d); })
+              .catch(function(){});
+          }
+          input.addEventListener('input', function(){
+            var q = input.value.trim();
+            clearTimeout(timer);
+            if (q.length < 2){ box.setAttribute('hidden',''); box.innerHTML = ''; return; }
+            timer = setTimeout(function(){ run(q); }, 220);
+          });
+          input.addEventListener('focus', function(){ if (box.innerHTML) box.removeAttribute('hidden'); });
+          document.addEventListener('click', function(e){ if (!wrap.contains(e.target)) box.setAttribute('hidden',''); });
+          input.addEventListener('keydown', function(e){ if (e.key === 'Escape'){ box.setAttribute('hidden',''); input.blur(); } });
         }
       })();
     </script>

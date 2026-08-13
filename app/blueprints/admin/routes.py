@@ -45,6 +45,56 @@ def _ensure_admin():
         abort(403)
 
 
+@bp.get("/api/search")
+@login_required
+def global_search():
+    """Global admin search across customers, units, reservations, payments."""
+    _ensure_admin()
+    from flask import jsonify
+    from sqlalchemy import or_
+
+    q = (request.args.get("q") or "").strip()
+    results = {"customers": [], "units": [], "reservations": [], "payments": []}
+    if len(q) < 2:
+        return jsonify(results)
+    like = f"%{q}%"
+
+    for u in (db.session.query(User)
+              .filter(User.role != Role.ADMIN,
+                      or_(User.full_name.ilike(like), User.email.ilike(like)))
+              .limit(5).all()):
+        results["customers"].append({
+            "label": u.full_name, "sub": u.email,
+            "url": url_for("admin.user_details", user_id=u.id),
+        })
+
+    for un in (db.session.query(Unit).filter(Unit.unit_code.ilike(like))
+               .order_by(Unit.unit_code.asc()).limit(5).all()):
+        results["units"].append({
+            "label": un.unit_code, "sub": (un.type or "Unit"),
+            "url": url_for("admin.edit_unit", unit_id=un.id),
+        })
+
+    for r in (db.session.query(Reservation)
+              .filter(or_(Reservation.full_name.ilike(like), Reservation.email.ilike(like)))
+              .order_by(Reservation.created_at.desc()).limit(5).all()):
+        results["reservations"].append({
+            "label": r.full_name, "sub": r.email,
+            "url": url_for("admin.reservations"),
+        })
+
+    for p in (db.session.query(Payment)
+              .filter(or_(Payment.reference.ilike(like), Payment.receipt_number.ilike(like)))
+              .order_by(Payment.paid_at.desc()).limit(5).all()):
+        results["payments"].append({
+            "label": (p.reference or p.receipt_number or ("Payment #%s" % p.id)),
+            "sub": "₱{:,.2f}".format(float(p.amount)),
+            "url": url_for("admin.payments"),
+        })
+
+    return jsonify(results)
+
+
 def _get_building_floor_limit(building_id: int) -> int:
     building = db.session.get(Building, building_id)
     if not building:
