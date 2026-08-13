@@ -75,13 +75,14 @@ a{color:inherit}
 .env-widget__sep{ opacity:.4 }
 @media (max-width: 640px){ .env-widget{ display:none } }
 
-/* Ellie the owl 🦉: awake (eyes open) at night, asleep (eyes shut + Zzz) by day */
-.owl-asleep{ display:none }
-.owl-awake{ display:inline }
-html.is-day .owl-awake{ display:none }
-html.is-day .owl-asleep{ display:inline }
-/* gentle "breathing" bob while asleep */
-html.is-day .ellie-ico{ animation: owlSnooze 3.2s ease-in-out infinite }
+/* Ellie the owl 🦉 photo avatar: alert at night, tired ("kape") in the morning */
+.ellie-av{ display:block; width:100%; height:100%; border-radius:50%; overflow:hidden }
+.ellie-av img{ width:100%; height:100%; object-fit:cover; display:block }
+.ellie-av__day{ display:none }
+html.is-day .ellie-av__night{ display:none }
+html.is-day .ellie-av__day{ display:block }
+/* tired little sway in the morning */
+html.is-day .ellie-av{ animation: owlSnooze 3.4s ease-in-out infinite }
 @keyframes owlSnooze{ 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(0.7px) } }
 .nav__profile{
   font-size:12px;
