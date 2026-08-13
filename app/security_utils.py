@@ -172,7 +172,7 @@ def apply_security_headers(response):
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: https: http:; "
         "connect-src 'self' https://accounts.google.com; "
-        "frame-src https://accounts.google.com;"
+        "frame-src https://accounts.google.com https://www.google.com https://maps.google.com;"
     )
     
     # Referrer Policy
