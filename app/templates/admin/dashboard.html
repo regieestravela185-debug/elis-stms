@@ -366,6 +366,27 @@
       font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px;
       background: rgba(239,68,68,0.12); color: #dc2626; white-space: nowrap;
     }
+
+    /* Smart Tools panel */
+    .tool-tiles{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .tool-tile{
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 18px; border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(20,20,23,0.015);
+      transition: border-color .25s ease, background .25s ease;
+    }
+    .tool-tile:hover{ border-color: rgba(215,179,91,0.35); background: rgba(215,179,91,0.04); }
+    .tool-tile__icon{
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      width: 40px; height: 40px; border-radius: 11px;
+      background: linear-gradient(135deg, rgba(215,179,91,0.16), rgba(184,146,47,0.10));
+      border: 1px solid rgba(215,179,91,0.35); color: #b8922f;
+    }
+    .tool-tile__icon svg{ width: 20px; height: 20px; }
+    .tool-tile__body{ flex: 1; min-width: 0; }
+    .tool-tile__title{ font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+    .tool-tile__desc{ font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin: 0 0 12px; }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -450,24 +471,41 @@
 
 {% block content %}
   <section class="dash-panel">
-    <!-- AI Tools Panel -->
-    <div class="card" style="background: linear-gradient(135deg, #f0f9ff, #ffffff); border: 2px solid #c7a85a; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-        <div>
-          <h3 style="margin: 0; color: #1a365d; font-size: 1.1rem; font-weight: 800;">AI Tools</h3>
-          <p style="margin: 4px 0 0 0; color: #475569; font-size: 0.875rem;">Run predictive analytics and generate smart notifications for tenants.</p>
+    <!-- Smart Tools Panel -->
+    <div class="card" style="padding: 24px; margin-bottom: 20px;">
+      <div class="section__header" style="margin-bottom: 18px;">
+        <div class="card-title-row">
+          <span class="card-icon" style="width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, rgba(215,179,91,0.16), rgba(184,146,47,0.10)); border: 1px solid rgba(215,179,91,0.35); color: #b8922f;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><path d="M12 2l1.9 4.6L18.5 8l-4.6 1.9L12 14.5l-1.9-4.6L5.5 8l4.6-1.5z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>
+          </span>
+          <h3>Smart Tools</h3>
+        </div>
+        <p class="muted">Rule-based analytics that help you stay ahead of tenant issues</p>
 </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <form action="{{ url_for('admin.update_risk_profiles') }}" method="post" style="display: inline;">
-            <button type="submit" class="btn btn--primary" style="background: linear-gradient(135deg, #c7a85a, #a8893f); border-color: #a8893f; font-weight: 700;">
-               Update Risk Profiles
-</button>
-          </form>
-          <form action="{{ url_for('admin.generate_automated_notifications') }}" method="post" style="display: inline;">
-            <button type="submit" class="btn btn--primary" style="background: linear-gradient(135deg, #1a365d, #0f2347); border-color: #0f2347; font-weight: 700;">
-               Generate Smart Notifications
-</button>
-          </form>
+      <div class="tool-tiles">
+        <div class="tool-tile">
+          <div class="tool-tile__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="tool-tile__body">
+            <div class="tool-tile__title">Update Risk Profiles</div>
+            <p class="tool-tile__desc">Re-analyzes every tenant's payment history and refreshes the Payment Risk Overview below.</p>
+            <form action="{{ url_for('admin.update_risk_profiles') }}" method="post" style="display: inline;">
+              <button type="submit" class="btn btn--primary btn--sm">Run analysis</button>
+            </form>
+</div>
+</div>
+        <div class="tool-tile">
+          <div class="tool-tile__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </div>
+          <div class="tool-tile__body">
+            <div class="tool-tile__title">Generate Smart Notifications</div>
+            <p class="tool-tile__desc">Scans for payment, renewal, and high-risk alerts and logs them to notification history for recordkeeping.</p>
+            <form action="{{ url_for('admin.generate_automated_notifications') }}" method="post" style="display: inline;">
+              <button type="submit" class="btn btn--ghost btn--sm">Run scan</button>
+            </form>
+</div>
 </div>
 </div>
 </div>

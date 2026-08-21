@@ -661,13 +661,23 @@ def dashboard():
 @bp.post("/renewal-reminders/send")
 @login_required
 def send_renewal_reminders():
+    """Manually trigger the same daily renewal/payment reminder check on demand."""
     _ensure_admin()
-    
-    from datetime import date, timedelta
-    
-    # Find tenants with contracts expiring in 7 days or less
-    today = date.today()
-    threshold = today + timedelta(days=7)
+
+    from ...jobs import send_renewal_and_payment_reminders
+    counts = send_renewal_and_payment_reminders(current_app._get_current_object())
+    total = counts["renewal_reminders"] + counts["payment_reminders"]
+
+    if total:
+        flash(
+            f"Sent {counts['renewal_reminders']} renewal reminder(s) and "
+            f"{counts['payment_reminders']} payment reminder(s).",
+            "success",
+        )
+    else:
+        flash("No reminders needed right now — everyone's up to date.", "info")
+
+    return redirect(url_for("admin.dashboard"))
 
 
 @bp.post("/blockchain-alarm/dismiss")

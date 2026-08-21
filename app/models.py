@@ -319,6 +319,7 @@ class TenantProfile(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     last_renewal_reminder_sent = db.Column(db.Date, nullable=True)
+    last_payment_reminder_sent = db.Column(db.Date, nullable=True)
 
     # Email preferences
     email_announcements = db.Column(db.Boolean, nullable=False, default=True)
