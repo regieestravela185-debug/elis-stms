@@ -318,19 +318,22 @@ def generate_automated_notifications():
     
     notification_system = get_notification_system()
     generated_count = 0
-    
+    emailed_count = 0
+
     tenants = db.session.query(TenantProfile).all()
     today = date.today()
-    
+
     for tenant in tenants:
         if not tenant.is_active:
             continue
-        
+
         user = tenant.user
         if not user:
             continue
-        
-        # Check for lease expiration notification
+
+        # Check for lease expiration notification — early (30-day) heads-up,
+        # emailed to the tenant. The urgent 7-day reminder is handled by the
+        # daily scheduled job (app/jobs.py) regardless of this button.
         if tenant.contract_end:
             days_until_expiry = (tenant.contract_end - today).days
             if days_until_expiry <= 30 and days_until_expiry > 0:
@@ -339,7 +342,7 @@ def generate_automated_notifications():
                     lease_end_date=tenant.contract_end,
                     days_until_expiry=days_until_expiry,
                 )
-                
+
                 # Save to database
                 try:
                     notif = NotificationHistory(
@@ -354,15 +357,27 @@ def generate_automated_notifications():
                     generated_count += 1
                 except Exception as e:
                     print(f"Error saving notification: {e}")
-        
-        # Check for high-risk notification
+
+                # Email the tenant — skip if already emailed today (e.g. by
+                # the daily job or a previous click of this same button).
+                if user.email and tenant.last_renewal_reminder_sent != today:
+                    unit_code = tenant.unit.unit_code if tenant.unit else "N/A"
+                    _send_renewal_reminder_email(
+                        user.full_name, user.email, unit_code, tenant.contract_end, days_until_expiry
+                    )
+                    tenant.last_renewal_reminder_sent = today
+                    emailed_count += 1
+
+        # Check for high-risk notification — internal insight for admin only.
+        # Deliberately NOT emailed to the tenant (it's an outreach cue for
+        # staff, not a message meant for the tenant to read verbatim).
         if tenant.payment_risk_level and tenant.payment_risk_level.value == "high":
             notification = notification_system.get_high_risk_alert_notification(
                 user_id=user.id,
                 tenant_name=user.full_name,
                 risk_score=float(tenant.prediction_score or 0.8),
             )
-            
+
             # Save to database
             try:
                 notif = NotificationHistory(
@@ -377,10 +392,14 @@ def generate_automated_notifications():
                 generated_count += 1
             except Exception as e:
                 print(f"Error saving notification: {e}")
-    
+
     db.session.commit()
-    
-    flash(f"Generated {generated_count} automated notifications.", "success")
+
+    flash(
+        f"Generated {generated_count} notification(s) — {emailed_count} renewal reminder email(s) sent to tenants. "
+        "High-risk alerts are admin-only and appear below.",
+        "success",
+    )
     return redirect(url_for("admin.dashboard"))
 
 
@@ -531,6 +550,12 @@ def dashboard():
         Concern.status != ConcernStatus.RESOLVED
     ).order_by(Concern.created_at.desc()).limit(5).all()
     recent_feedbacks = db.session.query(Feedback).order_by(Feedback.created_at.desc()).limit(5).all()
+    recent_smart_notifications = (
+        db.session.query(NotificationHistory)
+        .order_by(NotificationHistory.sent_at.desc())
+        .limit(8)
+        .all()
+    )
 
     # NEW: Pending Actions Summary
     pending_concerns = db.session.query(Concern).filter(
@@ -645,6 +670,7 @@ def dashboard():
         recent_payments=recent_payments,
         recent_concerns=recent_concerns,
         recent_feedbacks=recent_feedbacks,
+        recent_smart_notifications=recent_smart_notifications,
         pending_concerns=pending_concerns,
         pending_renewals=pending_renewals,
         pending_feedbacks=pending_feedbacks,
