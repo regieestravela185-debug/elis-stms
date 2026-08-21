@@ -131,6 +131,35 @@ def _get_building_floor_limit(building_id: int) -> int:
     return 4
 
 
+def _is_rent_payment_late(profile: TenantProfile, paid_at: datetime, payment_month: str = "") -> bool:
+    """Whether a rent payment was made after its due date.
+
+    Rent is due monthly on the same day-of-month as the tenant's contract
+    start (mirrors the "next payment due" convention already used in
+    app/blueprints/tenant/routes.py). When payment_month ("YYYY-MM") is
+    given, the due date is anchored to that specific billing cycle instead
+    of guessed from the payment's own date.
+    """
+    if not profile.contract_start:
+        return False
+
+    due_day = profile.contract_start.day
+
+    if payment_month:
+        try:
+            year, month = (int(x) for x in payment_month.split("-"))
+        except ValueError:
+            year, month = paid_at.year, paid_at.month
+    else:
+        year, month = paid_at.year, paid_at.month
+
+    import calendar
+    due_day = min(due_day, calendar.monthrange(year, month)[1])
+    due_date = date(year, month, due_day)
+
+    return paid_at.date() > due_date
+
+
 def _generate_payment_ledger(payment: Payment) -> None:
     """Generate a blockchain ledger entry for a payment."""
     from datetime import datetime
@@ -1967,7 +1996,15 @@ def add_payment():
     # Create payment with normalized timestamp for blockchain consistency
     from datetime import datetime
     paid_at_normalized = datetime.utcnow().replace(microsecond=0)
-    p = Payment(tenant_profile_id=profile.id, amount=amount, reference=reference, paid_at=paid_at_normalized)
+    is_late = _is_rent_payment_late(profile, paid_at_normalized, payment_month)
+    p = Payment(
+        tenant_profile_id=profile.id,
+        amount=amount,
+        reference=reference,
+        paid_at=paid_at_normalized,
+        is_late=is_late,
+        payment_status="late" if is_late else "verified",
+    )
     db.session.add(p)
     db.session.flush()
 
