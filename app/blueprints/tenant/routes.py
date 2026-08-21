@@ -441,7 +441,15 @@ def create_concern():
             )
     except Exception as e:
         print(f"Failed to send email: {e}")
-    
+
+    from ...socket_events import emit_concern_notification
+    emit_concern_notification({
+        "id": c.id,
+        "subject": c.subject,
+        "tenant_name": profile.user.full_name if profile.user else None,
+        "unit_code": profile.unit.unit_code if profile.unit else None,
+    })
+
     flash("Concern submitted successfully.", "success")
     return redirect(url_for("tenant.concerns"))
 
@@ -1159,6 +1167,15 @@ def create_renewal_request():
     )
     db.session.add(renewal)
     db.session.commit()
+
+    from ...socket_events import emit_renewal_notification
+    emit_renewal_notification({
+        "id": renewal.id,
+        "tenant_name": profile.user.full_name if profile.user else None,
+        "unit_code": profile.unit.unit_code if profile.unit else None,
+        "requested_end_date": requested_end_date.isoformat(),
+    })
+
     flash("Renewal request submitted.", "success")
     return redirect(url_for("tenant.renewal"))
 
@@ -1278,6 +1295,15 @@ def create_feedback():
     )
     db.session.add(feedback)
     db.session.commit()
+
+    from ...socket_events import emit_feedback_notification
+    emit_feedback_notification({
+        "id": feedback.id,
+        "tenant_name": profile.user.full_name if profile.user else None,
+        "unit_code": profile.unit.unit_code if profile.unit else None,
+        "rating": feedback.rating,
+    })
+
     flash("Feedback submitted.", "success")
     return redirect(url_for("tenant.feedback"))
 

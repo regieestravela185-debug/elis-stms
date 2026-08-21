@@ -1209,6 +1209,10 @@ def update_unit(unit_id: int):
     unit.description = description or None
 
     db.session.commit()
+
+    from ...socket_events import emit_unit_status_update
+    emit_unit_status_update()
+
     flash("Unit updated successfully.", "success")
     return redirect(url_for("admin.units"))
 
@@ -1490,6 +1494,14 @@ def approve_reservation(reservation_id: int):
 
     db.session.add(ActivityLog(actor_user_id=current_user.id, action="reservation_approved"))  # type: ignore[attr-defined]
     db.session.commit()
+
+    from ...socket_events import emit_payment_notification
+    emit_payment_notification(profile.id, {
+        "amount": float(monthly_payment.amount),
+        "tenant_name": user.full_name,
+        "unit_code": unit.unit_code,
+    })
+
     _send_reservation_result_email(r.email, status=ReservationStatus.APPROVED, unit_code=unit.unit_code)
     flash("Reservation approved. User is now a Tenant. Deposit and monthly payment recorded.", "success")
     return redirect(url_for("admin.reservations"))
@@ -1508,6 +1520,10 @@ def reject_reservation(reservation_id: int):
     r.status = ReservationStatus.REJECTED
     db.session.add(ActivityLog(actor_user_id=current_user.id, action="reservation_rejected"))  # type: ignore[attr-defined]
     db.session.commit()
+
+    from ...socket_events import emit_unit_status_update
+    emit_unit_status_update()
+
     _send_reservation_result_email(r.email, status=ReservationStatus.REJECTED, unit_code=(unit.unit_code if unit else "your requested unit"))
     flash("Reservation rejected.", "info")
     return redirect(url_for("admin.reservations"))
@@ -1526,6 +1542,10 @@ def cancel_reservation(reservation_id: int):
     r.status = ReservationStatus.CANCELLED
     db.session.add(ActivityLog(actor_user_id=current_user.id, action="reservation_cancelled"))  # type: ignore[attr-defined]
     db.session.commit()
+
+    from ...socket_events import emit_unit_status_update
+    emit_unit_status_update()
+
     _send_reservation_result_email(r.email, status=ReservationStatus.CANCELLED, unit_code=(unit.unit_code if unit else "your requested unit"))
     flash("Reservation cancelled.", "info")
     return redirect(url_for("admin.reservations"))
@@ -2234,6 +2254,13 @@ def add_payment():
         unit.status = UnitStatus.OCCUPIED
 
     db.session.commit()
+
+    from ...socket_events import emit_payment_notification
+    emit_payment_notification(profile.id, {
+        "amount": float(p.amount),
+        "tenant_name": profile.user.full_name if profile.user else None,
+        "unit_code": unit.unit_code if unit else None,
+    })
 
     if duplicate_warning:
         flash(duplicate_warning, "warning")
