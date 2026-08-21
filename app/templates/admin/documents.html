@@ -182,7 +182,13 @@
 </div>
             {% endif %}
 
-            <!-- Document Icon -->
+            <!-- Document Preview: actual image thumbnail when the file is a photo, icon fallback for PDFs -->
+          {% set is_image_doc = doc.file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')) %}
+          {% if is_image_doc %}
+            <a href="{{ media_url(doc.file_path) }}" target="_blank" style="display: block; margin-bottom: 16px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(20,20,23,0.08);">
+              <img src="{{ media_url(doc.file_path) }}" alt="{{ doc.title }}" style="width: 100%; height: 150px; object-fit: cover; display: block;" />
+            </a>
+          {% else %}
           {% set doc_icon_class = 'doc-icon-bg-default' %}
           {% if doc.document_type == 'lease_agreement' %}
             {% set doc_icon_class = 'doc-icon-bg-lease' %}
@@ -209,6 +215,7 @@
               {% elif doc.document_type == 'internet_bill' %}
               {% else %}{% endif %}
 </div>
+          {% endif %}
 
             <!-- Document Info -->
             <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">{{ doc.title }}</h4>

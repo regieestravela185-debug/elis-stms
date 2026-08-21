@@ -182,7 +182,32 @@
       z-index: 10;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
-    
+
+    /* Photo column thumbnail in the All Units table */
+    .unit-row-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      display: block;
+      transition: transform 0.2s ease;
+    }
+    .unit-row-thumb:hover {
+      transform: scale(2.2);
+      z-index: 10;
+      position: relative;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+    .unit-row-thumb--empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      background: rgba(20, 20, 23, 0.04);
+      font-size: 11px;
+    }
+
     /* Toggle Switch for Archived */
     .toggle-archived {
       display: inline-flex;
@@ -353,22 +378,24 @@
 
         <div class="mt-16">
           <label class="label">Unit Images (Maximum 4 images)</label>
-          <input class="input" name="images" type="file" accept="image/*" multiple id="unitImagesInput" onchange="validateImageCount(this)" />
+          <input class="input" name="images" type="file" accept="image/*" multiple id="unitImagesInput" onchange="validateImageCount(this); previewSelectedImages(this);" />
           <p class="muted" style="font-size: 0.875rem; margin-top: 4px;">
              Upload up to 4 unit images • Supported: JPG, PNG, JPEG
 </p>
           <div id="imageCountError" style="color: #ef4444; font-size: 0.875rem; margin-top: 4px; display: none; font-weight: 600;">
              Maximum 4 images allowed! Please select only 4 images.
 </div>
-          {% if edit_unit and edit_unit.unit_images_json %}
+          <div id="newImagesPreview" class="unit-images-preview" style="display: none; margin-top: 12px;"></div>
+          {% set current_images = (edit_unit.unit_images_json|from_json) if edit_unit else [] %}
+          {% if edit_unit and current_images %}
             <div class="mt-8">
-              <div class="kicker">Current Images ({{ edit_unit.unit_images_json|length }} of 4)</div>
+              <div class="kicker">Current Images ({{ current_images|length }} of 4)</div>
               <div class="unit-images-preview">
-                {% for image_url in edit_unit.unit_images_json %}
+                {% for image_url in current_images %}
                   <img src="{{ media_url(image_url) }}" alt="Unit image" class="unit-image-thumb" />
                 {% endfor %}
 </div>
-              {% if edit_unit.unit_images_json|length >= 4 %}
+              {% if current_images|length >= 4 %}
                 <p class="muted" style="font-size: 0.875rem; margin-top: 8px; color: #eab308;">
                    Maximum images reached. New uploads will replace existing images.
 </p>
@@ -415,6 +442,27 @@
                 input.parentElement.insertBefore(countMsg, input.nextSibling.nextSibling);
               }
             }
+          }
+
+          function previewSelectedImages(input) {
+            const preview = document.getElementById('newImagesPreview');
+            preview.innerHTML = '';
+
+            if (!input.files || input.files.length === 0 || input.files.length > 4) {
+              preview.style.display = 'none';
+              return;
+            }
+
+            preview.style.display = 'flex';
+            Array.from(input.files).forEach(function(file) {
+              if (!file.type.startsWith('image/')) return;
+              const img = document.createElement('img');
+              img.src = URL.createObjectURL(file);
+              img.alt = file.name;
+              img.className = 'unit-image-thumb';
+              img.onload = function() { URL.revokeObjectURL(img.src); };
+              preview.appendChild(img);
+            });
           }
         </script>
 
@@ -491,6 +539,7 @@
           <table class="table" id="unitsTable">
             <thead>
               <tr>
+                <th>Photo</th>
                 <th>Unit Code</th>
                 <th>Building</th>
                 <th>Number</th>
@@ -507,6 +556,14 @@
                     data-building="{{ unit.building.code }}" 
                     data-status="{{ unit.status.value }}" 
                     data-type="{{ unit.type or '' }}">
+                  <td>
+                    {% set unit_thumb = (unit.unit_images_json|from_json) %}
+                    {% if unit_thumb %}
+                      <img src="{{ media_url(unit_thumb[0]) }}" alt="{{ unit.unit_code }}" class="unit-row-thumb" />
+                    {% else %}
+                      <div class="unit-row-thumb unit-row-thumb--empty" title="No image uploaded">—</div>
+                    {% endif %}
+</td>
                   <td class="mono"><strong>{{ unit.unit_code }}</strong></td>
                   <td>{{ unit.building.code }}</td>
                   <td class="mono">{{ unit.unit_number }}</td>
@@ -631,7 +688,7 @@
           noResultsRow = document.createElement('tr');
           noResultsRow.id = 'noResultsRow';
           noResultsRow.innerHTML = `
-            <td colspan="8" style="text-align: center; padding: 60px 20px;">
+            <td colspan="9" style="text-align: center; padding: 60px 20px;">
               <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Units Found</div>
               <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
 </td>
