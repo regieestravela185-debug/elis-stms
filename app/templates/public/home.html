@@ -28,6 +28,15 @@
       filter: contrast(1.06) saturate(1.08);
     }
     @keyframes heroZoom{ to{ transform: scale(1); } }
+    /* Video already has its own built-in pan/zoom per clip — skip the CSS
+       zoom-in (would double up) and just make it cover the hero like the
+       background-image version did. */
+    .hero--premium .hero__media--video{
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: none;
+      animation: none;
+    }
     .hero--premium .hero__scrim{
       position: absolute; inset: 0; z-index: 1;
       background:
@@ -1981,7 +1990,9 @@
 
 {% block content %}
   <section id="home" class="hero hero--premium">
-    <div class="hero__media" style="background-image: url('{{ url_for('static', filename='img/elis-building.jpg') }}');"></div>
+    <video class="hero__media hero__media--video" autoplay muted loop playsinline preload="auto" poster="{{ url_for('static', filename='img/elis-building.jpg') }}">
+      <source src="{{ url_for('static', filename='video/hero-loop.mp4') }}" type="video/mp4" />
+    </video>
     <div class="hero__scrim"></div>
     <div class="hero__inner">
       <span class="hero__eyebrow">The Elis Center &nbsp;•&nbsp; Calamba, Laguna</span>
