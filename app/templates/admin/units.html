@@ -657,8 +657,8 @@
       let visibleCount = 0;
       
       allRows.forEach(row => {
-        const unitCode = row.cells[0].textContent.toLowerCase();
-        const unitNumber = row.cells[2].textContent.toLowerCase();
+        const unitCode = row.cells[1].textContent.toLowerCase();
+        const unitNumber = row.cells[3].textContent.toLowerCase();
         const rowBuilding = row.getAttribute('data-building').toLowerCase();
         const rowStatus = row.getAttribute('data-status').toLowerCase();
         const rowType = row.getAttribute('data-type').toLowerCase();
