@@ -510,7 +510,6 @@
 </div>
 </div>
 
-    {% if recent_smart_notifications %}
     <!-- Recent Smart Notifications (from "Generate Smart Notifications") -->
     <div class="card" style="padding: 20px; margin-bottom: 20px;">
       <div class="section__header" style="margin-bottom:16px">
@@ -520,29 +519,34 @@
         </div>
         <p class="muted">Renewal heads-ups (emailed to tenants) and high-risk flags (admin-only, never emailed)</p>
 </div>
-      <div style="max-height: 320px; overflow-y: auto;">
-        {% for n in recent_smart_notifications %}
-          {% set delay_value = loop.index * 0.05 %}
-          <div class="fade-in-item" data-delay="{{ delay_value }}" style="padding: 14px; border-bottom: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: start; gap: 14px;">
-              <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 700; font-size: 0.9rem;">{{ n.user.full_name if n.user else 'N/A' }}</div>
-                <div class="muted" style="font-size: 0.82rem; margin-top: 3px; line-height: 1.5;">{{ n.message }}</div>
-                <div class="muted" style="font-size: 0.75rem; margin-top: 6px;">{{ n.sent_at.strftime('%b %d, %Y %I:%M %p') if n.sent_at else 'N/A' }}</div>
+      {% if recent_smart_notifications %}
+        <div style="max-height: 320px; overflow-y: auto;">
+          {% for n in recent_smart_notifications %}
+            {% set delay_value = loop.index * 0.05 %}
+            <div class="fade-in-item" data-delay="{{ delay_value }}" style="padding: 14px; border-bottom: 1px solid var(--border);">
+              <div style="display: flex; justify-content: space-between; align-items: start; gap: 14px;">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">{{ n.user.full_name if n.user else 'N/A' }}</div>
+                  <div class="muted" style="font-size: 0.82rem; margin-top: 3px; line-height: 1.5;">{{ n.message }}</div>
+                  <div class="muted" style="font-size: 0.75rem; margin-top: 6px;">{{ n.sent_at.strftime('%b %d, %Y %I:%M %p') if n.sent_at else 'N/A' }}</div>
 </div>
-              {% if n.notification_priority.value in ('urgent', 'high') %}
-                <span class="badge badge--rejected" style="flex-shrink: 0;">{{ n.notification_priority.value }}</span>
-              {% elif n.notification_priority.value == 'medium' %}
-                <span class="badge badge--pending" style="flex-shrink: 0;">{{ n.notification_priority.value }}</span>
-              {% else %}
-                <span class="badge badge--available" style="flex-shrink: 0;">{{ n.notification_priority.value }}</span>
-              {% endif %}
-</div>
-</div>
-        {% endfor %}
+                {% if n.notification_priority.value in ('urgent', 'high') %}
+                  <span class="badge badge--rejected" style="flex-shrink: 0;">{{ n.notification_priority.value }}</span>
+                {% elif n.notification_priority.value == 'medium' %}
+                  <span class="badge badge--pending" style="flex-shrink: 0;">{{ n.notification_priority.value }}</span>
+                {% else %}
+                  <span class="badge badge--available" style="flex-shrink: 0;">{{ n.notification_priority.value }}</span>
+                {% endif %}
 </div>
 </div>
-    {% endif %}
+          {% endfor %}
+</div>
+      {% else %}
+        <div class="empty-state" style="padding: 32px 20px;">
+          <div class="empty-state__text">No smart notifications yet. Click <strong>"Run scan"</strong> above (or wait for a tenant with an upcoming renewal or high payment risk) to see entries here.</div>
+</div>
+      {% endif %}
+</div>
 
     <!-- Debug: Check blockchain status -->
     <!-- blockchain_status: {{ blockchain_status }}, valid: {{ blockchain_status.valid if blockchain_status else 'None' }}, hide_alert: {{ session.get('hide_blockchain_alert') }} -->
