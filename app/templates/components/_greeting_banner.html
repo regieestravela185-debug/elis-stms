@@ -1,38 +1,85 @@
-{# Time- and weather-aware greeting. Populated by static/js/env_widget.js
-   (reuses the same Calamba weather fetch as the topbar clock/weather widget). #}
-<div
-  class="greeting-banner js-greeting"
-  id="greetingBanner"
-  data-first-name="{{ (current_user.full_name.split()[0] if current_user.is_authenticated and current_user.full_name else '') }}"
-  hidden
->
-  <span class="greeting-banner__icon js-greeting-icon">🌅</span>
-  <div class="greeting-banner__text">
-    <div class="greeting-banner__title js-greeting-title">Hello!</div>
-    <div class="greeting-banner__message js-greeting-message">&nbsp;</div>
-  </div>
-  <button type="button" class="greeting-banner__close" id="greetingBannerClose" aria-label="Dismiss for today">&times;</button>
+{# "Your Check-in" — short, plain-language status lines. Two lines are
+   server-rendered here (payment/renewal for tenants, pending items for
+   admin) using data the parent dashboard route already computed; the last
+   two (weather + time-of-day care reminder) are filled in by
+   static/js/env_widget.js, which reuses the same weather fetch as the
+   topbar clock widget. Always visible — no dismiss. #}
+<div class="checkin-banner js-greeting" id="greetingBanner" data-first-name="{{ (current_user.full_name.split()[0] if current_user.is_authenticated and current_user.full_name else '') }}">
+  <div class="checkin-banner__title js-greeting-title">Your check-in</div>
+  <ul class="checkin-banner__list">
+    {% if cards is defined %}
+      {# ---- Admin context ---- #}
+      <li class="checkin-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-3-2-1 2V3z"/><path d="M8 8h8M8 12h8"/></svg>
+        <span>
+          {% if cards.pending_reservations and cards.pending_reservations > 0 %}
+            {{ cards.pending_reservations }} reservation{{ 's' if cards.pending_reservations != 1 else '' }} waiting for your review.
+          {% else %}
+            No pending reservations right now.
+          {% endif %}
+        </span>
+      </li>
+      <li class="checkin-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg>
+        <span>
+          {% if pending_concerns and pending_concerns > 0 %}
+            {{ pending_concerns }} concern{{ 's' if pending_concerns != 1 else '' }} need{{ 's' if pending_concerns == 1 else '' }} your attention.
+          {% else %}
+            Nothing urgent right now. Enjoy it.
+          {% endif %}
+        </span>
+      </li>
+    {% else %}
+      {# ---- Tenant context ---- #}
+      <li class="checkin-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-3-2-1 2V3z"/><path d="M8 8h8M8 12h8"/></svg>
+        <span>
+          {% if days_until_payment is not none and days_until_payment <= 0 %}
+            Your rent payment is due today.
+          {% elif days_until_payment is not none and days_until_payment <= 3 %}
+            Your rent payment is due in {{ days_until_payment }} day{{ 's' if days_until_payment != 1 else '' }}.
+          {% else %}
+            Nothing due right now. Enjoy it.
+          {% endif %}
+        </span>
+      </li>
+      <li class="checkin-line">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span>
+          {% if pending_renewals and pending_renewals > 0 %}
+            Your renewal request is pending review.
+          {% elif days_remaining is not none and days_remaining <= 30 %}
+            Your contract expires in {{ days_remaining }} day{{ 's' if days_remaining != 1 else '' }} — consider renewing.
+          {% else %}
+            No renewal matters need your attention today.
+          {% endif %}
+        </span>
+      </li>
+    {% endif %}
+
+    <li class="checkin-line">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16.2A4.5 4.5 0 0 0 17.5 8h-1.8A7 7 0 1 0 4 14.9"/><path d="M9 17v3M13 17v3"/></svg>
+      <span class="js-checkin-weather">Checking the weather…</span>
+    </li>
+    <li class="checkin-line">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      <span class="js-checkin-meal">&nbsp;</span>
+    </li>
+  </ul>
 </div>
 
 <style>
-  .greeting-banner {
-    display: flex; align-items: center; gap: 14px;
+  .checkin-banner {
     padding: 16px 20px;
     margin-bottom: 24px;
-    background: linear-gradient(135deg, rgba(215,179,91,0.10), rgba(215,179,91,0.03));
-    border: 1px solid rgba(215,179,91,0.3);
+    background: rgba(20,20,23,0.02);
+    border: 1px solid var(--border);
     border-radius: 16px;
     animation: greetingFadeIn 0.5s ease both;
   }
-  .greeting-banner[hidden] { display: none; }
   @keyframes greetingFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-  .greeting-banner__icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
-  .greeting-banner__text { flex: 1; min-width: 0; }
-  .greeting-banner__title { font-weight: 800; font-size: 15px; color: var(--text); }
-  .greeting-banner__message { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .greeting-banner__close {
-    background: none; border: none; cursor: pointer; flex-shrink: 0;
-    font-size: 20px; line-height: 1; color: var(--muted); opacity: 0.6; padding: 4px;
-  }
-  .greeting-banner__close:hover { opacity: 1; }
+  .checkin-banner__title { font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
+  .checkin-banner__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .checkin-line { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); }
+  .checkin-line svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--muted); opacity: 0.85; }
 </style>

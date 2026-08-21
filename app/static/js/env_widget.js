@@ -36,7 +36,8 @@
 
   function loadWeather() {
     var url = "https://api.open-meteo.com/v1/forecast?latitude=" + LAT +
-      "&longitude=" + LON + "&current=temperature_2m,weather_code&timezone=Asia%2FManila";
+      "&longitude=" + LON + "&current=temperature_2m,weather_code" +
+      "&daily=precipitation_probability_max&timezone=Asia%2FManila";
     fetch(url)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
@@ -44,10 +45,12 @@
         var temp = Math.round(data.current.temperature_2m);
         var code = data.current.weather_code;
         var label = WMO[code] || "";
+        var rainChance = (data.daily && data.daily.precipitation_probability_max)
+          ? data.daily.precipitation_probability_max[0] : null;
         document.querySelectorAll(".js-weather").forEach(function (el) {
           el.textContent = "Calamba " + temp + "°C" + (label ? " · " + label : "");
         });
-        updateGreeting(code, temp);
+        updateCheckinWeather(code, temp, rainChance);
       })
       .catch(function () {
         document.querySelectorAll(".js-weather").forEach(function (el) {
@@ -56,97 +59,40 @@
       });
   }
 
-  // ---- Time- and weather-aware greeting (dashboard banner) ----
-  var MORNING_TIPS = [
-    "a morning walk to start the day right",
-    "a quick workout before the day gets busy",
-    "a healthy breakfast",
-    "a bit of stretching"
-  ];
-  var AFTERNOON_TIPS = [
-    "staying hydrated through the afternoon",
-    "taking a short breather",
-    "a good lunch break"
-  ];
-  var EVENING_TIPS = [
-    "winding down after a long day",
-    "getting some rest soon",
-    "a relaxing evening"
-  ];
-
-  function timeGreeting(hour) {
-    if (hour >= 5 && hour < 12) return "Good morning";
-    if (hour >= 12 && hour < 18) return "Good afternoon";
-    return "Good evening";
+  // ---- "Your check-in" banner — weather line + time-of-day care reminder ----
+  function updateCheckinWeather(code, temp, rainChance) {
+    var text;
+    if (typeof rainChance === "number" && rainChance >= 40) {
+      text = "Bring an umbrella — there's a " + rainChance + "% chance of rain today.";
+    } else if ([95, 96, 99].indexOf(code) > -1) {
+      text = "There's a thunderstorm nearby — stay safe indoors.";
+    } else if ((code === 0 || code === 1) && typeof temp === "number" && temp >= 32) {
+      text = "It's hot and sunny today — stay hydrated.";
+    } else if (typeof rainChance === "number") {
+      text = "Low chance of rain today (" + rainChance + "%) — " + (WMO[code] || "should be fine") + ".";
+    } else {
+      text = (WMO[code] || "Weather") + " in Calamba today.";
+    }
+    document.querySelectorAll(".js-checkin-weather").forEach(function (el) { el.textContent = text; });
   }
 
-  function weatherMessage(code, temp) {
-    if (code === null || code === undefined) return null;
-    if ([95, 96, 99].indexOf(code) > -1) {
-      return { icon: "⛈️", text: "There's a thunderstorm nearby — stay safe indoors." };
+  function updateCheckinMeal() {
+    var els = document.querySelectorAll(".js-checkin-meal");
+    if (!els.length) return;
+    var hour = parseInt(hourFmt.format(new Date()), 10) % 24;
+    var text;
+    if (hour >= 5 && hour < 10) {
+      text = "Don't skip breakfast — start your day right.";
+    } else if (hour >= 10 && hour < 13) {
+      text = "Have you had lunch? Take a proper break to eat.";
+    } else if (hour >= 13 && hour < 17) {
+      text = "Remember to stay hydrated this afternoon.";
+    } else if (hour >= 17 && hour < 21) {
+      text = "Have you had dinner? Please don't skip it to finish something.";
+    } else {
+      text = "It's getting late — try to wrap up and rest soon.";
     }
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].indexOf(code) > -1) {
-      return { icon: "☔", text: "It's rainy in Calamba today — don't forget your umbrella." };
-    }
-    if ([45, 48].indexOf(code) > -1) {
-      return { icon: "🌫️", text: "Foggy conditions today — drive safely if you're heading out." };
-    }
-    if ((code === 0 || code === 1) && typeof temp === "number" && temp >= 32) {
-      return { icon: "☀️", text: "It's hot and sunny — stay hydrated and take care out there." };
-    }
-    if (code === 0 || code === 1) {
-      return { icon: "☀️", text: "Clear skies today — a great day ahead." };
-    }
-    return null; // overcast / partly cloudy -> fall back to the time-based tip
-  }
-
-  function todayKey() {
-    var d = new Date();
-    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
-  }
-
-  function updateGreeting(weatherCode, weatherTemp) {
-    var banners = document.querySelectorAll(".js-greeting");
-    if (!banners.length) return;
-
-    try {
-      if (window.localStorage && localStorage.getItem("greetingDismissed") === todayKey()) {
-        return; // dismissed for today — stay hidden
-      }
-    } catch (e) { /* localStorage unavailable — just show it */ }
-
-    var now = new Date();
-    var hour = parseInt(hourFmt.format(now), 10) % 24;
-    var greeting = timeGreeting(hour);
-    var tipList = hour < 12 ? MORNING_TIPS : (hour < 18 ? AFTERNOON_TIPS : EVENING_TIPS);
-    var tip = tipList[now.getDate() % tipList.length];
-
-    var w = weatherMessage(weatherCode, weatherTemp);
-    var icon = w ? w.icon : (hour < 12 ? "🌅" : hour < 18 ? "🌤️" : "🌙");
-    var message = w ? w.text : ("Maybe it's time for " + tip + ".");
-
-    banners.forEach(function (el) {
-      var firstName = el.getAttribute("data-first-name") || "";
-      var titleEl = el.querySelector(".js-greeting-title");
-      var msgEl = el.querySelector(".js-greeting-message");
-      var iconEl = el.querySelector(".js-greeting-icon");
-      if (titleEl) titleEl.textContent = greeting + (firstName ? ", " + firstName + "!" : "!");
-      if (msgEl) msgEl.textContent = message;
-      if (iconEl) iconEl.textContent = icon;
-      el.hidden = false;
-    });
-  }
-
-  function setupGreetingDismiss() {
-    var closeBtn = document.getElementById("greetingBannerClose");
-    var banner = document.getElementById("greetingBanner");
-    if (!closeBtn || !banner) return;
-    closeBtn.addEventListener("click", function () {
-      banner.hidden = true;
-      try {
-        if (window.localStorage) localStorage.setItem("greetingDismissed", todayKey());
-      } catch (e) { /* ignore */ }
-    });
+    els.forEach(function (el) { el.textContent = text; });
   }
 
   var hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hour12: false });
@@ -161,8 +107,8 @@
   function start() {
     tickClock();
     setInterval(tickClock, 1000);
-    updateGreeting(null, null); // show immediately with a time-based message; weather refines it below
-    setupGreetingDismiss();
+    updateCheckinMeal();
+    setInterval(updateCheckinMeal, 60000); // re-check each minute so it flips right at noon/evening
     loadWeather();
     setInterval(loadWeather, 600000); // refresh weather every 10 min
     applyOwlMode();
