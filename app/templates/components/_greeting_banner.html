@@ -1,0 +1,38 @@
+{# Time- and weather-aware greeting. Populated by static/js/env_widget.js
+   (reuses the same Calamba weather fetch as the topbar clock/weather widget). #}
+<div
+  class="greeting-banner js-greeting"
+  id="greetingBanner"
+  data-first-name="{{ (current_user.full_name.split()[0] if current_user.is_authenticated and current_user.full_name else '') }}"
+  hidden
+>
+  <span class="greeting-banner__icon js-greeting-icon">🌅</span>
+  <div class="greeting-banner__text">
+    <div class="greeting-banner__title js-greeting-title">Hello!</div>
+    <div class="greeting-banner__message js-greeting-message">&nbsp;</div>
+  </div>
+  <button type="button" class="greeting-banner__close" id="greetingBannerClose" aria-label="Dismiss for today">&times;</button>
+</div>
+
+<style>
+  .greeting-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, rgba(215,179,91,0.10), rgba(215,179,91,0.03));
+    border: 1px solid rgba(215,179,91,0.3);
+    border-radius: 16px;
+    animation: greetingFadeIn 0.5s ease both;
+  }
+  .greeting-banner[hidden] { display: none; }
+  @keyframes greetingFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .greeting-banner__icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
+  .greeting-banner__text { flex: 1; min-width: 0; }
+  .greeting-banner__title { font-weight: 800; font-size: 15px; color: var(--text); }
+  .greeting-banner__message { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .greeting-banner__close {
+    background: none; border: none; cursor: pointer; flex-shrink: 0;
+    font-size: 20px; line-height: 1; color: var(--muted); opacity: 0.6; padding: 4px;
+  }
+  .greeting-banner__close:hover { opacity: 1; }
+</style>

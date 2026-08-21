@@ -247,6 +247,7 @@ a[href^="tel:"]:hover {
 {% endblock %}
 
 {% block content %}
+  {% include "components/_greeting_banner.html" %}
   {% if is_expired %}
   <!-- EXPIRED CONTRACT BANNER -->
   <div style="margin-bottom: 32px; animation: slideIn 0.5s ease;">
