@@ -35,6 +35,7 @@ from ...models import (
 )
 from ...security import sha256_hex
 from ...predictive_analytics import update_tenant_risk_profile
+from ...ph_holidays import holidays_by_date
 from ...smart_notifications import get_notification_system, NotificationPriority, NotificationType
 from ...models import NotificationHistory
 
@@ -681,6 +682,75 @@ def dashboard():
         risk_analyzed_count=risk_analyzed_count,
         risk_high_pct=risk_high_pct,
         top_risk_tenants=top_risk_tenants,
+    )
+
+
+@bp.get("/calendar")
+@login_required
+def calendar_view():
+    """Month-view calendar: PH holidays + tenant contract expiry/renewal dates."""
+    _ensure_admin()
+    import calendar as cal_module
+
+    today = date.today()
+    try:
+        year = int(request.args.get("year", today.year))
+        month = int(request.args.get("month", today.month))
+        if month < 1 or month > 12:
+            raise ValueError
+    except ValueError:
+        year, month = today.year, today.month
+
+    cal = cal_module.Calendar(firstweekday=6)  # Sunday-first week, matches PH convention
+    month_weeks = cal.monthdatescalendar(year, month)
+    first_visible, last_visible = month_weeks[0][0], month_weeks[-1][-1]
+
+    holidays = dict(holidays_by_date(year))
+    if first_visible.year != year:
+        holidays.update(holidays_by_date(first_visible.year))
+    if last_visible.year != year:
+        holidays.update(holidays_by_date(last_visible.year))
+
+    expiry_by_date: dict = {}
+    for t in (
+        db.session.query(TenantProfile)
+        .filter(
+            TenantProfile.contract_end.isnot(None),
+            TenantProfile.contract_end >= first_visible,
+            TenantProfile.contract_end <= last_visible,
+        )
+        .all()
+    ):
+        expiry_by_date.setdefault(t.contract_end, []).append(t)
+
+    renewal_by_date: dict = {}
+    for r in (
+        db.session.query(RenewalRequest)
+        .filter(
+            RenewalRequest.requested_end_date >= first_visible,
+            RenewalRequest.requested_end_date <= last_visible,
+        )
+        .all()
+    ):
+        renewal_by_date.setdefault(r.requested_end_date, []).append(r)
+
+    prev_month, prev_year = (12, year - 1) if month == 1 else (month - 1, year)
+    next_month, next_year = (1, year + 1) if month == 12 else (month + 1, year)
+
+    return render_template(
+        "admin/calendar.html",
+        year=year,
+        month=month,
+        month_name=cal_module.month_name[month],
+        today=today,
+        month_weeks=month_weeks,
+        holidays=holidays,
+        expiry_by_date=expiry_by_date,
+        renewal_by_date=renewal_by_date,
+        prev_month=prev_month,
+        prev_year=prev_year,
+        next_month=next_month,
+        next_year=next_year,
     )
 
 

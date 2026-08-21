@@ -1,6 +1,7 @@
 <nav class="side-nav">
   <div class="side-group__label">Overview</div>
   <a class="side-link side-link--dashboard {% if request.path.startswith('/admin/dashboard') %}is-active{% endif %}" href="{{ url_for('admin.dashboard') }}"><span>Dashboard</span></a>
+  <a class="side-link side-link--calendar {% if request.path.startswith('/admin/calendar') %}is-active{% endif %}" href="{{ url_for('admin.calendar_view') }}"><span>Calendar</span></a>
 
   <div class="side-group__label">Property</div>
   <a class="side-link side-link--floorplan {% if request.path.startswith('/admin/floorplan') %}is-active{% endif %}" href="{{ url_for('admin.floorplan') }}"><span>Floorplan</span></a>
@@ -37,6 +38,7 @@
 /* Gold gradient for ALL active menu items */
 /* Elegant soft-gold tint for ALL active menu items */
 .side-link--dashboard.is-active,
+.side-link--calendar.is-active,
 .side-link--floorplan.is-active,
 .side-link--units.is-active,
 .side-link--users.is-active,

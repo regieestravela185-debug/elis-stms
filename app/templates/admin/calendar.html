@@ -1,0 +1,109 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Calendar | STMS Admin{% endblock %}
+
+{% block head %}
+  <style>
+    .cal-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .cal-nav__title { font-size: 1.4rem; font-weight: 800; margin: 0; }
+    .cal-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; font-size: 12px; color: var(--muted); }
+    .cal-legend__dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+    .cal-weekday {
+      text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted); padding-bottom: 8px;
+    }
+    .cal-day {
+      min-height: 110px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 8px;
+      display: flex; flex-direction: column; gap: 4px;
+      overflow: hidden;
+    }
+    .cal-day--outside { background: rgba(20,20,23,0.02); opacity: 0.55; }
+    .cal-day--today { border-color: #D7B35B; box-shadow: 0 0 0 2px rgba(215,179,91,0.25) inset; }
+    .cal-day__num { font-size: 13px; font-weight: 700; }
+    .cal-day--today .cal-day__num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #D7B35B; color: #fff;
+    }
+    .cal-chip {
+      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+      line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cal-chip--holiday-regular { background: rgba(215,179,91,0.16); color: #8a6d1e; }
+    .cal-chip--holiday-special { background: rgba(59,130,246,0.14); color: #1d4ed8; }
+    .cal-chip--expiry { background: rgba(239,68,68,0.14); color: #b91c1c; }
+    .cal-chip--renewal { background: rgba(234,179,8,0.16); color: #92620a; }
+    @media (max-width: 900px) {
+      .cal-grid { grid-template-columns: repeat(7, minmax(60px, 1fr)); overflow-x: auto; }
+      .cal-day { min-height: 80px; }
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Calendar</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <div class="card" style="padding: 24px;">
+      <div class="cal-nav">
+        <h2 class="cal-nav__title">{{ month_name }} {{ year }}</h2>
+        <div style="display: flex; gap: 8px;">
+          <a href="{{ url_for('admin.calendar_view', year=prev_year, month=prev_month) }}" class="btn btn--ghost btn--sm">&larr; Prev</a>
+          <a href="{{ url_for('admin.calendar_view') }}" class="btn btn--ghost btn--sm">Today</a>
+          <a href="{{ url_for('admin.calendar_view', year=next_year, month=next_month) }}" class="btn btn--ghost btn--sm">Next &rarr;</a>
+        </div>
+      </div>
+
+      <div class="cal-legend">
+        <span><span class="cal-legend__dot" style="background:#D7B35B;"></span>Regular holiday</span>
+        <span><span class="cal-legend__dot" style="background:#3b82f6;"></span>Special non-working day</span>
+        <span><span class="cal-legend__dot" style="background:#ef4444;"></span>Contract expiry</span>
+        <span><span class="cal-legend__dot" style="background:#eab308;"></span>Renewal requested</span>
+      </div>
+
+      <div class="cal-grid">
+        {% for wd in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
+          <div class="cal-weekday">{{ wd }}</div>
+        {% endfor %}
+
+        {% for week in month_weeks %}
+          {% for day in week %}
+            <div class="cal-day{% if day.month != month %} cal-day--outside{% endif %}{% if day == today %} cal-day--today{% endif %}">
+              <div class="cal-day__num">{{ day.day }}</div>
+              {% for h in holidays.get(day, []) %}
+                <span class="cal-chip cal-chip--holiday-{{ h.type }}" title="{{ h.name }}">{{ h.name }}</span>
+              {% endfor %}
+              {% for t in expiry_by_date.get(day, []) %}
+                <a href="{{ url_for('admin.user_details', user_id=t.user.id) if t.user else '#' }}" class="cal-chip cal-chip--expiry" title="Contract ends — {{ t.user.full_name if t.user else 'Tenant' }} ({{ t.unit.unit_code if t.unit else 'N/A' }})">
+                  Expiry: {{ t.unit.unit_code if t.unit else 'N/A' }}
+                </a>
+              {% endfor %}
+              {% for r in renewal_by_date.get(day, []) %}
+                <a href="{{ url_for('admin.renewals') }}" class="cal-chip cal-chip--renewal" title="Renewal requested — {{ r.tenant_profile.user.full_name if r.tenant_profile and r.tenant_profile.user else 'Tenant' }}">
+                  Renewal req.
+                </a>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endblock %}
