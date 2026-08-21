@@ -1,4 +1,5 @@
 from flask import Flask
+from flask import flash
 from flask import session
 from flask import url_for
 from flask_login import current_user, logout_user
@@ -168,10 +169,20 @@ def create_app(config_object: type[Config] = Config) -> Flask:
 
     @app.before_request
     def _invalidate_old_sessions():
+        if not current_user.is_authenticated:
+            return
+
+        # An admin ban should take effect immediately, not just at next login.
+        if getattr(current_user, "is_banned", False):
+            logout_user()
+            session.clear()
+            flash("Your account has been suspended. Please contact the administrator.", "danger")
+            return
+
         # Force fresh public state on every new server run.
         boot_id = session.get("boot_id")
         current_boot = app.config.get("SERVER_BOOT_ID")
-        if current_user.is_authenticated and boot_id != current_boot:
+        if boot_id != current_boot:
             # Preserve pending_registration even when clearing session
             pending_reg = session.get("pending_registration")
             logout_user()

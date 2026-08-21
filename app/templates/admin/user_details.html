@@ -435,5 +435,103 @@
         {% endif %}
 </div>
     {% endif %}
+
+    <!-- Concerns (if tenant) -->
+    {% if tenant_profile %}
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">Concerns</h3>
+          <span class="badge" style="font-size: 14px;">{{ concerns|length }} concern(s)</span>
+</div>
+        {% if concerns %}
+          <div style="max-height: 400px; overflow-y: auto;">
+            {% for c in concerns %}
+              <div class="timeline-item">
+                <div class="timeline-date">{{ c.created_at.strftime("%B %d, %Y") if c.created_at else 'N/A' }}</div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                      <strong>{{ c.subject }}</strong>
+                      {% if c.category %}<div class="muted" style="font-size: 12px; margin-top: 4px;">{{ c.category|title }}</div>{% endif %}
+</div>
+                    <span class="badge badge--{{ c.status.value }}">{{ c.status.value|replace('_', ' ')|title }}</span>
+</div>
+</div>
+</div>
+            {% endfor %}
+</div>
+        {% else %}
+          <div class="empty-state-small">
+            <div class="empty-state-small__text">No concerns filed</div>
+</div>
+        {% endif %}
+</div>
+    {% endif %}
+
+    <!-- Documents (if tenant) -->
+    {% if tenant_profile %}
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">Documents</h3>
+          <span class="badge" style="font-size: 14px;">{{ documents|length }} document(s)</span>
+</div>
+        {% if documents %}
+          <div style="max-height: 400px; overflow-y: auto;">
+            {% for d in documents %}
+              <div class="timeline-item">
+                <div class="timeline-date">{{ d.uploaded_at.strftime("%B %d, %Y") if d.uploaded_at else 'N/A' }}</div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                      <strong>{{ d.title }}</strong>
+                      <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ d.document_type|replace('_', ' ')|title }}</div>
+</div>
+                    <a href="{{ media_url(d.file_path) }}" target="_blank" class="btn btn--ghost btn--sm">View</a>
+</div>
+</div>
+</div>
+            {% endfor %}
+</div>
+        {% else %}
+          <div class="empty-state-small">
+            <div class="empty-state-small__text">No documents uploaded</div>
+</div>
+        {% endif %}
+</div>
+    {% endif %}
+
+    <!-- Feedback (if tenant) -->
+    {% if tenant_profile %}
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">Feedback</h3>
+          <span class="badge" style="font-size: 14px;">{{ feedbacks|length }} feedback(s)</span>
+</div>
+        {% if feedbacks %}
+          <div style="max-height: 400px; overflow-y: auto;">
+            {% for f in feedbacks %}
+              <div class="timeline-item">
+                <div class="timeline-date">{{ f.created_at.strftime("%B %d, %Y") if f.created_at else 'N/A' }}</div>
+                <div class="timeline-content">
+                  <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                      {% if f.rating %}
+                        <div style="color: #D7B35B; letter-spacing: 2px;">{% for i in range(1, 6) %}{{ '★' if i <= f.rating else '☆' }}{% endfor %}</div>
+                      {% endif %}
+                      <div class="muted" style="font-size: 13px; margin-top: 4px;">{{ f.comments[:140] }}{% if f.comments|length > 140 %}&hellip;{% endif %}</div>
+</div>
+                    <span class="badge">{{ f.status.value|replace('_', ' ')|title }}</span>
+</div>
+</div>
+</div>
+            {% endfor %}
+</div>
+        {% else %}
+          <div class="empty-state-small">
+            <div class="empty-state-small__text">No feedback submitted</div>
+</div>
+        {% endif %}
+</div>
+    {% endif %}
   </section>
 {% endblock %}

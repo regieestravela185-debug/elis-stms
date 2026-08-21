@@ -90,6 +90,31 @@ def send_renewal_and_payment_reminders(app: Flask) -> dict:
         return {"renewal_reminders": renewal_count, "payment_reminders": payment_count}
 
 
+def send_renewal_reminder_now(app: Flask, tenant_profile_id: int) -> bool:
+    """Manually nudge exactly one tenant about their upcoming renewal —
+    used by the "Notify" button on Tenant Monitoring, which flags tenants up
+    to 30 days out (wider than the 7-day auto-reminder window), so this
+    bypasses that window. Still deduped to once per day. Returns whether an
+    email was actually sent.
+    """
+    with app.app_context():
+        profile = db.session.get(TenantProfile, tenant_profile_id)
+        if not profile or not profile.contract_end:
+            return False
+        user = profile.user
+        if not user or not user.email:
+            return False
+        if profile.last_renewal_reminder_sent == date.today():
+            return False
+
+        days_remaining = (profile.contract_end - date.today()).days
+        unit_code = profile.unit.unit_code if profile.unit else "N/A"
+        send_renewal_reminder_email(user.full_name, user.email, unit_code, profile.contract_end, days_remaining)
+        profile.last_renewal_reminder_sent = date.today()
+        db.session.commit()
+        return True
+
+
 def _auto_cancel_expired_reservations(app: Flask) -> None:
     with app.app_context():
         hours = int(app.config.get("RESERVATION_AUTO_CANCEL_HOURS", 48))

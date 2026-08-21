@@ -76,7 +76,8 @@
 
         <div>
           <label class="label">File (Image or PDF) *</label>
-          <input class="input" type="file" name="file" accept="image/*,.pdf" required />
+          <input class="input" type="file" name="file" accept="image/*,.pdf" required id="docFileInput" />
+          <div id="docFilePreview" style="display:none; margin-top:8px;"></div>
 </div>
 
         <div style="display: flex; align-items: flex-end;">
@@ -365,6 +366,28 @@
   </style>
 
   <script>
+    // Live preview of the file before it's uploaded
+    const docFileInput = document.getElementById('docFileInput');
+    const docFilePreview = document.getElementById('docFilePreview');
+    if (docFileInput) {
+      docFileInput.addEventListener('change', () => {
+        const file = docFileInput.files && docFileInput.files[0];
+        if (!file) { docFilePreview.style.display = 'none'; docFilePreview.innerHTML = ''; return; }
+
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+        docFilePreview.style.display = 'block';
+
+        if (file.type.startsWith('image/')) {
+          const url = URL.createObjectURL(file);
+          docFilePreview.innerHTML = `<img src="${url}" alt="${file.name}" style="max-width:160px; max-height:160px; border-radius:8px; border:1px solid rgba(20,20,23,0.1); display:block;" />
+            <div class="muted" style="font-size:12px; margin-top:4px;">${file.name} (${sizeMb} MB)</div>`;
+        } else {
+          docFilePreview.innerHTML = `<div style="display:inline-flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(215,179,91,0.08); border:1px solid rgba(215,179,91,0.3); border-radius:8px; font-size:13px;">
+            <strong>PDF selected:</strong> ${file.name} (${sizeMb} MB)</div>`;
+        }
+      });
+    }
+
     // Real-time filters
     const searchInput = document.getElementById('searchInput');
     const docTypeFilter = document.getElementById('docTypeFilter');

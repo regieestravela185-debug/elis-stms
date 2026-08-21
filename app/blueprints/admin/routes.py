@@ -706,6 +706,27 @@ def send_renewal_reminders():
     return redirect(url_for("admin.dashboard"))
 
 
+@bp.post("/tenants/<int:tenant_profile_id>/notify-renewal")
+@login_required
+def notify_tenant_renewal(tenant_profile_id: int):
+    """Send a renewal reminder to exactly this one tenant (Tenant Monitoring 'Notify' button)."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, tenant_profile_id)
+    if not profile:
+        abort(404)
+
+    from ...jobs import send_renewal_reminder_now
+    sent = send_renewal_reminder_now(current_app._get_current_object(), tenant_profile_id)
+
+    tenant_name = profile.user.full_name if profile.user else "this tenant"
+    if sent:
+        flash(f"Renewal reminder sent to {tenant_name}.", "success")
+    else:
+        flash(f"No reminder sent — {tenant_name} was already notified today, or has no contract end date.", "info")
+
+    return redirect(url_for("admin.tenant_monitoring"))
+
+
 @bp.post("/blockchain-alarm/dismiss")
 @login_required
 def dismiss_blockchain_alarm():
@@ -981,6 +1002,16 @@ def create_unit():
         flash("Please fill all required fields.", "warning")
         return redirect(url_for("admin.units"))
 
+    if db.session.query(Unit).filter(Unit.unit_code == unit_code).first():
+        flash(f"Unit code '{unit_code}' is already in use. Please choose a different code.", "warning")
+        return redirect(url_for("admin.units"))
+
+    if db.session.query(Unit).filter(
+        Unit.building_id == building_id, Unit.unit_number == unit_number
+    ).first():
+        flash(f"Unit number '{unit_number}' already exists in this building. Please choose a different number.", "warning")
+        return redirect(url_for("admin.units"))
+
     try:
         price_monthly = float(price_monthly)
     except ValueError:
@@ -1104,6 +1135,16 @@ def update_unit(unit_id: int):
         flash("Please fill all required fields.", "warning")
         return redirect(url_for("admin.edit_unit", unit_id=unit_id))
 
+    if db.session.query(Unit).filter(Unit.unit_code == unit_code, Unit.id != unit_id).first():
+        flash(f"Unit code '{unit_code}' is already in use. Please choose a different code.", "warning")
+        return redirect(url_for("admin.edit_unit", unit_id=unit_id))
+
+    if db.session.query(Unit).filter(
+        Unit.building_id == building_id, Unit.unit_number == unit_number, Unit.id != unit_id
+    ).first():
+        flash(f"Unit number '{unit_number}' already exists in this building. Please choose a different number.", "warning")
+        return redirect(url_for("admin.edit_unit", unit_id=unit_id))
+
     try:
         price_monthly = float(price_monthly)
     except ValueError:
@@ -1218,25 +1259,36 @@ def duplicate_unit(unit_id: int):
     if not original:
         abort(404)
     
-    # Generate new unit code
+    # Generate a new unit code that doesn't collide (unit_code is globally unique)
     import re
     match = re.match(r'(.+?)(\d+)$', original.unit_code)
-    if match:
-        prefix = match.group(1)
-        number = int(match.group(2))
-        new_code = f"{prefix}{number + 1}"
-    else:
-        new_code = f"{original.unit_code}_copy"
+    prefix, number = (match.group(1), int(match.group(2))) if match else (original.unit_code, 0)
+    new_code = f"{prefix}{number + 1}" if match else f"{original.unit_code}_copy"
+    while db.session.query(Unit).filter(Unit.unit_code == new_code).first() is not None:
+        number += 1
+        new_code = f"{prefix}{number + 1}" if match else f"{new_code}_copy"
+
+    # Generate a new unit_number that doesn't collide within the same building
+    # (repeated duplication used to always try "<original>_copy" and crash the
+    # second time).
+    base_number = f"{original.unit_number}_copy"
+    new_number = base_number
+    suffix = 1
+    while db.session.query(Unit).filter(
+        Unit.building_id == original.building_id, Unit.unit_number == new_number
+    ).first() is not None:
+        suffix += 1
+        new_number = f"{base_number}{suffix}"
 
     max_floor = _get_building_floor_limit(original.building_id)
     duplicate_floor = original.floor or 1
     if duplicate_floor > max_floor:
         duplicate_floor = max_floor
-    
+
     # Create duplicate
     duplicate = Unit(
         building_id=original.building_id,
-        unit_number=f"{original.unit_number}_copy",
+        unit_number=new_number,
         unit_code=new_code,
         price_monthly=original.price_monthly,
         status=UnitStatus.AVAILABLE,  # Always set to available
@@ -1245,7 +1297,7 @@ def duplicate_unit(unit_id: int):
         description=original.description,
         unit_images_json=original.unit_images_json
     )
-    
+
     db.session.add(duplicate)
     db.session.commit()
     flash(f"Unit duplicated successfully as {new_code}.", "success")
@@ -1534,6 +1586,57 @@ def get_reservation_verification(reservation_id: int):
     return jsonify(result)
 
 
+@bp.get("/api/units/<int:unit_id>/quick-info")
+@login_required
+def get_unit_quick_info(unit_id: int):
+    """Lightweight unit + current-tenant summary for the floorplan tile-click modal."""
+    _ensure_admin()
+    from flask import jsonify
+
+    unit = db.session.get(Unit, unit_id)
+    if not unit:
+        return jsonify({"error": "Unit not found"}), 404
+
+    image_url = None
+    if unit.unit_images_json:
+        try:
+            imgs = json.loads(unit.unit_images_json)
+            if imgs:
+                first = str(imgs[0])
+                image_url = first if first.startswith(("http://", "https://", "//")) else url_for("static", filename=first.lstrip("/"))
+        except (ValueError, TypeError):
+            pass
+
+    result = {
+        "id": unit.id,
+        "unit_code": unit.unit_code,
+        "unit_number": unit.unit_number,
+        "building_code": unit.building.code if unit.building else None,
+        "floor": unit.floor,
+        "type": unit.type,
+        "price_monthly": float(unit.price_monthly) if unit.price_monthly else 0,
+        "status": unit.status.value,
+        "description": unit.description,
+        "image_url": image_url,
+        "edit_url": url_for("admin.edit_unit", unit_id=unit.id),
+        "tenant": None,
+    }
+
+    profile = (
+        db.session.query(TenantProfile)
+        .filter(TenantProfile.unit_id == unit.id, TenantProfile.is_active == True)  # noqa: E712
+        .first()
+    )
+    if profile and profile.user:
+        result["tenant"] = {
+            "name": profile.user.full_name,
+            "contract_end": profile.contract_end.strftime("%b %d, %Y") if profile.contract_end else None,
+            "user_details_url": url_for("admin.user_details", user_id=profile.user.id),
+        }
+
+    return jsonify(result)
+
+
 @bp.get("/payments")
 @login_required
 def payments():
@@ -1799,16 +1902,25 @@ def user_details(user_id: int):
     # Get tenant profile if exists
     tenant_profile = None
     payments = []
+    concerns = []
+    documents = []
+    feedbacks = []
     if user.role == Role.TENANT:
         tenant_profile = db.session.query(TenantProfile).filter(TenantProfile.user_id == user_id).first()
         if tenant_profile:
             payments = db.session.query(Payment).filter(Payment.tenant_profile_id == tenant_profile.id).order_by(Payment.paid_at.desc()).limit(10).all()
-    
-    return render_template("admin/user_details.html", 
-                         user=user, 
-                         reservations=reservations, 
+            concerns = db.session.query(Concern).filter(Concern.tenant_profile_id == tenant_profile.id).order_by(Concern.created_at.desc()).limit(10).all()
+            documents = db.session.query(Document).filter(Document.tenant_profile_id == tenant_profile.id).order_by(Document.uploaded_at.desc()).limit(10).all()
+            feedbacks = db.session.query(Feedback).filter(Feedback.tenant_profile_id == tenant_profile.id).order_by(Feedback.created_at.desc()).limit(10).all()
+
+    return render_template("admin/user_details.html",
+                         user=user,
+                         reservations=reservations,
                          tenant_profile=tenant_profile,
-                         payments=payments)
+                         payments=payments,
+                         concerns=concerns,
+                         documents=documents,
+                         feedbacks=feedbacks)
 
 
 @bp.post("/users/<int:user_id>/ban")
@@ -2459,6 +2571,12 @@ def upload_document():
         flash("Please fill all fields and select a file.", "warning")
         return redirect(url_for("admin.documents"))
 
+    allowed_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"}
+    file_ext = os.path.splitext(file.filename or "")[1].lower()
+    if file_ext not in allowed_ext:
+        flash("Unsupported file type. Please upload an image (JPG/PNG/GIF/WEBP) or a PDF.", "warning")
+        return redirect(url_for("admin.documents"))
+
     profile = db.session.get(TenantProfile, tenant_profile_id)
     if not profile:
         abort(404)
@@ -2520,21 +2638,20 @@ def delete_document(document_id: int):
     if not document:
         abort(404)
     
-    # Delete file from filesystem
-    import os
-    try:
-        file_path = os.path.join("static", document.file_path)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-    except Exception as e:
-        print(f"Failed to delete file: {e}")
-    
+    # Delete the underlying file — Supabase Storage (production) or local disk (dev)
+    from ... import supabase_storage
+    if not supabase_storage.delete_public_url(document.file_path):
+        import os
+        try:
+            file_path = os.path.join("app", "static", document.file_path.lstrip("/"))
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Failed to delete local file: {e}")
+
     db.session.delete(document)
     db.session.commit()
     flash("Document deleted successfully.", "success")
-    return redirect(url_for("admin.documents"))
-    db.session.commit()
-    flash("Document uploaded.", "success")
     return redirect(url_for("admin.documents"))
 
 
@@ -2882,42 +2999,45 @@ def approve_renewal(renewal_id: int):
     if not renewal:
         abort(404)
 
-    renewal.status = RenewalRequestStatus.APPROVED
     # Update tenant contract end date
     profile = db.session.get(TenantProfile, renewal.tenant_profile_id)
-    if profile:
-        old_end_date = profile.contract_end
-        profile.contract_end = renewal.requested_end_date
-        profile.is_active = True
+    if not profile:
+        flash("Cannot approve — this renewal request has no linked tenant profile. Nothing was changed.", "danger")
+        return redirect(url_for("admin.renewals"))
 
-        # Re-activate unit if it was auto-expired
-        unit = db.session.get(Unit, profile.unit_id)
-        if unit and unit.status == UnitStatus.AVAILABLE:
-            unit.status = UnitStatus.OCCUPIED
+    renewal.status = RenewalRequestStatus.APPROVED
+    old_end_date = profile.contract_end
+    profile.contract_end = renewal.requested_end_date
+    profile.is_active = True
 
-        # Update original reservation move_out_date so deposit module stays accurate
-        reservation = (
-            db.session.query(Reservation)
-            .filter(
-                Reservation.user_id == profile.user_id,
-                Reservation.unit_id == profile.unit_id,
-                Reservation.status == ReservationStatus.APPROVED
-            )
-            .order_by(Reservation.created_at.desc())
-            .first()
+    # Re-activate unit if it was auto-expired
+    unit = db.session.get(Unit, profile.unit_id)
+    if unit and unit.status == UnitStatus.AVAILABLE:
+        unit.status = UnitStatus.OCCUPIED
+
+    # Update original reservation move_out_date so deposit module stays accurate
+    reservation = (
+        db.session.query(Reservation)
+        .filter(
+            Reservation.user_id == profile.user_id,
+            Reservation.unit_id == profile.unit_id,
+            Reservation.status == ReservationStatus.APPROVED
         )
-        if reservation:
-            reservation.move_out_date = renewal.requested_end_date
+        .order_by(Reservation.created_at.desc())
+        .first()
+    )
+    if reservation:
+        reservation.move_out_date = renewal.requested_end_date
 
-        # Send email notification
-        _send_renewal_result_email(
-            tenant_name=profile.user.full_name,
-            tenant_email=profile.user.email,
-            unit_code=profile.unit.unit_code,
-            status='approved',
-            old_end_date=old_end_date,
-            new_end_date=renewal.requested_end_date
-        )
+    # Send email notification
+    _send_renewal_result_email(
+        tenant_name=profile.user.full_name,
+        tenant_email=profile.user.email,
+        unit_code=profile.unit.unit_code,
+        status='approved',
+        old_end_date=old_end_date,
+        new_end_date=renewal.requested_end_date
+    )
 
     db.session.commit()
     flash(f"Renewal request approved and email sent to {profile.user.full_name}.", "success")

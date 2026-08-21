@@ -107,3 +107,35 @@ def upload_file_storage(file_storage, dest_path: str) -> str:
         or "application/octet-stream"
     )
     return upload_bytes(data, dest_path, content_type)
+
+
+def delete_file(dest_path: str) -> bool:
+    """Delete an object from the bucket by its storage path. Never raises."""
+    if not is_enabled():
+        return False
+    base = current_app.config["SUPABASE_URL"]
+    bucket = current_app.config["SUPABASE_BUCKET"]
+    dest_path = dest_path.lstrip("/")
+    url = f"{base}/storage/v1/object/{bucket}/{dest_path}"
+    try:
+        resp = requests.delete(url, headers=_headers("application/json"), timeout=_TIMEOUT)
+        if resp.status_code not in (200, 204):
+            logger.warning("Supabase delete failed (%s) for %s: %s", resp.status_code, dest_path, resp.text[:300])
+            return False
+        return True
+    except Exception as e:  # pragma: no cover
+        logger.warning("Supabase delete_file failed (%s): %s", dest_path, e)
+        return False
+
+
+def delete_public_url(file_url: str) -> bool:
+    """Delete an object given the full public URL stored on a model (as
+    returned by upload_local_file/upload_bytes). No-op (returns False) if the
+    URL doesn't point at our configured bucket, e.g. a local relative path.
+    """
+    if not is_enabled() or not file_url:
+        return False
+    prefix = f"{current_app.config['SUPABASE_URL']}/storage/v1/object/public/{current_app.config['SUPABASE_BUCKET']}/"
+    if not file_url.startswith(prefix):
+        return False
+    return delete_file(file_url[len(prefix):])
