@@ -21,6 +21,7 @@ from ...models import (
     IdentityVerification,
     Payment,
     PaymentLedger,
+    PaymentRiskLevel,
     RenewalRequest,
     RenewalRequestStatus,
     Reservation,
@@ -549,6 +550,28 @@ def dashboard():
     resolved_concerns = db.session.query(Concern).filter(Concern.status == ConcernStatus.RESOLVED).count()
     resolution_rate = round((resolved_concerns / total_concerns_count * 100), 1) if total_concerns_count > 0 else 0
 
+    # NEW: Payment Risk Analytics (predictive analytics on tenant payment behavior)
+    risk_analyzed_tenants = (
+        db.session.query(TenantProfile)
+        .filter(TenantProfile.prediction_score.isnot(None))
+        .all()
+    )
+    risk_counts = {"low": 0, "medium": 0, "high": 0}
+    for t in risk_analyzed_tenants:
+        level = t.payment_risk_level.value if t.payment_risk_level else "low"
+        risk_counts[level] = risk_counts.get(level, 0) + 1
+    risk_analyzed_count = len(risk_analyzed_tenants)
+    risk_high_pct = round((risk_counts["high"] / risk_analyzed_count * 100), 1) if risk_analyzed_count > 0 else 0
+
+    top_risk_tenants = (
+        db.session.query(TenantProfile)
+        .filter(TenantProfile.payment_risk_level == PaymentRiskLevel.HIGH)
+        .filter(TenantProfile.prediction_score.isnot(None))
+        .order_by(TenantProfile.prediction_score.desc())
+        .limit(5)
+        .all()
+    )
+
     # Overall occupancy rate
     occupancy_rate = round((occupied / total_units * 100), 1) if total_units > 0 else 0
 
@@ -599,6 +622,10 @@ def dashboard():
         pending_inquiries=pending_inquiries,
         avg_rating=avg_rating,
         today=today,
+        risk_counts=risk_counts,
+        risk_analyzed_count=risk_analyzed_count,
+        risk_high_pct=risk_high_pct,
+        top_risk_tenants=top_risk_tenants,
     )
 
 

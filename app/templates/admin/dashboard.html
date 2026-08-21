@@ -303,6 +303,69 @@
       border-radius: 999px;
       transition: width 1.2s cubic-bezier(.4,0,.2,1);
     }
+
+    /* ============================================================
+       ANALYTICS SECTION — icon headers + payment risk overview
+       ============================================================ */
+    .section-eyebrow{
+      display: flex; align-items: center; gap: 10px;
+      margin: 8px 0 18px;
+    }
+    .section-eyebrow__icon{
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, rgba(215,179,91,0.16), rgba(184,146,47,0.10));
+      border: 1px solid rgba(215,179,91,0.35);
+      color: #b8922f;
+    }
+    .section-eyebrow__icon svg{ width: 18px; height: 18px; }
+    .section-eyebrow__text .kicker{ margin-bottom: 2px; }
+    .section-eyebrow__text h2{
+      margin: 0; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em;
+    }
+    .section-eyebrow__text p{ margin: 2px 0 0; }
+    .card-icon{
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 9px;
+      background: rgba(20,20,23,0.05); color: var(--muted);
+      margin-right: 10px; flex-shrink: 0;
+    }
+    .card-icon svg{ width: 16px; height: 16px; }
+    .card-title-row{ display: flex; align-items: center; }
+
+    /* Risk stat chips */
+    .risk-chips{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .risk-chip{
+      border-radius: 14px; padding: 16px 18px; border: 1px solid;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .risk-chip__count{ font-size: 26px; font-weight: 900; line-height: 1; }
+    .risk-chip__label{ font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+    .risk-chip--low{ background: rgba(64,201,120,0.08); border-color: rgba(64,201,120,0.3); color: #1f9d55; }
+    .risk-chip--medium{ background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.32); color: #b45309; }
+    .risk-chip--high{ background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.32); color: #dc2626; }
+
+    /* Segmented risk bar */
+    .risk-bar{
+      height: 12px; border-radius: 999px; overflow: hidden;
+      display: flex; background: rgba(20,20,23,0.06); margin-bottom: 22px;
+    }
+    .risk-bar__seg{ height: 100%; width: 0; transition: width 1s cubic-bezier(.4,0,.2,1); }
+    .risk-bar__seg--low{ background: linear-gradient(90deg,#6ee7a3,#2fbf6f); }
+    .risk-bar__seg--medium{ background: linear-gradient(90deg,#fbbf24,#f59e0b); }
+    .risk-bar__seg--high{ background: linear-gradient(90deg,#f87171,#ef4444); }
+
+    .risk-tenant-row{
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+      text-decoration: none; color: inherit; transition: all .25s ease;
+    }
+    .risk-tenant-row:hover{ border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.04); transform: translateX(2px); }
+    .risk-tenant-row + .risk-tenant-row{ margin-top: 10px; }
+    .risk-score-pill{
+      font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px;
+      background: rgba(239,68,68,0.12); color: #dc2626; white-space: nowrap;
+    }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -776,10 +839,23 @@
 </div>
       {% endif %}
 
-      <div class="grid grid--2 mt-24">
+      <div class="section-eyebrow mt-24">
+        <div class="section-eyebrow__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 3"/></svg>
+        </div>
+        <div class="section-eyebrow__text">
+          <div class="kicker">SNAPSHOT</div>
+          <h2>Portfolio at a Glance</h2>
+          <p class="muted">Occupancy and reservation distribution right now</p>
+        </div>
+      </div>
+      <div class="grid grid--2">
         <div class="card" style="animation-delay: 0.9s; padding: 20px;">
           <div class="section__header" style="margin-bottom:14px">
-            <h3>Unit Occupancy</h3>
+            <div class="card-title-row">
+              <span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg></span>
+              <h3>Unit Occupancy</h3>
+            </div>
             <p class="muted">Current status</p>
 </div>
           <div style="height: 250px;">
@@ -788,7 +864,10 @@
 </div>
         <div class="card" style="animation-delay: 1.0s; padding: 20px;">
           <div class="section__header" style="margin-bottom:14px">
-            <h3>Reservations by Status</h3>
+            <div class="card-title-row">
+              <span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="10"/><rect x="10" y="6" width="4" height="14"/><rect x="17" y="3" width="4" height="17"/></svg></span>
+              <h3>Reservations by Status</h3>
+            </div>
             <p class="muted">Distribution</p>
 </div>
           <div style="height: 250px;">
@@ -797,10 +876,25 @@
 </div>
 </div>
 
+      <!-- ANALYTICS SECTION HEADER -->
+      <div class="section-eyebrow mt-32">
+        <div class="section-eyebrow__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
+        </div>
+        <div class="section-eyebrow__text">
+          <div class="kicker">ANALYTICS</div>
+          <h2>Performance &amp; Insights</h2>
+          <p class="muted">Live metrics, revenue trends, and tenant risk signals</p>
+        </div>
+      </div>
+
       <!-- KEY PERFORMANCE INDICATORS -->
-      <div class="card mt-24" style="animation-delay: 1.05s; padding: 20px;">
+      <div class="card" style="animation-delay: 1.05s; padding: 20px;">
         <div class="section__header" style="margin-bottom:16px">
-          <h3>Key Performance Indicators</h3>
+          <div class="card-title-row">
+            <span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></span>
+            <h3>Key Performance Indicators</h3>
+          </div>
           <p class="muted">Real-time business metrics</p>
 </div>
         <div class="grid grid--4" style="gap: 16px;">
@@ -839,13 +933,84 @@
             <div class="kpi-tile__sub">average rating</div>
             <div class="kpi-bar"><div class="kpi-bar__fill js-meter" data-pct="{{ (avg_rating|float / 5 * 100)|round(0, 'floor')|int }}" style="background: linear-gradient(90deg,#E7C56B,#C9A84A);"></div></div>
           </div>
+          <!-- Payment Risk -->
+          <div class="kpi-tile">
+            <div class="kpi-tile__label">High Payment Risk</div>
+            <div class="kpi-tile__value" style="color: #ef4444;"><span class="js-countup" data-target="{{ risk_high_pct }}" data-suffix="%" data-decimals="0">0%</span></div>
+            <div class="kpi-tile__sub">
+              {% if risk_analyzed_count > 0 %}
+                {{ risk_counts.high }} of {{ risk_analyzed_count }} analyzed tenants
+              {% else %}
+                Run "Update Risk Profiles" to analyze
+              {% endif %}
+            </div>
+            <div class="kpi-bar"><div class="kpi-bar__fill js-meter" data-pct="{{ risk_high_pct }}" style="background: linear-gradient(90deg,#f87171,#ef4444);"></div></div>
+          </div>
 </div>
+</div>
+
+      <!-- NEW: Payment Risk Overview (predictive analytics on tenant payment behavior) -->
+      <div class="card mt-24" style="animation-delay: 1.08s; padding: 20px;">
+        <div class="section__header" style="margin-bottom:16px">
+          <div class="card-title-row">
+            <span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+            <h3>Payment Risk Overview</h3>
+          </div>
+          <p class="muted">Predictive risk profile across analyzed tenants</p>
+</div>
+
+        {% if risk_analyzed_count > 0 %}
+          <div class="risk-chips">
+            <div class="risk-chip risk-chip--low">
+              <div class="risk-chip__count">{{ risk_counts.low }}</div>
+              <div class="risk-chip__label">Low risk</div>
+            </div>
+            <div class="risk-chip risk-chip--medium">
+              <div class="risk-chip__count">{{ risk_counts.medium }}</div>
+              <div class="risk-chip__label">Medium risk</div>
+            </div>
+            <div class="risk-chip risk-chip--high">
+              <div class="risk-chip__count">{{ risk_counts.high }}</div>
+              <div class="risk-chip__label">High risk</div>
+            </div>
+          </div>
+
+          <div class="risk-bar">
+            <div class="risk-bar__seg risk-bar__seg--low js-meter" data-pct="{{ (risk_counts.low / risk_analyzed_count * 100) if risk_analyzed_count else 0 }}"></div>
+            <div class="risk-bar__seg risk-bar__seg--medium js-meter" data-pct="{{ (risk_counts.medium / risk_analyzed_count * 100) if risk_analyzed_count else 0 }}"></div>
+            <div class="risk-bar__seg risk-bar__seg--high js-meter" data-pct="{{ (risk_counts.high / risk_analyzed_count * 100) if risk_analyzed_count else 0 }}"></div>
+          </div>
+
+          {% if top_risk_tenants %}
+            <div class="muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;">Tenants needing attention</div>
+            {% for t in top_risk_tenants %}
+              <a href="{{ url_for('admin.user_details', user_id=t.user.id) if t.user else '#' }}" class="risk-tenant-row fade-in-item" data-delay="{{ loop.index * 0.05 }}">
+                <div style="min-width: 0;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">{{ t.user.full_name if t.user else 'N/A' }}</div>
+                  <div class="muted" style="font-size: 0.78rem; margin-top: 2px;">{{ t.unit.unit_code if t.unit else 'N/A' }}</div>
+</div>
+                <span class="risk-score-pill">{{ (t.prediction_score|float * 100)|round(0) }}% risk score</span>
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state" style="padding: 24px 20px;">
+              <div class="empty-state__text">No high-risk tenants right now — nice and stable.</div>
+</div>
+          {% endif %}
+        {% else %}
+          <div class="empty-state" style="padding: 32px 20px;">
+            <div class="empty-state__text">No tenants analyzed yet. Click <strong>"Update Risk Profiles"</strong> above to generate payment risk scores from tenant payment history.</div>
+</div>
+        {% endif %}
 </div>
 
       <!-- NEW: Revenue Trend Chart -->
       <div class="card mt-24" style="animation-delay: 1.1s; padding: 20px;">
         <div class="section__header" style="margin-bottom:16px">
-          <h3>Revenue Trend</h3>
+          <div class="card-title-row">
+            <span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg></span>
+            <h3>Revenue Trend</h3>
+          </div>
           <p class="muted">Last 6 months performance (including current month)</p>
 </div>
         <div style="height: 280px;">
