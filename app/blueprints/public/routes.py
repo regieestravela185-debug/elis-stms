@@ -131,6 +131,10 @@ def home():
         db.session.query(Announcement)
         .filter(Announcement.is_active == True)
         .filter(db.or_(
+            Announcement.expires_at.is_(None),
+            Announcement.expires_at >= datetime.utcnow()
+        ))
+        .filter(db.or_(
             Announcement.target_audience == 'all',
             Announcement.target_audience == 'public'
         ))

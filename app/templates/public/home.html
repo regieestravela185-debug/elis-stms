@@ -2483,6 +2483,37 @@
     </div>
   </section>
 
+  {% if testimonials %}
+  <section id="testimonials" class="section reveal">
+    <div class="section__header">
+      <h2>What Our Tenants Say</h2>
+      {% if avg_rating %}
+        <p class="muted">
+          <strong style="color:#D7B35B; font-size:1.15em;">{{ avg_rating }}</strong> / 5
+          &middot; {{ total_feedbacks }} review{{ 's' if total_feedbacks != 1 else '' }}
+          &middot; {{ satisfaction_score }}% satisfaction
+        </p>
+      {% endif %}
+    </div>
+    <div class="grid grid--3 mt-16">
+      {% for t in testimonials[:6] %}
+        <div class="card card--lift home-enhanced-card">
+          <div style="color:#D7B35B; font-size:1.1rem; letter-spacing:2px; margin-bottom:8px;">
+            {% for i in range(1, 6) %}{{ '★' if i <= t.rating else '☆' }}{% endfor %}
+          </div>
+          <p class="muted">&ldquo;{{ t.comments[:160] }}{% if t.comments|length > 160 %}&hellip;{% endif %}&rdquo;</p>
+          <div style="margin-top:12px; font-weight:700;">
+            {{ t.tenant_profile.user.full_name if t.tenant_profile and t.tenant_profile.user else 'Verified Tenant' }}
+          </div>
+          <div class="muted" style="font-size:0.85rem;">
+            {{ t.unit.unit_code if t.unit else '' }}{% if t.category %} &middot; {{ t.category|replace('_', ' ')|title }}{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   <section id="faq" class="section section--footer reveal">
     <div class="section__header">
       <h2>FAQ</h2>

@@ -117,9 +117,12 @@ def dashboard():
         }
 
     # Recent announcements (for tenants or all)
+    from datetime import datetime as _dt
+    _not_expired = db.or_(Announcement.expires_at.is_(None), Announcement.expires_at >= _dt.utcnow())
     recent_announcements = (
         db.session.query(Announcement)
         .filter(Announcement.is_active == True)
+        .filter(_not_expired)
         .filter(db.or_(
             Announcement.target_audience == 'all',
             Announcement.target_audience == 'tenants'
@@ -128,16 +131,17 @@ def dashboard():
         .limit(5)
         .all()
     )
-    
+
     # Count unread announcements
     read_announcement_ids = db.session.query(AnnouncementRead.announcement_id).filter(
         AnnouncementRead.user_id == current_user.id  # type: ignore[attr-defined]
     ).all()
     read_ids = [r[0] for r in read_announcement_ids]
-    
+
     unread_count = (
         db.session.query(Announcement)
         .filter(Announcement.is_active == True)
+        .filter(_not_expired)
         .filter(db.or_(
             Announcement.target_audience == 'all',
             Announcement.target_audience == 'tenants'
@@ -862,9 +866,10 @@ def announcements():
     category_filter = request.args.get('category', '').strip()
     
     # Base query - Get announcements for tenants
+    not_expired = db.or_(Announcement.expires_at.is_(None), Announcement.expires_at >= datetime.utcnow())
     query = db.session.query(Announcement).filter(
         Announcement.is_active == True
-    ).filter(db.or_(
+    ).filter(not_expired).filter(db.or_(
         Announcement.target_audience == 'all',
         Announcement.target_audience == 'tenants'
     ))
@@ -900,7 +905,7 @@ def announcements():
     # Get available categories
     all_announcements = db.session.query(Announcement).filter(
         Announcement.is_active == True
-    ).filter(db.or_(
+    ).filter(not_expired).filter(db.or_(
         Announcement.target_audience == 'all',
         Announcement.target_audience == 'tenants'
     )).all()
