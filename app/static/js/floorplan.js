@@ -132,15 +132,100 @@ function updateStats(stats) {
   });
 }
 
+// Unit quick-info modal (opened by clicking a floorplan tile)
+const STATUS_COLORS = { available: '#22c55e', occupied: '#3b82f6', reserved: '#eab308', unpaid: '#ef4444' };
+
+function setupUnitInfoModal() {
+  const modal = document.getElementById('unitInfoModal');
+  const closeBtn = document.getElementById('closeUnitInfoModal');
+  if (!modal || !closeBtn) return;
+
+  const close = () => { modal.style.display = 'none'; };
+  closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+}
+
+function openUnitInfoModal(unitId) {
+  const modal = document.getElementById('unitInfoModal');
+  const content = document.getElementById('unitInfoContent');
+  if (!modal || !content) return;
+
+  content.innerHTML = '<div style="text-align:center; padding:40px 0;"><div class="spinner"></div><p class="muted">Loading unit details…</p></div>';
+  modal.style.display = 'flex';
+
+  fetch(`/admin/api/units/${unitId}/quick-info`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        content.innerHTML = `<p class="muted">${data.error}</p>`;
+        return;
+      }
+      const color = STATUS_COLORS[data.status] || '#64748b';
+      const image = data.image_url
+        ? `<img src="${data.image_url}" alt="${data.unit_code}" style="width:100%; height:160px; object-fit:cover; border-radius:10px; margin-bottom:16px;" />`
+        : '';
+      const tenantBlock = data.tenant
+        ? `<div style="background:rgba(20,20,23,0.03); border-radius:10px; padding:14px; margin-top:14px;">
+             <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:6px;">Current Tenant</div>
+             <div style="font-weight:700;">${data.tenant.name}</div>
+             ${data.tenant.contract_end ? `<div class="muted" style="font-size:13px; margin-top:2px;">Contract ends ${data.tenant.contract_end}</div>` : ''}
+             <a href="${data.tenant.user_details_url}" class="btn btn--ghost btn--sm" style="margin-top:10px;">View Tenant Profile</a>
+           </div>`
+        : '';
+
+      content.innerHTML = `
+        ${image}
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <h3 style="margin:0;">${data.unit_code}</h3>
+          <span style="background:${color}1a; color:${color}; border:1px solid ${color}40; font-weight:700; font-size:12px; padding:4px 10px; border-radius:999px; text-transform:capitalize;">${data.status}</span>
+</div>
+        <p class="muted" style="margin:6px 0 14px;">Building ${data.building_code || 'N/A'} &middot; Floor ${data.floor ?? '—'} ${data.type ? '&middot; ' + data.type : ''}</p>
+        <div style="font-size:22px; font-weight:800; color:#D7B35B; margin-bottom:10px;">₱${data.price_monthly.toLocaleString('en-US', {minimumFractionDigits:2})} <span style="font-size:13px; font-weight:600; color:#64748b;">/ month</span></div>
+        ${data.description ? `<p class="muted" style="font-size:14px; line-height:1.6;">${data.description}</p>` : ''}
+        ${tenantBlock}
+        <a href="${data.edit_url}" class="btn btn--primary" style="margin-top:16px; width:100%; text-align:center;">Edit Unit</a>
+      `;
+    })
+    .catch(() => {
+      content.innerHTML = '<p class="muted">Failed to load unit details. Please try again.</p>';
+    });
+}
+
+// Reflects the *real* SocketIO connection state — was previously a static
+// "Live Updates" label that stayed green even when the socket never connected.
+function setRealtimeIndicator(state) {
+  const el = document.getElementById('realtimeIndicator');
+  const text = document.getElementById('realtimeIndicatorText');
+  if (!el || !text) return;
+
+  el.classList.remove('realtime-indicator--offline', 'realtime-indicator--connecting');
+  if (state === 'online') {
+    text.textContent = 'Live Updates';
+  } else if (state === 'connecting') {
+    el.classList.add('realtime-indicator--connecting');
+    text.textContent = 'Connecting…';
+  } else {
+    el.classList.add('realtime-indicator--offline');
+    text.textContent = 'Offline';
+  }
+}
+
 // Setup SocketIO real-time updates
 function setupSocketIO() {
   if (!window.socket) {
     console.error('❌ SocketIO not initialized');
+    setRealtimeIndicator('offline');
     return;
   }
-  
+
   console.log('🔌 Setting up SocketIO listeners for floorplan...');
-  
+  setRealtimeIndicator('online');
+
+  window.socket.on('disconnect', () => setRealtimeIndicator('offline'));
+  window.socket.on('connect', () => setRealtimeIndicator('online'));
+  window.socket.on('connect_error', () => setRealtimeIndicator('offline'));
+
   // Listen for unit status updates
   window.socket.on('unit_status_update', function(data) {
     console.log('📡 Received unit status update:', data);
@@ -179,16 +264,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
   
-  // Add click handler for unit tiles
+  // Add click handler for unit tiles — opens a quick-info modal
   document.querySelectorAll('.unit-tile').forEach(tile => {
     tile.addEventListener('click', () => {
       const unitId = tile.getAttribute('data-unit-id');
-      const status = tile.getAttribute('data-status');
-      const code = tile.querySelector('.unit-tile__meta').textContent;
-      
-      console.log(`Unit ${code} (ID: ${unitId}) - Status: ${status}`);
+      if (unitId) openUnitInfoModal(unitId);
     });
   });
+  setupUnitInfoModal();
   
   // Setup SocketIO real-time updates
   if (window.socket) {
@@ -196,10 +279,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.socket.connected) {
       setupSocketIO();
     } else {
+      setRealtimeIndicator('connecting');
       window.socket.on('connect', setupSocketIO);
+      window.socket.on('connect_error', () => setRealtimeIndicator('offline'));
     }
   } else {
     console.error('❌ SocketIO not available');
+    setRealtimeIndicator('offline');
   }
 });
 
