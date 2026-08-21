@@ -359,6 +359,7 @@ class Payment(db.Model):
     is_late = db.Column(db.Boolean, nullable=False, default=False)
     breakdown_json = db.Column(db.Text, nullable=True)  # JSON: {rent, utilities, late_fee, other}
     receipt_number = db.Column(db.String(50), nullable=True)  # OR number
+    payment_month = db.Column(db.String(7), nullable=True)  # "YYYY-MM" billing cycle this payment covers
 
     tenant_profile = db.relationship("TenantProfile")
 

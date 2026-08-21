@@ -210,7 +210,7 @@ def verify_blockchain_chain() -> dict:
     ledgers = db.session.query(PaymentLedger).order_by(PaymentLedger.id.asc()).all()
     
     if not ledgers:
-        return {"valid": True, "message": "No ledger entries to verify", "issues": []}
+        return {"valid": True, "message": "No ledger entries to verify", "issues": [], "total_ledgers": 0}
     
     issues = []
     previous_hash = ""
@@ -1539,12 +1539,61 @@ def get_reservation_verification(reservation_id: int):
 def payments():
     _ensure_admin()
     from datetime import date, datetime as dt, timedelta
+    import calendar
+    from ...jobs import shift_month
+
     tenants = db.session.query(TenantProfile).order_by(TenantProfile.created_at.desc()).limit(200).all()
     payments = db.session.query(Payment).order_by(Payment.paid_at.desc()).limit(100).all()
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     today = date.today()
     today_dt = dt.combine(today, dt.min.time())  # Convert to datetime for comparison
-    return render_template("admin/payments.html", tenants=tenants, payments=payments, buildings=buildings, today=today, today_dt=today_dt, timedelta=timedelta)
+
+    # "Who hasn't paid this month" — cross-checks each active tenant's
+    # current billing cycle against actual payment records, instead of
+    # relying on admin to manually remember/track who's settled.
+    unpaid_this_month = []
+    for profile in db.session.query(TenantProfile).filter(TenantProfile.is_active == True).all():  # noqa: E712
+        if not profile.contract_start or not profile.user or not profile.unit:
+            continue
+
+        due_day = min(profile.contract_start.day, calendar.monthrange(today.year, today.month)[1])
+        next_due = date(today.year, today.month, due_day)
+        if next_due < today:
+            next_due = shift_month(next_due, 1)
+
+        cycle_start = dt.combine(shift_month(next_due, -1), dt.min.time())
+        already_paid = (
+            db.session.query(Payment)
+            .filter(Payment.tenant_profile_id == profile.id)
+            .filter(Payment.is_deposit == False)  # noqa: E712
+            .filter(Payment.paid_at >= cycle_start)
+            .first()
+            is not None
+        )
+        if not already_paid:
+            unpaid_this_month.append({
+                "tenant_profile_id": profile.id,
+                "tenant_name": profile.user.full_name,
+                "unit_code": profile.unit.unit_code,
+                "due_date": next_due,
+                "days": (next_due - today).days,  # negative = overdue
+            })
+
+    unpaid_this_month.sort(key=lambda x: x["days"])
+
+    blockchain_status = verify_blockchain_chain()
+
+    return render_template(
+        "admin/payments.html",
+        tenants=tenants,
+        payments=payments,
+        buildings=buildings,
+        today=today,
+        today_dt=today_dt,
+        timedelta=timedelta,
+        unpaid_this_month=unpaid_this_month,
+        blockchain_status=blockchain_status,
+    )
 
 
 @bp.get("/deposits")
@@ -2029,6 +2078,26 @@ def add_payment():
         except ValueError:
             pass
 
+    # Duplicate-entry check: does this tenant already have a non-deposit
+    # payment tagged with the same billing month? Doesn't block — admin may
+    # genuinely have a legitimate second entry (e.g. a partial payment) —
+    # just flags it so a manual double-entry mistake doesn't slip by unnoticed.
+    duplicate_warning = None
+    if payment_month:
+        existing = (
+            db.session.query(Payment)
+            .filter(Payment.tenant_profile_id == profile.id)
+            .filter(Payment.is_deposit == False)  # noqa: E712
+            .filter(Payment.payment_month == payment_month)
+            .first()
+        )
+        if existing:
+            duplicate_warning = (
+                f"Note: {profile.user.full_name if profile.user else 'this tenant'} already has a payment "
+                f"recorded for {payment_month} (₱{existing.amount:,.2f} on {existing.paid_at.strftime('%b %d, %Y')}). "
+                "Please verify this isn't a duplicate entry."
+            )
+
     # Create payment with normalized timestamp for blockchain consistency
     from datetime import datetime
     paid_at_normalized = datetime.utcnow().replace(microsecond=0)
@@ -2040,6 +2109,7 @@ def add_payment():
         paid_at=paid_at_normalized,
         is_late=is_late,
         payment_status="late" if is_late else "verified",
+        payment_month=payment_month or None,
     )
     db.session.add(p)
     db.session.flush()
@@ -2052,7 +2122,11 @@ def add_payment():
         unit.status = UnitStatus.OCCUPIED
 
     db.session.commit()
-    flash("Payment recorded (with ledger hash).", "success")
+
+    if duplicate_warning:
+        flash(duplicate_warning, "warning")
+    else:
+        flash("Payment recorded (with ledger hash).", "success")
     return redirect(url_for("admin.payments"))
 
 

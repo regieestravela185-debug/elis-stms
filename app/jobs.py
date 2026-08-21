@@ -14,7 +14,7 @@ from .email_helper import send_payment_reminder_email, send_renewal_reminder_ema
 _scheduler: BackgroundScheduler | None = None
 
 
-def _shift_month(d: date, delta: int) -> date:
+def shift_month(d: date, delta: int) -> date:
     """Add/subtract whole months from a date, clamping the day to the target month's length."""
     m = d.month - 1 + delta
     y = d.year + m // 12
@@ -65,11 +65,11 @@ def send_renewal_and_payment_reminders(app: Flask) -> dict:
                 due_day = min(profile.contract_start.day, calendar.monthrange(today.year, today.month)[1])
                 next_due = date(today.year, today.month, due_day)
                 if next_due < today:
-                    next_due = _shift_month(next_due, 1)
+                    next_due = shift_month(next_due, 1)
 
                 days_until_due = (next_due - today).days
                 if 0 <= days_until_due <= 7 and profile.last_payment_reminder_sent != today:
-                    cycle_start = datetime.combine(_shift_month(next_due, -1), datetime.min.time())
+                    cycle_start = datetime.combine(shift_month(next_due, -1), datetime.min.time())
                     already_paid = (
                         db.session.query(Payment)
                         .filter(Payment.tenant_profile_id == profile.id)

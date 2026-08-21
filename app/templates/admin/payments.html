@@ -177,6 +177,15 @@
     .empty-state__text {
       font-size: 15px;
     }
+
+    .card-icon{
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 9px;
+      background: rgba(20,20,23,0.05); color: var(--muted);
+      margin-right: 10px; flex-shrink: 0;
+    }
+    .card-icon svg{ width: 16px; height: 16px; }
+    .card-title-row{ display: flex; align-items: center; }
   </style>
 {% endblock %}
 
@@ -190,8 +199,8 @@
 
 {% block content %}
   <section class="dash-panel">
-    <!-- Blockchain Alert -->
-    {% if session.get('blockchain_verification') and not session.get('blockchain_verification').valid %}
+    <!-- Blockchain Status — always checked fresh on page load -->
+    {% if blockchain_status and not blockchain_status.valid %}
     <div class="blockchain-alert">
       <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
         <div>
@@ -210,7 +219,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for issue in session.get('blockchain_verification').issues %}
+            {% for issue in blockchain_status.issues %}
             <tr>
               <td><strong>{{ issue.tenant_info or 'N/A' }}</strong></td>
               <td class="mono">#{{ issue.payment_id }}</td>
@@ -225,7 +234,55 @@
         </table>
 </div>
 </div>
+    {% elif blockchain_status %}
+    <div class="blockchain-alert" style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.35);">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div>
+          <h3 style="color: #16a34a; margin: 0; font-size: 16px; font-weight: 800;">✓ Blockchain Verified</h3>
+          <p style="margin: 4px 0 0 0; color: #15803d; font-size: 13px;">{{ blockchain_status.total_ledgers }} payment record(s) in the chain — integrity intact, no tampering detected. Checked just now.</p>
+</div>
+</div>
+</div>
     {% endif %}
+
+    <!-- Outstanding This Month — tenants with no payment yet for the current billing cycle -->
+    <div class="card" style="padding: 20px; margin-bottom: 28px; {% if unpaid_this_month %}border: 2px solid rgba(239, 68, 68, 0.3);{% endif %}">
+      <div class="section__header" style="margin-bottom: 14px;">
+        <div class="card-title-row">
+          <span class="card-icon" style="{% if unpaid_this_month %}background: rgba(239,68,68,0.1); color: #dc2626;{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </span>
+          <h3>Outstanding This Month</h3>
+        </div>
+        <p class="muted">Tenants with no payment recorded yet for their current billing cycle</p>
+</div>
+      {% if unpaid_this_month %}
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          {% for u in unpaid_this_month %}
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);">
+              <div style="min-width: 0;">
+                <div style="font-weight: 700; font-size: 0.9rem;">{{ u.tenant_name }}</div>
+                <div class="muted" style="font-size: 0.78rem; margin-top: 2px;">
+                  Unit {{ u.unit_code }} —
+                  {% if u.days < 0 %}
+                    <span style="color: #dc2626; font-weight: 700;">{{ -u.days }} day{{ 's' if -u.days != 1 else '' }} overdue</span> (was due {{ u.due_date.strftime('%b %d') }})
+                  {% elif u.days == 0 %}
+                    <span style="color: #f59e0b; font-weight: 700;">due today</span>
+                  {% else %}
+                    due in {{ u.days }} day{{ 's' if u.days != 1 else '' }} ({{ u.due_date.strftime('%b %d') }})
+                  {% endif %}
+</div>
+</div>
+              <button type="button" class="btn btn--primary btn--sm js-record-payment" data-tenant-id="{{ u.tenant_profile_id }}" style="flex-shrink: 0; white-space: nowrap;">Record Payment</button>
+</div>
+          {% endfor %}
+</div>
+      {% else %}
+        <div class="empty-state" style="padding: 24px 20px;">
+          <div class="empty-state__text">Everyone's paid for their current cycle — nothing outstanding right now.</div>
+</div>
+      {% endif %}
+</div>
 
     <!-- Statistics Cards -->
     <div class="payments-stats">
@@ -414,6 +471,7 @@
                 <th>Building</th>
                 <th>Unit</th>
                 <th>Type</th>
+                <th>Status</th>
                 <th>Amount</th>
                 <th>Reference</th>
                 <th>Blockchain Hash</th>
@@ -453,6 +511,15 @@
                       {% endif %}
                     {% else %}
                       <span class="badge badge--monthly">Monthly</span>
+                    {% endif %}
+</td>
+                  <td>
+                    {% if payment.is_deposit %}
+                      <span class="muted" style="font-size: 12px;">—</span>
+                    {% elif payment.is_late %}
+                      <span class="badge badge--rejected">Late</span>
+                    {% else %}
+                      <span class="badge badge--available">On time</span>
                     {% endif %}
 </td>
                   <td class="mono" style="font-size: 16px; font-weight: 700; color: #22c55e;">
@@ -514,6 +581,17 @@
         infoPrice.textContent = '₱' + parseFloat(price).toLocaleString('en-US', {minimumFractionDigits: 2});
         tenantInfo.style.display = 'block';
       }
+    });
+
+    // "Record Payment" quick-jump from the Outstanding This Month list —
+    // preselects the tenant in the Add Payment form and scrolls to it.
+    document.querySelectorAll('.js-record-payment').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        tenantSelect.value = btn.getAttribute('data-tenant-id');
+        tenantSelect.dispatchEvent(new Event('change'));
+        tenantSelect.closest('.add-payment-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        amountInput.focus();
+      });
     });
 
     // Filters
@@ -626,7 +704,7 @@
           noResultsRow = document.createElement('tr');
           noResultsRow.id = 'noResultsRow';
           noResultsRow.innerHTML = `
-            <td colspan="9" style="text-align: center; padding: 60px 20px;">
+            <td colspan="10" style="text-align: center; padding: 60px 20px;">
               <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Payments Found</div>
               <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
 </td>
