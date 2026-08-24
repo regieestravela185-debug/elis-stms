@@ -152,9 +152,19 @@
     .hero__scroll:hover{ color: #E8CE86; }
     @keyframes heroBob{ 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(6px);} }
     @media (max-width: 768px){
-      .hero--premium .hero__inner{ padding: 88px 0 110px; text-align: left; }
-      .hero__headline{ font-size: clamp(38px, 11vw, 56px); }
+      /* The hero video is a wide 16:9 clip; forcing height:100vh on a tall
+         portrait phone made object-fit:cover crop away most of its width
+         (looked "zoomed in"). Let the box size to its actual content
+         instead of a hard 100vh, with a floor so it still reads as a hero. */
+      #home.hero--premium{ height: auto; min-height: 58vh; }
+      .hero--premium .hero__inner{ padding: 56px 0 40px; text-align: left; }
+      .hero__eyebrow{ padding-bottom: 14px; }
+      .hero__headline{ font-size: clamp(30px, 9vw, 44px); margin-bottom: 16px; }
+      .hero__sub{ font-size: 14px; line-height: 1.55; margin-bottom: 18px; }
+      .hero__trust{ margin-bottom: 20px; gap: 8px; }
+      .hero__chip{ padding: 6px 12px; font-size: 11.5px; }
       .hero__scroll-text{ display:none; }
+      .hero__scroll{ bottom: 12px; }
     }
     /* Neutralize legacy hero background layers on the premium hero */
     .hero--premium::before,
@@ -1247,6 +1257,12 @@
       padding: 8px 0;
       border-radius: 8px;
     }
+    @media (max-width: 768px){
+      /* Sticky floor tabs pinned mid-scroll looked like a floating card
+         stuck on top of the unit list on small screens — let it scroll
+         normally with the rest of the building card instead. */
+      .sticky-floor-nav{ position: static; top: auto; z-index: auto; }
+    }
 
     /* Floor Scroll Container */
     .floor-scroll-container {
@@ -1837,6 +1853,12 @@
       .home-stat-grid,
       .home-footer__inner {
         grid-template-columns: 1fr;
+      }
+      .home-footer {
+        padding: 36px 20px 40px;
+      }
+      .home-footer__inner {
+        gap: 34px;
       }
     }
 

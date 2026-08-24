@@ -199,6 +199,9 @@ html.is-day .owl-awake{ display:none } html.is-day .owl-asleep{ display:inline }
 .section--tight{padding-top:8px}
 .section--footer{padding-bottom:48px}
 .section__header{display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:10px}
+@media (max-width: 640px){
+  .section__header{flex-direction:column; align-items:flex-start; gap:10px}
+}
 h1,h2,h3{margin:0}
 h1{font-size:40px; line-height:1.05; letter-spacing:-.03em}
 h2{font-size:22px}
@@ -463,6 +466,10 @@ input, select, textarea{ font-size:16px; }
   border:0;
   display:block;
   filter: saturate(1.05) contrast(1.02);
+}
+@media (max-width: 640px){
+  .map-embed{ min-height: 220px; }
+  .map-embed iframe{ height: 220px; }
 }
 .map-cta{
   position:absolute; inset:0;

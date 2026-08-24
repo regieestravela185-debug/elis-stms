@@ -1,5 +1,5 @@
 // Bump this version whenever you want to force-refresh cached assets.
-const CACHE_NAME = 'stms-v5';
+const CACHE_NAME = 'stms-v6';
 const urlsToCache = [
   '/',
   '/static/css/app.css',
