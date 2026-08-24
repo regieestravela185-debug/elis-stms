@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime, timedelta
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for, Response
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, url_for, Response
 from flask_login import current_user, login_required
 from dateutil.relativedelta import relativedelta
 
@@ -45,6 +46,33 @@ bp = Blueprint("admin", __name__, url_prefix="/admin")
 def _ensure_admin():
     if current_user.role != Role.ADMIN:  # type: ignore[attr-defined]
         abort(403)
+
+
+_PHONE_UA_RE = re.compile(r"iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|IEMobile", re.I)
+
+
+def _is_phone_request() -> bool:
+    """Admin dashboard is designed for tablet/laptop/desktop only. Detect
+    phone-class user agents (not tablets — iPad and Android tablet Chrome
+    UAs don't carry a "Mobile" token) so we can point phone visitors to a
+    larger device instead of serving them a cramped admin UI."""
+    ua = request.user_agent.string or ""
+    if "iPad" in ua:
+        return False
+    if _PHONE_UA_RE.search(ua):
+        return True
+    return "Android" in ua and "Mobile" in ua
+
+
+@bp.before_request
+def _block_admin_on_phone():
+    if not (current_user.is_authenticated and current_user.role == Role.ADMIN):  # type: ignore[attr-defined]
+        return None
+    if not _is_phone_request():
+        return None
+    if request.path.startswith("/admin/api/"):
+        return jsonify({"error": "The admin dashboard is only available on tablet, laptop, or desktop devices."}), 403
+    return render_template("admin/device_blocked.html"), 200
 
 
 @bp.get("/api/search")

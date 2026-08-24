@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#D7B35B" />
+    <title>Admin | STMS</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icons/icon-192.png') }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+      :root{ --gold:#D7B35B; --gold2:#C9A84A; --text:#201c14; --muted:rgba(20,20,23,.6); --border:rgba(20,20,23,.10); }
+      *{box-sizing:border-box}
+      body{
+        margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+        padding:28px; background:#f4f2ec; color:var(--text);
+        font-family:'Inter',system-ui,sans-serif;
+      }
+      .card{
+        max-width:420px; width:100%; text-align:center;
+        background:#fff; border:1px solid var(--border); border-radius:22px;
+        padding:36px 28px; box-shadow:0 20px 50px rgba(20,20,23,.08);
+      }
+      .icon{
+        width:64px; height:64px; margin:0 auto 18px;
+        border-radius:18px; display:flex; align-items:center; justify-content:center;
+        background: rgba(215,179,91,.14); border:1px solid rgba(215,179,91,.35); color:#8a6d1e;
+      }
+      h1{ font-family:'Playfair Display',Georgia,serif; font-size:22px; margin:0 0 10px; }
+      p{ color:var(--muted); font-size:14px; line-height:1.6; margin:0 0 22px; }
+      .brand{ font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#8a6d1e; margin-bottom:14px; }
+      a.btn{
+        display:inline-block; text-decoration:none; font-weight:600; font-size:14px;
+        padding:11px 20px; border-radius:999px; color:#211a08;
+        background: linear-gradient(135deg, var(--gold), var(--gold2));
+        border:1px solid rgba(0,0,0,.06);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="brand">THE ELIS CENTER</div>
+      <div class="icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 6h6M10 18h4"/><path d="M3 20l18-16" stroke-width="1.8"/></svg>
+      </div>
+      <h1>Please use a larger screen</h1>
+      <p>The admin dashboard is designed for tablets, laptops, and desktop computers so you have room to manage units, tenants, and payments comfortably. It isn't available on phone-sized screens.</p>
+      <a class="btn" href="{{ url_for('public.home') }}">Back to homepage</a>
+    </div>
+  </body>
+</html>

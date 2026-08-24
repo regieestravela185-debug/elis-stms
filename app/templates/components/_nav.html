@@ -9,7 +9,10 @@
     </a>
 
     {% if request.path == "/" %}
-      <div class="nav__menu">
+      <button type="button" class="nav__toggle js-nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav__menu js-nav-menu">
         <a class="nav__link nav__link--scroll" href="#home">Home</a>
         <a class="nav__link nav__link--scroll" href="#units">Units</a>
         <a class="nav__link nav__link--scroll" href="#about">About</a>
@@ -19,7 +22,7 @@
     {% endif %}
 
     <div class="nav__actions">
-      {% include "components/_env_widget.html" %}
+      <div class="nav__env nav__env--inline">{% include "components/_env_widget.html" %}</div>
       {% if current_user.is_authenticated %}
         {% if current_user.role.value == "user" %}
           <span class="nav__profile muted">Hi, {{ current_user.full_name }}</span>
@@ -38,4 +41,30 @@
       {% endif %}
     </div>
   </div>
+  <div class="nav__env nav__env--row">{% include "components/_env_widget.html" %}</div>
 </nav>
+
+{% if request.path == "/" %}
+<script>
+  (function () {
+    var toggle = document.querySelector(".js-nav-toggle");
+    var menu = document.querySelector(".js-nav-menu");
+    if (!toggle || !menu) return;
+    function close() {
+      menu.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+    toggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var open = menu.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    menu.querySelectorAll(".nav__link").forEach(function (link) {
+      link.addEventListener("click", close);
+    });
+    document.addEventListener("click", function (e) {
+      if (!menu.contains(e.target) && !toggle.contains(e.target)) close();
+    });
+  })();
+</script>
+{% endif %}

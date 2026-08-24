@@ -73,7 +73,19 @@ a{color:inherit}
 .env-widget__weather{ color: rgba(20,20,23,.85) }
 .env-widget__time{ font-variant-numeric: tabular-nums; letter-spacing:.02em; min-width:78px; text-align:right }
 .env-widget__sep{ opacity:.4 }
-@media (max-width: 640px){ .env-widget{ display:none } }
+
+/* On mobile there's no room for the widget inline next to nav/topbar buttons —
+   show it as its own centered row instead of hiding it outright. */
+.nav__env--row{ display:none }
+@media (max-width: 640px){
+  .nav__env--inline{ display:none }
+  .nav__env--row{
+    display:flex; justify-content:center;
+    padding:6px 16px 10px;
+  }
+  .env-widget{ font-size:11px; padding:5px 10px; gap:6px }
+  .env-widget__time{ min-width:auto }
+}
 
 /* Ellie the owl 🦉 — no gold circle, slightly 3D, awake(night)/asleep(day) */
 .chat-fab,
@@ -111,7 +123,48 @@ html.is-day .owl-awake{ display:none } html.is-day .owl-asleep{ display:inline }
   border-radius: 999px;
 }
 .nav__link:hover{background: rgba(20,20,23,.04); color: rgba(20,20,23,.92)}
-@media (max-width: 980px){ .nav__menu{display:none} }
+
+@media (max-width: 480px){
+  .brand{gap:8px}
+  .brand__logo{width:34px; height:34px}
+  .brand__title{font-size:11px; letter-spacing:.06em}
+  .brand__subtitle{display:none}
+}
+
+.nav__toggle{
+  display:none;
+  flex-direction:column;
+  justify-content:center;
+  gap:5px;
+  width:38px; height:38px;
+  padding:8px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background: rgba(255,255,255,.7);
+  cursor:pointer;
+  flex-shrink:0;
+}
+.nav__toggle span{display:block; width:100%; height:2px; background:var(--text); border-radius:2px; transition: transform .2s ease, opacity .2s ease}
+.nav__toggle[aria-expanded="true"] span:nth-child(1){transform: translateY(7px) rotate(45deg)}
+.nav__toggle[aria-expanded="true"] span:nth-child(2){opacity:0}
+.nav__toggle[aria-expanded="true"] span:nth-child(3){transform: translateY(-7px) rotate(-45deg)}
+
+@media (max-width: 980px){
+  .nav__toggle{display:flex; order:2}
+  .nav__actions{order:3}
+  .nav__menu{
+    display:none;
+    position:absolute;
+    top:100%; left:0; right:0;
+    flex-direction:column; align-items:stretch; gap:2px;
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    padding:10px 16px 16px;
+    box-shadow: 0 16px 32px rgba(16,16,20,.10);
+  }
+  .nav__menu.is-open{display:flex}
+  .nav__menu .nav__link{padding:12px 12px; border-radius:10px}
+}
 
 .btn{
   border:1px solid var(--border);
@@ -307,7 +360,10 @@ h3{font-size:16px}
   background: rgba(255,255,255,.9);
   color:var(--text);
   outline:none;
+  font-size:16px; /* never go below 16px: iOS Safari force-zooms the page on focus of a smaller input */
 }
+/* Site-wide safety net so no form field (any page) can trigger iOS auto-zoom-on-focus */
+input, select, textarea{ font-size:16px; }
 .input:focus{border-color: rgba(215,179,91,.5); box-shadow: 0 0 0 3px rgba(215,179,91,.14)}
 .input.is-invalid{border-color: rgba(255, 80, 80, .65); box-shadow: 0 0 0 3px rgba(255, 80, 80, .12)}
 .input.is-valid{border-color: rgba(64, 201, 120, .65); box-shadow: 0 0 0 3px rgba(64, 201, 120, .12)}
@@ -1198,8 +1254,11 @@ body.page-home .nav__link{
 .units-scroll-btn--right{right:4px}
 
 /* Building row layout */
-.units-by-building{display:grid; gap:16px}
+.units-by-building{display:grid; grid-template-columns: minmax(0, 1fr); gap:16px}
 .building-row{
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border-radius: 20px;
   border:1px solid var(--border);
   background: rgba(255,255,255,.92);

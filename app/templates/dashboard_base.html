@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=3" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=5" />
 
     <style>
       /* ============================================================
@@ -334,7 +334,7 @@
             {% endif %}
 </div>
           <div class="topbar__right">
-            {% include "components/_env_widget.html" %}
+            <div class="nav__env nav__env--inline">{% include "components/_env_widget.html" %}</div>
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
             <!-- Notification bell (admin only) -->
             <div class="topbar-widget js-dropdown">
@@ -395,6 +395,7 @@
             </div>
           </div>
         </header>
+        <div class="nav__env nav__env--row">{% include "components/_env_widget.html" %}</div>
 
         <main class="dash__content">
           {% include "components/_flash.html" %}
