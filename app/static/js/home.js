@@ -63,8 +63,21 @@
       const unitCode = btn.getAttribute("data-unit-code") || "";
       const unitFloor = card.getAttribute("data-unit-floor") || "";
       const unitPrice = card.getAttribute("data-unit-price") || "";
+      const unitType = card.getAttribute("data-unit-type") || "";
       if (!unitId) return;
       reserveForm.setAttribute("action", `/user/reserve/${unitId}`);
+      reserveForm.setAttribute("data-unit-type", unitType);
+      // Reset move-in/move-out so a previous unit's dates don't carry over
+      const reserveMoveInDateReset = document.getElementById("reserveMoveInDate");
+      const reserveMoveOutDateReset = document.getElementById("reserveMoveOutDate");
+      const reserveMoveOutHintReset = document.getElementById("reserveMoveOutHint");
+      if (reserveMoveInDateReset) reserveMoveInDateReset.value = "";
+      if (reserveMoveOutDateReset) reserveMoveOutDateReset.value = "";
+      if (reserveMoveOutHintReset) {
+        reserveMoveOutHintReset.textContent = unitType.toLowerCase().includes("commercial")
+          ? "Commercial units require a minimum 1-year contract. Pick a move-in date and we'll set this automatically."
+          : "Residential units require a minimum 1-month stay. Pick a move-in date and we'll set this automatically.";
+      }
       if (reserveUnitId) reserveUnitId.value = unitId;
       reserveUnitCode.value = unitCode;
       if (reserveUnitFloor) reserveUnitFloor.value = unitFloor ? `${unitFloor}st Floor` : "";
@@ -545,17 +558,47 @@
   const reserveIdNumber = document.getElementById("reserveIdNumber");
   const reserveMoveInDate = document.getElementById("reserveMoveInDate");
   const reserveMoveOutDate = document.getElementById("reserveMoveOutDate");
+  const reserveMoveOutHint = document.getElementById("reserveMoveOutHint");
   const ocrStatus = document.getElementById("ocrStatus");
   if (reserveMoveInDate && reserveMoveOutDate) {
-    const today = new Date().toISOString().split("T")[0];
+    // Format using LOCAL date parts — Date#toISOString() converts to UTC,
+    // which silently shifts the date back a day for timezones ahead of UTC
+    // (e.g. Asia/Manila, UTC+8) and was producing an off-by-one move-out date.
+    function toLocalDateStr(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    const today = toLocalDateStr(new Date());
     reserveMoveInDate.min = today;
     reserveMoveOutDate.min = today;
 
+    // Residential = minimum 1 month, commercial = minimum 1 year.
+    // Rent is charged in full-month blocks either way.
+    function minTermMoveOut(moveInStr, isCommercial) {
+      const d = new Date(moveInStr + "T00:00:00");
+      if (isCommercial) d.setFullYear(d.getFullYear() + 1);
+      else d.setMonth(d.getMonth() + 1);
+      return toLocalDateStr(d);
+    }
+
     reserveMoveInDate.addEventListener("change", () => {
       const selectedMoveIn = reserveMoveInDate.value || today;
-      reserveMoveOutDate.min = selectedMoveIn;
-      if (reserveMoveOutDate.value && reserveMoveOutDate.value <= selectedMoveIn) {
-        reserveMoveOutDate.value = "";
+      const reserveForm = document.getElementById("reserveForm");
+      const unitType = (reserveForm ? reserveForm.getAttribute("data-unit-type") || "" : "").toLowerCase();
+      const isCommercial = unitType.includes("commercial");
+      const minMoveOut = minTermMoveOut(selectedMoveIn, isCommercial);
+
+      reserveMoveOutDate.min = minMoveOut;
+      // Auto-fill the minimum term so users don't have to work it out themselves;
+      // they can still push it later, just never earlier than the minimum.
+      reserveMoveOutDate.value = minMoveOut;
+
+      if (reserveMoveOutHint) {
+        reserveMoveOutHint.textContent = isCommercial
+          ? "Set automatically to a 1-year minimum contract for commercial units. You may choose a later date."
+          : "Set automatically to a 1-month minimum stay for residential units. You may choose a later date.";
       }
     });
   }

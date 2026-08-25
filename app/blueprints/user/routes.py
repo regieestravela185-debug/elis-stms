@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 import re
 
+from dateutil.relativedelta import relativedelta
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
@@ -118,6 +119,15 @@ def reserve_post(unit_id: int):
 
     if move_out <= move_in:
         flash("Move-out date must be after move-in date.", "warning")
+        return redirect(url_for("public.home") + "#units")
+
+    # Minimum stay: residential = 1 month, commercial = 1 year. Rent is charged
+    # in full-month blocks either way, so this floor keeps that consistent.
+    is_commercial = "commercial" in (unit.type or "").lower()
+    min_move_out = move_in + (relativedelta(years=1) if is_commercial else relativedelta(months=1))
+    if move_out < min_move_out:
+        term_label = "1 year" if is_commercial else "1 month"
+        flash(f"Minimum contract term for this unit is {term_label}. Please choose a move-out date on or after {min_move_out.strftime('%B %d, %Y')}.", "warning")
         return redirect(url_for("public.home") + "#units")
 
     upload = request.files.get("id_upload")
