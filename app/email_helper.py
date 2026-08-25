@@ -399,6 +399,101 @@ The Elis Center Management
     send_email_async(subject, to_email, to_name, html_content, text_content)
 
 
+def send_reservation_submitted_email(
+    to_email, to_name, unit_code, unit_type, floor, monthly_price,
+    deposit_amount, move_in_date, move_out_date,
+):
+    """Send confirmation email right after a reservation is submitted (pending admin review)."""
+    from datetime import date
+
+    total_due = float(monthly_price) + float(deposit_amount)
+    fmt = lambda n: f"₱{n:,.2f}"
+    floor_label = f"{floor}{'st' if floor == 1 else 'nd' if floor == 2 else 'rd' if floor == 3 else 'th'} Floor" if floor else "—"
+
+    subject = f"Reservation Received — Unit {unit_code} — The Elis Center STMS"
+
+    text_content = f"""
+Dear {to_name},
+
+We've received your reservation for Unit {unit_code} and it is now PENDING ADMIN APPROVAL.
+
+Unit details:
+- Unit: {unit_code} ({unit_type})
+- Floor: {floor_label}
+- Monthly rent: {fmt(float(monthly_price))}
+- Reservation deposit: {fmt(float(deposit_amount))} (one month's rent + ₱1,000, refundable after contract ends minus damages and unpaid bills)
+- Total due on approval: {fmt(total_due)}
+- Move-in date: {move_in_date.strftime('%B %d, %Y')}
+- Move-out date: {move_out_date.strftime('%B %d, %Y')}
+
+Our team will review your submitted ID and reservation details. You'll receive another email as soon as it's approved or if we need anything else from you.
+
+Thank you,
+The Elis Center Management
+"""
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Received</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 8px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Reservation Received</h2>
+            <p style="margin: 0 0 20px 0; color: #666666; line-height: 1.6;">Hi {to_name}, thank you for reserving with us. Here's a summary of your submission.</p>
+
+            <div style="background: #f9f9f9; border: 2px solid #f0ad4e; border-radius: 8px; padding: 18px; text-align: center; margin: 0 0 24px 0;">
+                <p style="margin: 0; color: #b8860b; font-size: 16px; font-weight: 700; letter-spacing: 0.04em;">PENDING ADMIN APPROVAL</p>
+                <p style="margin: 6px 0 0 0; color: #8a6d1e; font-size: 13px;">We'll email you again once it's reviewed.</p>
+            </div>
+
+            <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin: 0 0 20px 0;">
+                <p style="margin: 0 0 12px 0; color: #1a1a1a; font-size: 15px; font-weight: 700;">Unit {unit_code} &mdash; {unit_type}</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #444444;">
+                    <tr><td style="padding: 4px 0; color: #888888;">Floor</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{floor_label}</td></tr>
+                    <tr><td style="padding: 4px 0; color: #888888;">Move-in date</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{move_in_date.strftime('%B %d, %Y')}</td></tr>
+                    <tr><td style="padding: 4px 0; color: #888888;">Move-out date</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{move_out_date.strftime('%B %d, %Y')}</td></tr>
+                </table>
+            </div>
+
+            <div style="background: #fff9ec; border: 1px solid #D7B35B; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+                <p style="margin: 0 0 12px 0; color: #8a6d1e; font-size: 15px; font-weight: 700;">Payment Breakdown</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #444444;">
+                    <tr><td style="padding: 4px 0; color: #888888;">Monthly rent</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{fmt(float(monthly_price))}</td></tr>
+                    <tr><td style="padding: 4px 0; color: #888888;">Reservation deposit</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{fmt(float(deposit_amount))}</td></tr>
+                    <tr><td style="padding: 10px 0 0; color: #1a1a1a; font-weight: 700; border-top: 1px solid #e8dcc0;">Total due on approval</td><td style="padding: 10px 0 0; text-align: right; color: #B8922F; font-weight: 700; font-size: 16px; border-top: 1px solid #e8dcc0;">{fmt(total_due)}</td></tr>
+                </table>
+                <p style="margin: 12px 0 0 0; color: #999999; font-size: 12px; line-height: 1.5;">Deposit = one month's rent + ₱1,000, refundable after your contract ends minus damages and unpaid bills.</p>
+            </div>
+
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">
+                <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;"><strong>What happens next:</strong></p>
+                <ul style="margin: 8px 0 0 20px; padding: 0; color: #666666; font-size: 14px; line-height: 1.5;">
+                    <li>Our team reviews your submitted ID and reservation details</li>
+                    <li>You'll receive an email once it's approved or if anything else is needed</li>
+                    <li>Once approved, your account becomes your tenant portal</li>
+                </ul>
+            </div>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    send_email_async(subject, to_email, to_name, html_content, text_content)
+
+
 def send_renewal_reminder_email(tenant_name, tenant_email, unit_code, contract_end_date, days_remaining):
     """Send contract renewal reminder email"""
     from datetime import date

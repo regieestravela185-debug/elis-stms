@@ -171,6 +171,8 @@ def reserve_post(unit_id: int):
         flash("ID Number is required. OCR could not detect it, please type manually.", "warning")
         return redirect(url_for("public.home") + "#units")
 
+    deposit_amount = float(unit.price_monthly) + 1000.00
+
     reservation = Reservation(
         user_id=current_user.id,  # type: ignore[attr-defined]
         unit_id=unit.id,
@@ -189,7 +191,7 @@ def reserve_post(unit_id: int):
         verification_status=verification_status,
         fake_id_flag=fake_id_flag,
         id_authenticity_score=id_authenticity_score,
-        deposit_amount=float(unit.price_monthly) + 1000.00,
+        deposit_amount=deposit_amount,
         deposit_status=DepositStatus.HELD,
         status=ReservationStatus.PENDING,
     )
@@ -231,6 +233,22 @@ def reserve_post(unit_id: int):
     )
     db.session.add(verification_log)
     db.session.commit()
+
+    from ...email_helper import send_reservation_submitted_email
+    try:
+        send_reservation_submitted_email(
+            to_email=email,
+            to_name=full_name,
+            unit_code=unit.unit_code,
+            unit_type=(unit.type or "Unit").title(),
+            floor=unit.floor,
+            monthly_price=unit.price_monthly,
+            deposit_amount=deposit_amount,
+            move_in_date=move_in,
+            move_out_date=move_out,
+        )
+    except Exception:
+        current_app.logger.exception("Failed to send reservation submitted email to %s", email)
 
     flash("Reservation submitted. Waiting for admin approval.", "success")
     return redirect(url_for("public.home") + "#units")
