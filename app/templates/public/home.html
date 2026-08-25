@@ -3847,15 +3847,15 @@
             </div>
             <div>
               <label class="label">Reservation Deposit</label>
-              <input class="input" value="₱5,000.00" type="text" readonly style="background: rgba(215,179,91,0.2);" />
+              <input class="input" id="reserveDepositAmount" type="text" readonly style="background: rgba(215,179,91,0.2);" />
             </div>
           </div>
           <div style="margin-top: 12px;">
             <label class="label">Total to Pay</label>
             <input class="input" id="reserveTotalPayment" type="text" readonly style="font-weight: 700; color: var(--gold2); font-size: 18px;" />
           </div>
-          <p class="muted" style="font-size: 12px; margin-top: 8px;">
-            <strong>Deposit Terms:</strong> ₱5,000 deposit required. Refundable after contract ends minus damages and unpaid bills.
+          <p class="muted" style="font-size: 12px; margin-top: 8px;" id="reserveDepositTerms">
+            <strong>Deposit Terms:</strong> Your security deposit is one month's rent plus ₱1,000. Refundable after contract ends minus damages and unpaid bills.
           </p>
         </div>
 
@@ -4059,8 +4059,8 @@
             <p class="muted"><strong>Description:</strong> <span id="unitDetailsDescription"></span></p>
             <div class="card mt-12" style="background: rgba(215,179,91,0.1); border: 1px solid rgba(215,179,91,0.3);">
               <h4 style="color: var(--gold2); margin-bottom: 8px;">Reservation Deposit Required</h4>
-              <p class="muted" style="font-size: 14px;"><strong>₱5,000.00</strong> - Refundable after contract ends minus damages and unpaid bills.</p>
-              <p class="muted" style="font-size: 12px; margin-top: 4px;">Total payment on reservation: Monthly Price + ₱5,000 Deposit</p>
+              <p class="muted" style="font-size: 14px;" id="unitDetailsDeposit"></p>
+              <p class="muted" style="font-size: 12px; margin-top: 4px;" id="unitDetailsTotal"></p>
             </div>
           </div>
         </div>
@@ -4215,7 +4215,7 @@
         <p><strong>3. Account Registration:</strong> You must create an account and complete email verification through OTP. You are responsible for maintaining the confidentiality of your account credentials and providing accurate information.</p>
         <p><strong>4. Unit Reservations:</strong> To reserve a unit, you must create an account, verify your email, browse available units, submit your reservation with required information, upload a valid ID of the tenants who will stay, and wait for admin review and approval. Required documents include a valid ID of the tenants who will stay.</p>
         <p><strong>5. Unit Types and Contracts:</strong> Residential units are studio type with bedframe and CR. Commercial units require a minimum 1-year contract. Power and water bills are exclusive (paid separately by the tenant).</p>
-        <p><strong>6. Payment Terms:</strong> We accept cash (pay at our office) and bank transfer. A security deposit of ₱5,000.00 is required for all reservations, refundable after the contract ends minus damages and unpaid bills.</p>
+        <p><strong>6. Payment Terms:</strong> We accept cash (pay at our office) and bank transfer. A security deposit equal to one month's rent plus ₱1,000 is required for all reservations (residential or commercial), refundable after the contract ends minus damages and unpaid bills.</p>
         <p><strong>7. Property Viewing:</strong> Schedule a property viewing during office hours (Monday–Saturday, 9:00 AM – 6:00 PM) by calling 0918-912-6340 or 0918-920-5645.</p>
         <p><strong>8. Safety and Security:</strong> The property has CCTV coverage in common areas. Always lock your unit when leaving, do not share access codes, report incidents, and follow building rules.</p>
         <p><strong>9. Tenant Conduct:</strong> Use the unit only for lawful purposes, maintain it in good condition, do not disturb others, comply with rules, do not sublease without permission, and report maintenance issues promptly.</p>

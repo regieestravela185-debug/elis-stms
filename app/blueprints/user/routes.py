@@ -192,7 +192,7 @@ def reserve_post(unit_id: int):
         verification_status=verification_status,
         fake_id_flag=fake_id_flag,
         id_authenticity_score=id_authenticity_score,
-        deposit_amount=5000.00,
+        deposit_amount=float(unit.price_monthly) + 1000.00,
         deposit_status=DepositStatus.HELD,
         status=ReservationStatus.PENDING,
     )

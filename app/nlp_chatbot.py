@@ -78,7 +78,7 @@ INTENTS = {
     "deposit": {
         "keywords": ["deposit", "advance", "security deposit", "refund", "ibalik", "ibabalik", "down payment", "downpayment"],
         "responses": [
-            "A security deposit is required upon move-in (typically 1–2 months rent), refundable after office clearance. / Required ang security deposit, refundable pagkatapos ng clearance.",
+            "A security deposit is required upon reservation: one month's rent plus ₱1,000 (e.g. ₱4,500 rent = ₱5,500 deposit), refundable after office clearance. / Kailangan ng security deposit: isang buwang renta plus ₱1,000, refundable pagkatapos ng clearance.",
         ]
     },
     "renewal": {

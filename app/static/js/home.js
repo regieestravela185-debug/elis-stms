@@ -55,6 +55,8 @@
       const reserveUnitFloor = document.getElementById("reserveUnitFloor");
       const reserveUnitPrice = document.getElementById("reserveUnitPrice");
       const reserveMonthlyPrice = document.getElementById("reserveMonthlyPrice");
+      const reserveDepositAmount = document.getElementById("reserveDepositAmount");
+      const reserveDepositTerms = document.getElementById("reserveDepositTerms");
       const reserveTotalPayment = document.getElementById("reserveTotalPayment");
       if (!btn || !card || !reserveForm || !reserveUnitCode) return;
       const unitId = btn.getAttribute("data-unit-id");
@@ -68,10 +70,15 @@
       if (reserveUnitFloor) reserveUnitFloor.value = unitFloor ? `${unitFloor}st Floor` : "";
       if (reserveUnitPrice) reserveUnitPrice.value = `₱${unitPrice} / month`;
       if (reserveMonthlyPrice) reserveMonthlyPrice.value = `₱${unitPrice}`;
+      // Deposit = one month's rent + ₱1,000 (residential or commercial, same formula)
+      const priceNum = parseFloat(String(unitPrice).replace(/,/g, '')) || 0;
+      const depositNum = priceNum + 1000;
+      const fmt = (n) => `₱${n.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (reserveDepositAmount) reserveDepositAmount.value = fmt(depositNum);
+      if (reserveDepositTerms) reserveDepositTerms.innerHTML = `<strong>Deposit Terms:</strong> Your security deposit is one month's rent (₱${priceNum.toLocaleString('en-PH')}) plus ₱1,000, for a total of ${fmt(depositNum)}. Refundable after your contract ends, minus damages and unpaid bills.`;
       if (reserveTotalPayment) {
-        const priceNum = parseFloat(unitPrice.replace(/,/g, '')) || 0;
-        const total = priceNum + 5000;
-        reserveTotalPayment.value = `₱${total.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        const total = priceNum + depositNum;
+        reserveTotalPayment.value = fmt(total);
       }
       closeModals();
       openModal("#modalReserve");
@@ -86,6 +93,8 @@
       const inclusion = document.getElementById("unitDetailsInclusion");
       const contract = document.getElementById("unitDetailsContract");
       const desc = document.getElementById("unitDetailsDescription");
+      const depositLine = document.getElementById("unitDetailsDeposit");
+      const totalLine = document.getElementById("unitDetailsTotal");
       const main = document.getElementById("unitImageMain");
       const thumb1 = document.getElementById("unitImageThumb1");
       const thumb2 = document.getElementById("unitImageThumb2");
@@ -104,6 +113,13 @@
       if (inclusion) inclusion.textContent = card.getAttribute("data-unit-inclusion") || "N/A";
       if (contract) contract.textContent = card.getAttribute("data-unit-contract") || "N/A";
       if (desc) desc.textContent = card.getAttribute("data-unit-description") || "Admin can add more details for this unit.";
+
+      // Deposit = one month's rent + ₱1,000 (residential or commercial, same formula)
+      const detailsPriceNum = parseFloat((card.getAttribute("data-unit-price") || "0").replace(/,/g, '')) || 0;
+      const detailsDepositNum = detailsPriceNum + 1000;
+      const fmtDetails = (n) => `₱${n.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (depositLine) depositLine.innerHTML = `<strong>${fmtDetails(detailsDepositNum)}</strong> — one month's rent + ₱1,000, refundable after contract ends minus damages and unpaid bills.`;
+      if (totalLine) totalLine.textContent = `Total payment on reservation: ${fmtDetails(detailsPriceNum)} (Monthly) + ${fmtDetails(detailsDepositNum)} (Deposit) = ${fmtDetails(detailsPriceNum + detailsDepositNum)}`;
 
       // Set up carousel
       let currentIndex = 0;
