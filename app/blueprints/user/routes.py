@@ -77,19 +77,6 @@ def dashboard():
     return render_template("user/dashboard.html", buildings=buildings, units_by_building=units_by_building, reservations=reservations)
 
 
-@bp.get("/reserve/<int:unit_id>")
-@login_required
-def reserve(unit_id: int):
-    _ensure_user_role()
-    unit = db.session.get(Unit, unit_id)
-    if not unit:
-        abort(404)
-    if unit.status != UnitStatus.AVAILABLE:
-        flash("Unit is not available.", "warning")
-        return redirect(url_for("user.dashboard"))
-    return render_template("user/reserve.html", unit=unit, today=date.today())
-
-
 @bp.post("/reserve/<int:unit_id>")
 @login_required
 def reserve_post(unit_id: int):
