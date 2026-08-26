@@ -294,9 +294,11 @@
   if (auth === "register") applyFormFeedback("#modalRegister");
   if (auth === "verify") applyFormFeedback("#modalVerifyOtp");
 
-  // Auto-dismiss flash messages in modals after 5s — long enough to read
+  // Auto-dismiss flash messages in modals after 8s — long enough to read
   // (e.g. a "wrong password" notice after a full page reload) but not so
-  // long the user has to dismiss it themselves.
+  // long the user has to dismiss it themselves. 8s (not 5s) gives some
+  // margin for slower connections/cold starts where the page is still
+  // settling (video/assets loading) when the modal first appears.
   function autoDismissModalFlashes() {
     const modalFlashContainers = document.querySelectorAll('.modal .alert');
     modalFlashContainers.forEach((alert) => {
@@ -306,7 +308,7 @@
         setTimeout(() => {
           alert.remove();
         }, 300);
-      }, 5000);
+      }, 8000);
     });
   }
 

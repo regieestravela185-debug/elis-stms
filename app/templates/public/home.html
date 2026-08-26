@@ -4378,9 +4378,10 @@ if (homeRegisterForm) {
 
 
 <script>
-// Auto-dismiss flash messages after 5 seconds — long enough for users to
+// Auto-dismiss flash messages after 8 seconds — long enough for users to
 // actually read why something failed (e.g. a wrong password after a full
-// page reload), but not so long they have to dismiss it themselves.
+// page reload) even on a slow connection where the page is still settling,
+// but not so long they have to dismiss it themselves.
 (function() {
   function autoDismissFlashMessages() {
     // Look for flash messages in ALL modals and main page
@@ -4397,7 +4398,7 @@ if (homeRegisterForm) {
         setTimeout(function() {
           message.remove();
         }, 300);
-      }, 5000);
+      }, 8000);
     });
   }
   
