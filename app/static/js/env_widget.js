@@ -38,7 +38,7 @@
     var url = "https://api.open-meteo.com/v1/forecast?latitude=" + LAT +
       "&longitude=" + LON + "&current=temperature_2m,weather_code" +
       "&daily=precipitation_probability_max&timezone=Asia%2FManila";
-    fetch(url)
+    fetch(url, { silentLoader: true })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !data.current) return;

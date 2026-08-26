@@ -444,7 +444,7 @@
   async function pollHomeUnits() {
     if (!unitCards.length) return;
     try {
-      const res = await fetch("/api/units");
+      const res = await fetch("/api/units", { silentLoader: true });
       if (!res.ok) { pollDelay = Math.min(pollDelay * 2, 300000); return; }
       pollDelay = 30000; // reset on success
       const data = await res.json();

@@ -8,7 +8,7 @@ async function pollUnits() {
       .filter(Boolean)
       .join(",");
     const url = ids ? `/api/units?ids=${encodeURIComponent(ids)}` : "/api/units";
-    const res = await fetch(url);
+    const res = await fetch(url, { silentLoader: true });
     if (!res.ok) return;
     const data = await res.json();
     const units = data.units || [];

@@ -13,6 +13,32 @@
 }
 
 *{box-sizing:border-box}
+
+/* Smart loading indicator — see static/js/loading.js. Only appears for
+   requests that are actually slow; fades in/out, never a hard cut. */
+.stms-loader{
+  position:fixed; top:0; left:0; right:0; height:3px;
+  z-index:99999; pointer-events:none;
+  overflow:hidden;
+  opacity:0;
+  transition: opacity .22s ease;
+}
+.stms-loader.is-visible{ opacity:1; }
+.stms-loader__bar{
+  position:absolute; top:0; left:0;
+  height:100%; width:35%;
+  border-radius:0 999px 999px 0;
+  background: linear-gradient(90deg, rgba(215,179,91,0), var(--gold) 25%, var(--gold2) 50%, var(--gold) 75%, rgba(215,179,91,0));
+  box-shadow: 0 0 10px rgba(215,179,91,.55);
+  animation: stms-loader-slide 1.15s ease-in-out infinite;
+}
+@keyframes stms-loader-slide{
+  0%{ transform: translateX(-100%); }
+  100%{ transform: translateX(385%); }
+}
+@media (prefers-reduced-motion: reduce){
+  .stms-loader__bar{ animation-duration: 2.4s; }
+}
 html{scroll-behavior:smooth}
 html,body{height:100%}
 body{
