@@ -3160,6 +3160,10 @@
               </svg>
             </button>
           </div>
+          <div id="login_capslock_warning" style="display: none; align-items: center; gap: 6px; color: #ca8a04; font-size: 12px; margin-top: 6px; font-weight: 600;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Caps Lock is on
+          </div>
           <div id="home_login_password_error" class="error-message" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Password must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char</div>
         </div>
 
@@ -4464,16 +4468,18 @@ if (homeRegisterForm) {
 
 
 <script>
-// Auto-dismiss flash messages after 3 seconds
+// Auto-dismiss flash messages after 5 seconds — long enough for users to
+// actually read why something failed (e.g. a wrong password after a full
+// page reload), but not so long they have to dismiss it themselves.
 (function() {
   function autoDismissFlashMessages() {
     // Look for flash messages in ALL modals and main page
-    const flashMessages = document.querySelectorAll('.alert--success, .alert--danger, .alert--warning, .alert--info, .alert');
+    const flashMessages = document.querySelectorAll('.alert');
     flashMessages.forEach(function(message) {
       // Skip if already processed
       if (message.dataset.autoDismissed) return;
       message.dataset.autoDismissed = 'true';
-      
+
       setTimeout(function() {
         message.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
         message.style.opacity = '0';
@@ -4481,7 +4487,7 @@ if (homeRegisterForm) {
         setTimeout(function() {
           message.remove();
         }, 300);
-      }, 3000);
+      }, 5000);
     });
   }
   

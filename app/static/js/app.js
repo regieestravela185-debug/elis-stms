@@ -158,13 +158,15 @@ function sendQuickMessage(text) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Auto-dismiss toasts after 5s — enough time to read, short enough that
+  // users don't have to dismiss them manually.
   document.querySelectorAll(".flash-stack .flash").forEach((el) => {
     setTimeout(() => {
       el.style.transition = "opacity .25s ease, transform .25s ease";
       el.style.opacity = "0";
       el.style.transform = "translateY(-6px)";
       setTimeout(() => el.remove(), 260);
-    }, 3000);
+    }, 5000);
   });
 
   document.querySelectorAll("[data-toggle-password]").forEach((toggle) => {

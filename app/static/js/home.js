@@ -294,7 +294,9 @@
   if (auth === "register") applyFormFeedback("#modalRegister");
   if (auth === "verify") applyFormFeedback("#modalVerifyOtp");
 
-  // Auto-dismiss flash messages in modals after 3 seconds
+  // Auto-dismiss flash messages in modals after 5s — long enough to read
+  // (e.g. a "wrong password" notice after a full page reload) but not so
+  // long the user has to dismiss it themselves.
   function autoDismissModalFlashes() {
     const modalFlashContainers = document.querySelectorAll('.modal .alert');
     modalFlashContainers.forEach((alert) => {
@@ -304,13 +306,28 @@
         setTimeout(() => {
           alert.remove();
         }, 300);
-      }, 3000);
+      }, 5000);
     });
   }
 
   // Run auto-dismiss when modals open
   if (auth === "login" || auth === "register" || auth === "verify") {
     autoDismissModalFlashes();
+  }
+
+  // Live Caps Lock warning on the login password field — the #1 reason a
+  // "correct" password still gets rejected, and until now nothing told the
+  // user why.
+  const loginPasswordInput = document.getElementById("login_password");
+  const capsLockWarning = document.getElementById("login_capslock_warning");
+  if (loginPasswordInput && capsLockWarning) {
+    const checkCapsLock = (e) => {
+      const isOn = typeof e.getModifierState === "function" && e.getModifierState("CapsLock");
+      capsLockWarning.style.display = isOn ? "flex" : "none";
+    };
+    loginPasswordInput.addEventListener("keydown", checkCapsLock);
+    loginPasswordInput.addEventListener("keyup", checkCapsLock);
+    loginPasswordInput.addEventListener("blur", () => { capsLockWarning.style.display = "none"; });
   }
 
   document.querySelectorAll(".js-unit-card").forEach((el) => {
