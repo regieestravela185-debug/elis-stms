@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Concerns | STMS{% endblock %}
 
 {% block sidebar %}
@@ -64,31 +65,31 @@
       <h3>Filters</h3>
     </div>
     <div class="grid grid--2" style="gap: 12px; margin-top: 16px;">
-      <input type="text" id="searchInput" class="input" placeholder="🔍 Search by subject or description..." value="{{ request.args.get('search', '') }}" />
+      <input type="text" id="searchInput" class="input" placeholder="Search by subject or description..." value="{{ request.args.get('search', '') }}" />
       <select id="statusFilter" class="input">
         <option value="">All Status</option>
-        <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>⏳ Pending</option>
-        <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>🔄 In Progress</option>
-        <option value="resolved" {% if request.args.get('status') == 'resolved' %}selected{% endif %}>✓ Resolved</option>
+        <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>In Progress</option>
+        <option value="resolved" {% if request.args.get('status') == 'resolved' %}selected{% endif %}>Resolved</option>
       </select>
     </div>
     <div class="grid grid--3" style="gap: 12px; margin-top: 12px;">
       <select id="priorityFilter" class="input">
         <option value="">All Priority</option>
-        <option value="urgent" {% if request.args.get('priority') == 'urgent' %}selected{% endif %}>🔴 Urgent</option>
-        <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>🟠 High</option>
-        <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>🟡 Medium</option>
-        <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>🟢 Low</option>
+        <option value="urgent" {% if request.args.get('priority') == 'urgent' %}selected{% endif %}>Urgent</option>
+        <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>High</option>
+        <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>Medium</option>
+        <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>Low</option>
       </select>
       <select id="categoryFilter" class="input">
         <option value="">All Category</option>
-        <option value="maintenance" {% if request.args.get('category') == 'maintenance' %}selected{% endif %}>🔧 Maintenance</option>
-        <option value="billing" {% if request.args.get('category') == 'billing' %}selected{% endif %}>💰 Billing</option>
-        <option value="noise" {% if request.args.get('category') == 'noise' %}selected{% endif %}>🔊 Noise</option>
-        <option value="security" {% if request.args.get('category') == 'security' %}selected{% endif %}>🔒 Security</option>
-        <option value="cleanliness" {% if request.args.get('category') == 'cleanliness' %}selected{% endif %}>🧹 Cleanliness</option>
-        <option value="facilities" {% if request.args.get('category') == 'facilities' %}selected{% endif %}>🏢 Facilities</option>
-        <option value="other" {% if request.args.get('category') == 'other' %}selected{% endif %}>📋 Other</option>
+        <option value="maintenance" {% if request.args.get('category') == 'maintenance' %}selected{% endif %}>Maintenance</option>
+        <option value="billing" {% if request.args.get('category') == 'billing' %}selected{% endif %}>Billing</option>
+        <option value="noise" {% if request.args.get('category') == 'noise' %}selected{% endif %}>Noise</option>
+        <option value="security" {% if request.args.get('category') == 'security' %}selected{% endif %}>Security</option>
+        <option value="cleanliness" {% if request.args.get('category') == 'cleanliness' %}selected{% endif %}>Cleanliness</option>
+        <option value="facilities" {% if request.args.get('category') == 'facilities' %}selected{% endif %}>Facilities</option>
+        <option value="other" {% if request.args.get('category') == 'other' %}selected{% endif %}>Other</option>
       </select>
       <button type="button" class="btn btn--ghost" onclick="clearFilters()">Clear Filters</button>
     </div>
@@ -138,12 +139,12 @@
                     {% set priority_badge_class = 'badge-priority-medium' %}
                   {% endif %}
                   <span class="badge {{ priority_badge_class }}">
-                    {% if concern.priority == 'urgent' %}🔴 Urgent
-                    {% elif concern.priority == 'high' %}🟠 High
-                    {% elif concern.priority == 'medium' %}🟡 Medium
-                    {% else %}🟢 Low{% endif %}
+                    {% if concern.priority == 'urgent' %}Urgent
+                    {% elif concern.priority == 'high' %}High
+                    {% elif concern.priority == 'medium' %}Medium
+                    {% else %}Low{% endif %}
                   </span>
-                  
+
                   {% set status_chip_class = 'chip-status-resolved' %}
                   {% if concern.status.value == 'pending' %}
                     {% set status_chip_class = 'chip-status-pending' %}
@@ -151,19 +152,19 @@
                     {% set status_chip_class = 'chip-status-in-progress' %}
                   {% endif %}
                   <span class="chip {{ status_chip_class }}">
-                    {% if concern.status.value == 'pending' %}⏳ Pending
-                    {% elif concern.status.value == 'in_progress' %}🔄 In Progress
-                    {% else %}✓ Resolved{% endif %}
+                    {% if concern.status.value == 'pending' %}{{ icons.icon('clock', size=12) }} Pending
+                    {% elif concern.status.value == 'in_progress' %}{{ icons.icon('refresh-cw', size=12) }} In Progress
+                    {% else %}{{ icons.icon('check-circle', size=12) }} Resolved{% endif %}
                   </span>
-                  
+
                   <span class="badge" style="background: rgba(215, 179, 91, 0.15); color: #D7B35B;">
-                    {% if concern.category == 'maintenance' %}🔧 Maintenance
-                    {% elif concern.category == 'billing' %}💰 Billing
-                    {% elif concern.category == 'noise' %}🔊 Noise
-                    {% elif concern.category == 'security' %}🔒 Security
-                    {% elif concern.category == 'cleanliness' %}🧹 Cleanliness
-                    {% elif concern.category == 'facilities' %}🏢 Facilities
-                    {% else %}📋 {{ concern.category|title }}{% endif %}
+                    {% if concern.category == 'maintenance' %}{{ icons.icon('wrench', size=12) }} Maintenance
+                    {% elif concern.category == 'billing' %}{{ icons.icon('wallet', size=12) }} Billing
+                    {% elif concern.category == 'noise' %}Noise
+                    {% elif concern.category == 'security' %}{{ icons.icon('lock', size=12) }} Security
+                    {% elif concern.category == 'cleanliness' %}Cleanliness
+                    {% elif concern.category == 'facilities' %}{{ icons.icon('building', size=12) }} Facilities
+                    {% else %}{{ concern.category|title }}{% endif %}
                   </span>
                 </div>
               </div>
@@ -211,7 +212,7 @@
                           </div>
                         {% else %}
                           <a href="{{ media_url(attachment) }}" target="_blank" class="btn btn--ghost btn--sm">
-                            📎 {{ attachment.split('/')[-1] }}
+                            {{ icons.icon('paperclip', size=13) }} {{ attachment.split('/')[-1] }}
                           </a>
                         {% endif %}
                       {% endfor %}
@@ -248,22 +249,22 @@
               <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
                 {% if concern.status.value != 'resolved' %}
                   <button type="button" class="btn btn--ghost btn--sm" data-concern-id="{{ concern.id }}" data-concern-subject="{{ concern.subject }}" onclick="openFollowUpModal(this.dataset.concernId, this.dataset.concernSubject)">
-                    ➕ Add Follow-up
+                    {{ icons.icon('plus', size=13) }} Add Follow-up
                   </button>
-                  
+
                   {% if concern.priority != 'urgent' %}
                     <form method="post" action="{{ url_for('tenant.escalate_concern', concern_id=concern.id) }}" style="display: inline;">
-                      <button type="submit" class="btn btn--ghost btn--sm">⬆️ Escalate Priority</button>
+                      <button type="submit" class="btn btn--ghost btn--sm">{{ icons.icon('alert-triangle', size=13) }} Escalate Priority</button>
                     </form>
                   {% endif %}
-                  
+
                   <form method="post" action="{{ url_for('tenant.cancel_concern', concern_id=concern.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this concern?')">
-                    <button type="submit" class="btn btn--ghost btn--sm" style="color: #ef4444;">❌ Cancel Concern</button>
+                    <button type="submit" class="btn btn--ghost btn--sm" style="color: #ef4444;">{{ icons.icon('x-circle', size=13) }} Cancel Concern</button>
                   </form>
                 {% else %}
                   {% if not concern.satisfaction_rating %}
                     <button type="button" class="btn btn--primary btn--sm" data-concern-id="{{ concern.id }}" data-concern-subject="{{ concern.subject }}" onclick="openRatingModal(this.dataset.concernId, this.dataset.concernSubject)">
-                      ⭐ Rate Resolution
+                      {{ icons.icon('star', size=13) }} Rate Resolution
                     </button>
                   {% else %}
                     <div style="display: flex; align-items: center; gap: 4px;">
@@ -273,7 +274,7 @@
                         {% if i <= concern.satisfaction_rating %}
                           {% set star_class = 'star-filled' %}
                         {% endif %}
-                        <span class="{{ star_class }}">⭐</span>
+                        <span class="{{ star_class }}">★</span>
                       {% endfor %}
                     </div>
                   {% endif %}
@@ -283,7 +284,7 @@
           {% endfor %}
         {% else %}
           <div class="empty-state mt-16">
-            <div class="empty-state__icon">📋</div>
+            <div class="empty-state__icon">{{ icons.icon('clipboard', size=40) }}</div>
             <div class="empty-state__title">No Concerns Found</div>
             <div class="empty-state__text">Try adjusting your filters or submit a new concern.</div>
           </div>
@@ -303,32 +304,32 @@
           
           <label class="label">Priority</label>
           <select class="input" name="priority" required>
-            <option value="low">🟢 Low - Minor issue</option>
-            <option value="medium" selected>🟡 Medium - Normal issue</option>
-            <option value="high">🟠 High - Important issue</option>
-            <option value="urgent">🔴 Urgent - Critical issue</option>
+            <option value="low">Low - Minor issue</option>
+            <option value="medium" selected>Medium - Normal issue</option>
+            <option value="high">High - Important issue</option>
+            <option value="urgent">Urgent - Critical issue</option>
           </select>
-          
+
           <label class="label">Category</label>
           <select class="input" name="category" required>
-            <option value="maintenance">🔧 Maintenance</option>
-            <option value="billing">💰 Billing</option>
-            <option value="noise">🔊 Noise</option>
-            <option value="security">🔒 Security</option>
-            <option value="cleanliness">🧹 Cleanliness</option>
-            <option value="facilities">🏢 Facilities</option>
-            <option value="other">📋 Other</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="billing">Billing</option>
+            <option value="noise">Noise</option>
+            <option value="security">Security</option>
+            <option value="cleanliness">Cleanliness</option>
+            <option value="facilities">Facilities</option>
+            <option value="other">Other</option>
           </select>
-          
+
           <label class="label">Description</label>
           <textarea class="input" name="description" rows="5" required placeholder="Provide detailed information about your concern..."></textarea>
-          
+
           <label class="label">Attachments (Optional)</label>
           <input type="file" class="input" name="attachments" multiple accept="image/*,.pdf,.doc,.docx" id="fileInput" />
           <p class="muted" style="font-size: 12px; margin-top: 4px;">Max 4 files. Images, PDF, or Word documents.</p>
           <div id="filePreview" style="margin-top: 8px;"></div>
-          
-          <button class="btn btn--primary" type="submit" style="margin-top: 8px;">📤 Submit Concern</button>
+
+          <button class="btn btn--primary" type="submit" style="margin-top: 8px;">{{ icons.icon('upload', size=14) }} Submit Concern</button>
         </form>
       </div>
     </aside>
@@ -366,19 +367,19 @@
         <label class="label">How satisfied are you with the resolution?</label>
         <div style="display: flex; gap: 8px; margin: 16px 0; justify-content: center;">
           <input type="radio" name="rating" value="1" id="star1" required style="display: none;" />
-          <label for="star1" class="star-rating" data-rating="1">⭐</label>
+          <label for="star1" class="star-rating" data-rating="1">★</label>
           
           <input type="radio" name="rating" value="2" id="star2" style="display: none;" />
-          <label for="star2" class="star-rating" data-rating="2">⭐</label>
+          <label for="star2" class="star-rating" data-rating="2">★</label>
           
           <input type="radio" name="rating" value="3" id="star3" style="display: none;" />
-          <label for="star3" class="star-rating" data-rating="3">⭐</label>
+          <label for="star3" class="star-rating" data-rating="3">★</label>
           
           <input type="radio" name="rating" value="4" id="star4" style="display: none;" />
-          <label for="star4" class="star-rating" data-rating="4">⭐</label>
+          <label for="star4" class="star-rating" data-rating="4">★</label>
           
           <input type="radio" name="rating" value="5" id="star5" style="display: none;" />
-          <label for="star5" class="star-rating" data-rating="5">⭐</label>
+          <label for="star5" class="star-rating" data-rating="5">★</label>
         </div>
         
         <label class="label">Additional Feedback (Optional)</label>
@@ -406,14 +407,12 @@
       font-size: 32px;
       cursor: pointer;
       transition: all 0.2s ease;
-      filter: grayscale(100%);
-      opacity: 0.3;
+      color: #d1d5db;
     }
 
     .star-rating:hover,
     .star-rating.active {
-      filter: grayscale(0%);
-      opacity: 1;
+      color: #f59e0b;
       transform: scale(1.2);
     }
 

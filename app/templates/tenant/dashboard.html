@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Tenant Dashboard | STMS{% endblock %}
 
 {% block head %}
@@ -252,7 +253,7 @@ a[href^="tel:"]:hover {
   <!-- EXPIRED CONTRACT BANNER -->
   <div style="margin-bottom: 32px; animation: slideIn 0.5s ease;">
     <div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 2px solid #ef4444; border-radius: 12px; padding: 32px; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+      <div style="margin-bottom: 12px; color: #dc2626;">{{ icons.icon('alert-triangle', size=40) }}</div>
       <h2 style="color: #dc2626; margin: 0 0 8px 0; font-size: 22px;">Contract Expired</h2>
       <p style="color: #991b1b; margin: 0 0 4px 0; font-size: 15px;">
         Your lease contract ended on <strong>{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>.
@@ -263,10 +264,10 @@ a[href^="tel:"]:hover {
       </p>
       <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
         <a href="{{ url_for('tenant.renewal') }}" style="display: inline-flex; align-items: center; gap: 6px; padding: 12px 28px; background: linear-gradient(135deg, #D7B35B, #C9A84A); color: #fff; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 14px; box-shadow: 0 4px 12px rgba(215,179,91,0.3);">
-          ↻ Submit Renewal Request
+          {{ icons.icon('refresh-cw', size=16) }} Submit Renewal Request
         </a>
         <a href="{{ url_for('tenant.payments') }}" style="display: inline-flex; align-items: center; gap: 6px; padding: 12px 28px; background: #fff; color: #374151; border: 2px solid #d1d5db; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 14px;">
-          ₱ View Payment History
+          {{ icons.icon('wallet', size=16) }} View Payment History
         </a>
       </div>
     </div>
@@ -378,13 +379,13 @@ a[href^="tel:"]:hover {
 
       {% if is_expired %}
       <div class="mt-16" style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; border-radius: 8px;">
-        <strong style="color: #ef4444; font-size: 16px;">⚠️ Contract Expired</strong>
+        <strong style="color: #ef4444; font-size: 16px;">{{ icons.icon('alert-triangle', size=16) }} Contract Expired</strong>
         <p class="muted" style="margin-top: 8px; font-size: 14px;">Your contract ended on <strong style="color: #ef4444;">{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>. Submit a renewal request to continue your stay, or contact the office for assistance.</p>
         <a href="{{ url_for('tenant.renewal') }}" class="btn btn--primary btn--sm mt-8">Request Renewal Now</a>
       </div>
       {% elif days_remaining is not none and days_remaining <= 7 %}
       <div class="mt-16" style="padding: 16px; background: rgba(255, 80, 80, 0.1); border-left: 4px solid #ff5050; border-radius: 8px; animation: pulse 2s infinite;">
-        <strong style="color: #ff5050; font-size: 16px;">⚠️ Contract Expiring Soon!</strong>
+        <strong style="color: #ff5050; font-size: 16px;">{{ icons.icon('alert-triangle', size=16) }} Contract Expiring Soon!</strong>
         <p class="muted" style="margin-top: 8px; font-size: 14px;">Your contract ends in <strong style="color: #ff5050;">{{ days_remaining }} day{{ 's' if days_remaining != 1 else '' }}</strong>. Please submit a renewal request immediately to continue your stay.</p>
         <a href="{{ url_for('tenant.renewal') }}" class="btn btn--primary btn--sm mt-8">Request Renewal Now</a>
       </div>
@@ -398,7 +399,7 @@ a[href^="tel:"]:hover {
   <div style="margin-bottom: 32px;">
     <div class="card" style="background: rgba(255, 193, 7, 0.1); border: 2px solid rgba(255, 193, 7, 0.4); animation: pulse 2s infinite;">
       <div style="display: flex; align-items: center; gap: 16px;">
-        <div style="font-size: 48px;">⏰</div>
+        <div style="color: #f59e0b;">{{ icons.icon('clock', size=40) }}</div>
         <div style="flex: 1;">
           <strong style="color: #f59e0b; font-size: 18px;">Payment Reminder</strong>
           <p style="margin-top: 4px; font-size: 14px;">Your rent payment is due in <strong style="color: #f59e0b;">{{ days_until_payment }} day{{ 's' if days_until_payment != 1 else '' }}</strong></p>
@@ -415,31 +416,31 @@ a[href^="tel:"]:hover {
     <!-- Payment Methods -->
     <div class="card">
       <div class="section__header">
-        <h3>💳 Payment Methods</h3>
+        <h3>{{ icons.icon('credit-card') }} Payment Methods</h3>
         <p class="muted">How to pay your rent</p>
       </div>
       <div class="mt-16">
         <div style="padding: 16px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px; margin-bottom: 12px;">
           <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-            <span style="font-size: 24px;">🏦</span>
+            <span style="color: #D7B35B;">{{ icons.icon('bank', size=22) }}</span>
             <strong style="font-size: 16px;">Bank Transfer</strong>
           </div>
           <p class="muted" style="font-size: 13px; margin-bottom: 4px;">Transfer to our bank account</p>
           <p style="font-size: 14px; margin-top: 8px;"><strong>Account Details:</strong></p>
           <p class="muted" style="font-size: 13px;">Contact office for bank details</p>
-          <p class="muted" style="font-size: 13px;">📞 0918-912-6340 or 0918-920-5645</p>
+          <p class="muted" style="font-size: 13px;">{{ icons.icon('phone', size=13) }} 0918-912-6340 or 0918-920-5645</p>
         </div>
         
         <div style="padding: 16px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px;">
           <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-            <span style="font-size: 24px;">💵</span>
+            <span style="color: #D7B35B;">{{ icons.icon('banknote', size=22) }}</span>
             <strong style="font-size: 16px;">Cash Payment</strong>
           </div>
           <p class="muted" style="font-size: 13px; margin-bottom: 4px;">Pay directly at our office</p>
           <p style="font-size: 14px; margin-top: 8px;"><strong>Office Hours:</strong></p>
           <p class="muted" style="font-size: 13px;">Monday - Saturday</p>
           <p class="muted" style="font-size: 13px;">9:00 AM - 6:00 PM</p>
-          <p class="muted" style="font-size: 13px; margin-top: 4px;">📍 The Elis Center, #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</p>
+          <p class="muted" style="font-size: 13px; margin-top: 4px;">{{ icons.icon('map-pin', size=13) }} The Elis Center, #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</p>
         </div>
         
         <div style="margin-top: 12px; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: 8px;">
@@ -453,13 +454,13 @@ a[href^="tel:"]:hover {
     <!-- Emergency Contacts -->
     <div class="card">
       <div class="section__header">
-        <h3>🚨 Emergency Contacts</h3>
+        <h3>{{ icons.icon('alert-triangle') }} Emergency Contacts</h3>
         <p class="muted">Important numbers</p>
       </div>
       <div class="mt-16">
         <div style="display: grid; gap: 12px;">
           <a href="tel:09189126340" style="padding: 12px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(215, 179, 91, 0.1)'" onmouseout="this.style.background='rgba(215, 179, 91, 0.05)'">
-            <span style="font-size: 24px;">🏢</span>
+            <span style="color: #D7B35B;">{{ icons.icon('building', size=22) }}</span>
             <div>
               <strong style="color: var(--text); font-size: 14px;">Admin Office</strong>
               <p class="muted" style="font-size: 13px; margin-top: 2px;">0918-912-6340</p>
@@ -467,7 +468,7 @@ a[href^="tel:"]:hover {
           </a>
           
           <a href="tel:09189205645" style="padding: 12px; background: rgba(215, 179, 91, 0.05); border-left: 4px solid #D7B35B; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(215, 179, 91, 0.1)'" onmouseout="this.style.background='rgba(215, 179, 91, 0.05)'">
-            <span style="font-size: 24px;">🔒</span>
+            <span style="color: #D7B35B;">{{ icons.icon('lock', size=22) }}</span>
             <div>
               <strong style="color: var(--text); font-size: 14px;">Security / Admin</strong>
               <p class="muted" style="font-size: 13px; margin-top: 2px;">0918-920-5645</p>
@@ -475,7 +476,7 @@ a[href^="tel:"]:hover {
           </a>
           
           <a href="tel:911" style="padding: 12px; background: rgba(239, 68, 68, 0.05); border-left: 4px solid #ef4444; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'">
-            <span style="font-size: 24px;">🚒</span>
+            <span style="color: #ef4444;">{{ icons.icon('flame', size=22) }}</span>
             <div>
               <strong style="color: var(--text); font-size: 14px;">Fire Department</strong>
               <p class="muted" style="font-size: 13px; margin-top: 2px;">911</p>
@@ -483,7 +484,7 @@ a[href^="tel:"]:hover {
           </a>
           
           <a href="tel:911" style="padding: 12px; background: rgba(239, 68, 68, 0.05); border-left: 4px solid #ef4444; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'">
-            <span style="font-size: 24px;">🚓</span>
+            <span style="color: #ef4444;">{{ icons.icon('shield', size=22) }}</span>
             <div>
               <strong style="color: var(--text); font-size: 14px;">Police Station</strong>
               <p class="muted" style="font-size: 13px; margin-top: 2px;">911</p>
@@ -513,15 +514,15 @@ a[href^="tel:"]:hover {
           <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Pay Rent</div>
         </a>
         <a href="{{ url_for('tenant.concerns') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
-          <span style="font-size: 32px; color: #D7B35B;">⌁</span>
+          <span style="color: #D7B35B;">{{ icons.icon('wrench', size=28) }}</span>
           <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Submit Concern</div>
         </a>
         <a href="{{ url_for('tenant.renewal') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
-          <span style="font-size: 32px; color: #D7B35B;">↻</span>
+          <span style="color: #D7B35B;">{{ icons.icon('refresh-cw', size=28) }}</span>
           <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Renew Contract</div>
         </a>
         <a href="{{ url_for('tenant.feedback') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
-          <span style="font-size: 32px; color: #D7B35B;">☺</span>
+          <span style="color: #D7B35B;">{{ icons.icon('message-circle', size=28) }}</span>
           <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Send Feedback</div>
         </a>
       </div>
@@ -533,7 +534,7 @@ a[href^="tel:"]:hover {
     <!-- Maintenance Status -->
     <div class="card">
       <div class="section__header">
-        <h3>🔧 Maintenance Status</h3>
+        <h3>{{ icons.icon('wrench') }} Maintenance Status</h3>
         <p class="muted">Your recent concerns</p>
       </div>
       {% if recent_concerns %}
@@ -555,13 +556,13 @@ a[href^="tel:"]:hover {
                   {% set concern_badge_class = 'badge-status-in-progress' %}
                 {% endif %}
                 <span class="badge {{ concern_badge_class }}">
-                  {% if concern.status.value == 'pending' %}⏳ Pending
-                  {% elif concern.status.value == 'in_progress' %}🔄 In Progress
-                  {% else %}✓ Resolved{% endif %}
+                  {% if concern.status.value == 'pending' %}{{ icons.icon('clock', size=13) }} Pending
+                  {% elif concern.status.value == 'in_progress' %}{{ icons.icon('refresh-cw', size=13) }} In Progress
+                  {% else %}{{ icons.icon('check-circle', size=13) }} Resolved{% endif %}
                 </span>
               </div>
               <p class="muted" style="font-size: 13px;">{{ concern.description[:80] }}{% if concern.description|length > 80 %}...{% endif %}</p>
-              <p class="muted" style="font-size: 12px; margin-top: 8px;">📅 {{ concern.created_at.strftime('%b %d, %Y') }}</p>
+              <p class="muted" style="font-size: 12px; margin-top: 8px;">{{ icons.icon('calendar', size=12) }} {{ concern.created_at.strftime('%b %d, %Y') }}</p>
               {% if concern.admin_response %}
                 <div style="margin-top: 8px; padding: 8px; background: rgba(59, 130, 246, 0.05); border-radius: 4px;">
                   <p style="font-size: 12px; color: #3b82f6;"><strong>Admin:</strong> {{ concern.admin_response[:60] }}{% if concern.admin_response|length > 60 %}...{% endif %}</p>
@@ -573,7 +574,7 @@ a[href^="tel:"]:hover {
         <a href="{{ url_for('tenant.concerns') }}" class="btn btn--ghost w-full mt-12">View All Concerns</a>
       {% else %}
         <div class="empty-state mt-16">
-          <div class="empty-state__icon">🔧</div>
+          <div class="empty-state__icon">{{ icons.icon('wrench', size=40) }}</div>
           <div class="empty-state__title">No Concerns</div>
           <div class="empty-state__text">You haven't submitted any maintenance requests yet.</div>
           <a href="{{ url_for('tenant.concerns') }}" class="btn btn--primary btn--sm mt-8">Submit Concern</a>
@@ -584,7 +585,7 @@ a[href^="tel:"]:hover {
     <!-- Recent Payments -->
     <div class="card">
       <div class="section__header">
-        <h3>💰 Recent Payments</h3>
+        <h3>{{ icons.icon('wallet') }} Recent Payments</h3>
         <p class="muted">Your payment history</p>
       </div>
       {% if recent_payments %}
@@ -595,13 +596,13 @@ a[href^="tel:"]:hover {
                 <div>
                   <strong style="font-size: 16px; color: #10b981;">₱{{ "{:,.2f}".format(payment.amount) }}</strong>
                   <p class="muted" style="font-size: 12px; margin-top: 2px;">
-                    📅 {{ (payment.paid_at|to_ph).strftime('%B %d, %Y') if payment.paid_at else 'N/A' }}
+                    {{ icons.icon('calendar', size=12) }} {{ (payment.paid_at|to_ph).strftime('%B %d, %Y') if payment.paid_at else 'N/A' }}
                   </p>
                   {% if payment.reference %}
                     <p class="muted" style="font-size: 11px; margin-top: 2px;">Ref: {{ payment.reference }}</p>
                   {% endif %}
                 </div>
-                <span style="font-size: 24px;">✓</span>
+                <span style="color: #10b981;">{{ icons.icon('check-circle', size=22) }}</span>
               </div>
               {% if payment.notes %}
                 <p class="muted" style="font-size: 12px; margin-top: 4px;">{{ payment.notes }}</p>
@@ -612,7 +613,7 @@ a[href^="tel:"]:hover {
         <a href="{{ url_for('tenant.payments') }}" class="btn btn--ghost w-full mt-12">View All Payments</a>
       {% else %}
         <div class="empty-state mt-16">
-          <div class="empty-state__icon">💰</div>
+          <div class="empty-state__icon">{{ icons.icon('wallet', size=40) }}</div>
           <div class="empty-state__title">No Payments Yet</div>
           <div class="empty-state__text">Your payment history will appear here.</div>
         </div>
@@ -626,7 +627,7 @@ a[href^="tel:"]:hover {
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>📢 Recent Announcements</h3>
+          <h3>{{ icons.icon('megaphone') }} Recent Announcements</h3>
           <p class="muted">Latest updates from admin</p>
         </div>
         {% if unread_announcements_count and unread_announcements_count > 0 %}
@@ -642,16 +643,16 @@ a[href^="tel:"]:hover {
             {% endif %}
             <div class="card {{ announcement_border_class }}" style="margin-bottom: 12px; padding: 16px; position: relative;">
               {% if announcement.is_pinned %}
-                <span style="position: absolute; top: 12px; right: 12px; background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;">📌 PINNED</span>
+                <span style="position: absolute; top: 12px; right: 12px; background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;">{{ icons.icon('pin', size=10) }} PINNED</span>
               {% endif %}
               <strong style="font-size: 15px;">{{ announcement.title }}</strong>
               {% if announcement.category %}
                 <span class="chip" style="margin-left: 8px; font-size: 10px;">
-                  {% if announcement.category == 'emergency' %}🚨{% elif announcement.category == 'maintenance' %}🔧{% elif announcement.category == 'event' %}🎉{% elif announcement.category == 'rule_update' %}📜{% endif %}
+                  {% if announcement.category == 'emergency' %}{{ icons.icon('alert-triangle', size=11) }}{% elif announcement.category == 'maintenance' %}{{ icons.icon('wrench', size=11) }}{% elif announcement.category == 'event' %}{{ icons.icon('sparkle', size=11) }}{% elif announcement.category == 'rule_update' %}{{ icons.icon('document', size=11) }}{% endif %}
                   {{ announcement.category|replace('_', ' ')|title }}
                 </span>
               {% endif %}
-              <p class="muted mt-8" style="font-size: 0.875rem;">📅 {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+              <p class="muted mt-8" style="font-size: 0.875rem;">{{ icons.icon('calendar', size=12) }} {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
               <p style="margin-top: 8px; font-size: 0.875rem; line-height: 1.6;">{{ announcement.content[:150] }}{% if announcement.content|length > 150 %}...{% endif %}</p>
               <a href="{{ url_for('tenant.announcements') }}" class="btn btn--ghost btn--sm mt-8">Read More →</a>
             </div>
@@ -697,7 +698,7 @@ a[href^="tel:"]:hover {
         {% endfor %}
         {% if not recent_concerns and not recent_feedbacks and not recent_renewals %}
           <div class="empty-state">
-            <div class="empty-state__icon">📋</div>
+            <div class="empty-state__icon">{{ icons.icon('clipboard', size=40) }}</div>
             <div class="empty-state__title">No Recent Activity</div>
             <div class="empty-state__text">Start using the portal to see your activity here.</div>
           </div>
@@ -711,7 +712,7 @@ a[href^="tel:"]:hover {
     <div class="card">
       <div class="section__header">
         <div>
-          <h3>📄 Recent Documents</h3>
+          <h3>{{ icons.icon('document') }} Recent Documents</h3>
           <p class="muted">Latest documents from admin</p>
         </div>
         {% if unread_documents_count and unread_documents_count > 0 %}
@@ -724,8 +725,8 @@ a[href^="tel:"]:hover {
           <!-- New Documents Alert -->
           <div style="padding: 20px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%); border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 12px; margin-bottom: 16px; animation: slideIn 0.5s ease;">
             <div style="display: flex; align-items: center; gap: 16px;">
-              <div style="width: 64px; height: 64px; border-radius: 16px; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0;">
-                🔔
+              <div style="width: 64px; height: 64px; border-radius: 16px; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center; color: #dc2626; flex-shrink: 0;">
+                {{ icons.icon('bell', size=30) }}
               </div>
               <div style="flex: 1;">
                 <strong style="color: #991b1b; font-size: 18px; display: block; margin-bottom: 4px;">{{ unread_documents_count }} New Document{{ 's' if unread_documents_count > 1 else '' }}</strong>
@@ -739,8 +740,8 @@ a[href^="tel:"]:hover {
         <!-- Document Access Card -->
         <a href="{{ url_for('tenant.documents') }}" class="card card--hover" style="padding: 20px; text-decoration: none; border: 2px solid #e5e7eb; display: block; transition: all 0.3s ease;">
           <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;">
-              📄
+            <div style="width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%); display: flex; align-items: center; justify-content: center; color: #2563eb; flex-shrink: 0;">
+              {{ icons.icon('document', size=26) }}
             </div>
             <div style="flex: 1;">
               <strong style="color: #1a1a1a; font-size: 16px; display: block; margin-bottom: 4px;">All Documents</strong>
@@ -766,7 +767,7 @@ a[href^="tel:"]:hover {
           {% if unit_images %}
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
               {% for img in unit_images %}
-                <img src="{{ img }}" alt="Unit Image" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.1); image-rendering: -webkit-optimize-contrast; image-rendering: high-quality; -webkit-font-smoothing: antialiased;" />
+                <img src="{{ media_url(img) }}" alt="Unit Image" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.1); image-rendering: -webkit-optimize-contrast; image-rendering: high-quality; -webkit-font-smoothing: antialiased;" />
               {% endfor %}
             </div>
           {% else %}

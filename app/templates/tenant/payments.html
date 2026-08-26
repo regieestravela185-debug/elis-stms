@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Payment History | STMS{% endblock %}
 
 {% block sidebar %}
@@ -51,7 +52,7 @@
     <div class="section__header">
       <h3>Search & Filter</h3>
       <div style="display: flex; gap: 8px;">
-        <a href="{{ url_for('tenant.export_payments') }}" class="btn btn--ghost btn--sm">📤 Export CSV</a>
+        <a href="{{ url_for('tenant.export_payments') }}" class="btn btn--ghost btn--sm">{{ icons.icon('download', size=13) }} Export CSV</a>
       </div>
     </div>
     
@@ -60,7 +61,7 @@
         type="text" 
         id="searchInput" 
         class="input" 
-        placeholder="🔍 Search by reference or receipt number..."
+        placeholder="Search by reference or receipt number..."
         value="{{ request.args.get('search', '') }}"
       />
       
@@ -130,17 +131,17 @@
               <!-- Status Badge -->
               {% if payment.is_late %}
                 <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
-                  ⚠️ Late Payment
+                  {{ icons.icon('alert-triangle', size=12) }} Late Payment
                 </span>
               {% else %}
                 <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
-                  ✅ On Time
+                  {{ icons.icon('check-circle', size=12) }} On Time
                 </span>
               {% endif %}
-              
+
               {% if payment.payment_status == 'verified' %}
                 <span class="chip" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
-                  ✓ Verified
+                  {{ icons.icon('check-circle', size=12) }} Verified
                 </span>
               {% endif %}
             </div>
@@ -207,10 +208,10 @@
           <!-- Actions -->
           <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; gap: 8px;">
             <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--primary btn--sm">
-              🧾 Download Receipt
+              {{ icons.icon('download', size=13) }} Download Receipt
             </a>
             <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--ghost btn--sm">
-              🖨️ Print Receipt
+              {{ icons.icon('printer', size=13) }} Print Receipt
             </a>
           </div>
         </div>

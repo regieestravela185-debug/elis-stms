@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Settings | STMS{% endblock %}
 
 {% block sidebar %}
@@ -284,7 +285,7 @@
         </div>
         <div class="profile-name">{{ current_user.full_name }}</div>
         <div class="profile-email">{{ current_user.email }}</div>
-        <div class="profile-role">🏠 TENANT</div>
+        <div class="profile-role">{{ icons.icon('home', size=13) }} TENANT</div>
 
         <div class="info-grid">
           <div class="info-item">
@@ -304,22 +305,22 @@
       <!-- Activity Summary -->
       <div class="activity-grid">
         <div class="activity-card">
-          <div class="activity-icon">📝</div>
+          <div class="activity-icon">{{ icons.icon('wrench', size=28) }}</div>
           <div class="activity-value">{{ activity_stats.concerns }}</div>
           <div class="activity-label">Concerns</div>
         </div>
         <div class="activity-card">
-          <div class="activity-icon">💬</div>
+          <div class="activity-icon">{{ icons.icon('message-circle', size=28) }}</div>
           <div class="activity-value">{{ activity_stats.feedback }}</div>
           <div class="activity-label">Feedback</div>
         </div>
         <div class="activity-card">
-          <div class="activity-icon">💰</div>
+          <div class="activity-icon">{{ icons.icon('wallet', size=28) }}</div>
           <div class="activity-value">{{ activity_stats.payments }}</div>
           <div class="activity-label">Payments</div>
         </div>
         <div class="activity-card">
-          <div class="activity-icon">🔄</div>
+          <div class="activity-icon">{{ icons.icon('refresh-cw', size=28) }}</div>
           <div class="activity-value">{{ activity_stats.renewals }}</div>
           <div class="activity-label">Renewals</div>
         </div>
@@ -327,7 +328,7 @@
 
       <!-- Security Information -->
       <div class="security-card">
-        <h3 style="margin: 0 0 8px 0;">🔒 Account Security</h3>
+        <h3 style="margin: 0 0 8px 0;">{{ icons.icon('lock') }} Account Security</h3>
         <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Your account security status and recommendations</p>
         
         <div class="security-score">
@@ -337,7 +338,7 @@
             {% elif days_since_password_change < 90 %}
               ✓
             {% elif days_since_password_change < 180 %}
-              ⚠
+              {{ icons.icon('alert-triangle', size=20) }}
             {% else %}
               !
             {% endif %}
@@ -391,7 +392,7 @@
           <!-- Email Preferences -->
           <div class="mt-24">
             <div class="section__header">
-              <h4 style="color: #D7B35B;">📧 Email Preferences</h4>
+              <h4 style="color: #D7B35B;">{{ icons.icon('mail') }} Email Preferences</h4>
               <p class="muted">Choose which email notifications you want to receive</p>
             </div>
           </div>
@@ -403,7 +404,7 @@
                 <span class="toggle-slider"></span>
               </label>
               <div class="pref-info">
-                <div class="pref-title">📢 Announcements</div>
+                <div class="pref-title">{{ icons.icon('megaphone', size=14) }} Announcements</div>
                 <div class="pref-desc">Receive notifications about new announcements</div>
               </div>
             </div>
@@ -414,7 +415,7 @@
                 <span class="toggle-slider"></span>
               </label>
               <div class="pref-info">
-                <div class="pref-title">💰 Payment Reminders</div>
+                <div class="pref-title">{{ icons.icon('wallet', size=14) }} Payment Reminders</div>
                 <div class="pref-desc">Get reminders about upcoming payments</div>
               </div>
             </div>
@@ -425,7 +426,7 @@
                 <span class="toggle-slider"></span>
               </label>
               <div class="pref-info">
-                <div class="pref-title">📝 Concern Updates</div>
+                <div class="pref-title">{{ icons.icon('wrench', size=14) }} Concern Updates</div>
                 <div class="pref-desc">Receive updates on your submitted concerns</div>
               </div>
             </div>
@@ -433,7 +434,7 @@
 
           <div class="mt-24">
             <div class="section__header">
-              <h4 style="color: #D7B35B;">🔐 Change Password</h4>
+              <h4 style="color: #D7B35B;">{{ icons.icon('lock') }} Change Password</h4>
               <p class="muted">Leave blank to keep current password</p>
             </div>
           </div>
@@ -509,7 +510,7 @@
             <div id="confirm_password_error" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Passwords do not match</div>
           </div>
 
-          <button class="btn btn--primary mt-24" type="submit" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-color: #D7B35B;">💾 Save Changes</button>
+          <button class="btn btn--primary mt-24" type="submit" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-color: #D7B35B;">{{ icons.icon('save', size=14) }} Save Changes</button>
         </form>
       </div>
     </div>
@@ -563,15 +564,15 @@ function checkPasswordStrength(password) {
   
   if (strength <= 2) {
     strengthFill.style.background = '#ef4444';
-    strengthLabel.textContent = '❌ Weak Password';
+    strengthLabel.textContent = 'Weak Password';
     strengthLabel.style.color = '#ef4444';
   } else if (strength <= 4) {
     strengthFill.style.background = '#fbbf24';
-    strengthLabel.textContent = '⚠️ Medium Password';
+    strengthLabel.textContent = 'Medium Password';
     strengthLabel.style.color = '#fbbf24';
   } else {
     strengthFill.style.background = '#10b981';
-    strengthLabel.textContent = '✅ Strong Password';
+    strengthLabel.textContent = 'Strong Password';
     strengthLabel.style.color = '#10b981';
   }
 }

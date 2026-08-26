@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Documents | STMS{% endblock %}
 
 {% block sidebar %}
@@ -6,7 +7,7 @@
 {% endblock %}
 
 {% block topbar_left %}
-  <div class="topbar__title">📄 My Documents</div>
+  <div class="topbar__title">{{ icons.icon('document') }} My Documents</div>
 {% endblock %}
 
 {% block content %}
@@ -15,8 +16,8 @@
     <!-- Info Banner -->
     <div style="background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border: 2px solid rgba(215, 179, 91, 0.3); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.1);">
       <div style="display: flex; align-items: center; gap: 20px;">
-        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.3);">
-          📄
+        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.3);">
+          {{ icons.icon('document', size=30) }}
         </div>
         <div style="flex: 1;">
           <h3 style="margin: 0 0 8px 0; color: #92400e; font-size: 20px; font-weight: 700;">Your Document Center</h3>
@@ -63,12 +64,12 @@
       <div style="margin-bottom: 24px;">
         <div class="grid grid--3" style="gap: 12px;">
           <div>
-            <label class="label" style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: block;">🔍 Search Documents</label>
+            <label class="label" style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: block;">{{ icons.icon('search', size=14) }} Search Documents</label>
             <input type="text" id="searchInput" class="input" placeholder="Search by title..." value="{{ request.args.get('search', '') }}" />
           </div>
           
           <div>
-            <label class="label" style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: block;">🔄 Sort By</label>
+            <label class="label" style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: block;">{{ icons.icon('refresh-cw', size=14) }} Sort By</label>
             <select class="input" id="sortSelect">
               <option value="newest" {% if request.args.get('sort') == 'newest' or not request.args.get('sort') %}selected{% endif %}>Newest First</option>
               <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
@@ -77,23 +78,23 @@
           </div>
           
           <div>
-            <label class="label" style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: block;">📋 Filter Type</label>
+            <label class="label" style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; display: block;">{{ icons.icon('clipboard', size=14) }} Filter Type</label>
             <select class="input" id="typeFilter">
               <option value="">All Types ({{ documents|length }})</option>
-              <option value="lease_agreement">📄 Lease Agreement</option>
-              <option value="receipt">🧾 Receipt</option>
-              <option value="certificate">🏆 Certificate</option>
-              <option value="rules">📜 Rules</option>
-              <option value="electricity_bill">⚡ Electricity</option>
-              <option value="water_bill">💧 Water</option>
-              <option value="internet_bill">🌐 Internet</option>
+              <option value="lease_agreement">Lease Agreement</option>
+              <option value="receipt">Receipt</option>
+              <option value="certificate">Certificate</option>
+              <option value="rules">Rules</option>
+              <option value="electricity_bill">Electricity</option>
+              <option value="water_bill">Water</option>
+              <option value="internet_bill">Internet</option>
             </select>
           </div>
         </div>
-        
+
         <div style="margin-top: 12px; display: flex; gap: 8px;">
           <button type="button" class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
-          <a href="{{ url_for('tenant.download_all_documents') }}" class="btn btn--primary btn--sm">📦 Download All as ZIP</a>
+          <a href="{{ url_for('tenant.download_all_documents') }}" class="btn btn--primary btn--sm">{{ icons.icon('box', size=14) }} Download All as ZIP</a>
         </div>
       </div>
 
@@ -118,16 +119,16 @@
             {% elif doc.document_type == 'internet_bill' %}
               {% set doc_icon_bg_class = 'doc-icon-bg-internet' %}
             {% endif %}
-            <div style="width: 72px; height: 72px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);" class="{{ doc_icon_bg_class }}">
-              <span style="filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));">
-                {% if doc.document_type == 'lease_agreement' %}📄
-                {% elif doc.document_type == 'receipt' %}🧾
-                {% elif doc.document_type == 'certificate' %}🏆
-                {% elif doc.document_type == 'rules' %}📜
-                {% elif doc.document_type == 'electricity_bill' %}⚡
-                {% elif doc.document_type == 'water_bill' %}💧
-                {% elif doc.document_type == 'internet_bill' %}🌐
-                {% else %}📋{% endif %}
+            <div style="width: 72px; height: 72px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);" class="{{ doc_icon_bg_class }}">
+              <span style="color: #fff;">
+                {% if doc.document_type == 'lease_agreement' %}{{ icons.icon('document', size=32) }}
+                {% elif doc.document_type == 'receipt' %}{{ icons.icon('document', size=32) }}
+                {% elif doc.document_type == 'certificate' %}{{ icons.icon('award', size=32) }}
+                {% elif doc.document_type == 'rules' %}{{ icons.icon('document', size=32) }}
+                {% elif doc.document_type == 'electricity_bill' %}{{ icons.icon('zap', size=32) }}
+                {% elif doc.document_type == 'water_bill' %}{{ icons.icon('droplet', size=32) }}
+                {% elif doc.document_type == 'internet_bill' %}{{ icons.icon('wifi', size=32) }}
+                {% else %}{{ icons.icon('clipboard', size=32) }}{% endif %}
               </span>
             </div>
 
@@ -157,21 +158,21 @@
             </div>
 
             <div style="margin-bottom: 20px; padding: 12px; background: rgba(215, 179, 91, 0.08); border-radius: 8px; border-left: 3px solid #D7B35B;">
-              <div style="font-size: 13px; color: #78350f; font-weight: 600;">📅 Uploaded</div>
+              <div style="font-size: 13px; color: #78350f; font-weight: 600;">{{ icons.icon('calendar', size=13) }} Uploaded</div>
               <div style="font-size: 14px; color: #92400e; margin-top: 4px;">{{ doc.uploaded_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
             </div>
 
             <!-- Actions -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <button type="button" class="btn btn--sm" style="text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; font-weight: 600;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="previewDocument(this.dataset.docUrl, this.dataset.docTitle)">
-                👁️ Preview
+                {{ icons.icon('eye', size=14) }} Preview
               </button>
               <a href="{{ media_url(doc.file_path) }}" download class="btn btn--primary btn--sm" style="text-align: center; font-weight: 600;" data-doc-id="{{ doc.id }}" onclick="trackDownload(this.dataset.docId)">
-                ⬇️ Download
+                {{ icons.icon('download', size=14) }} Download
               </a>
             </div>
             <button type="button" class="btn btn--ghost btn--sm" style="width: 100%; margin-top: 8px;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="printDocument(this.dataset.docUrl, this.dataset.docTitle)">
-              🖨️ Print
+              {{ icons.icon('printer', size=14) }} Print
             </button>
           </div>
         {% endfor %}
@@ -180,7 +181,7 @@
     {% else %}
       <div class="empty-state" style="text-align: center; padding: 80px 20px;">
         <div style="width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(215, 179, 91, 0.3);">
-          <span style="font-size: 64px;">📄</span>
+          <span style="color: #D7B35B;">{{ icons.icon('document', size=56) }}</span>
         </div>
         <div class="empty-state__title" style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">No Documents Yet</div>
         <div class="empty-state__text" style="font-size: 16px; color: #666; max-width: 500px; margin: 0 auto; line-height: 1.6;">
@@ -188,7 +189,7 @@
         </div>
         <div style="margin-top: 32px; padding: 20px; background: rgba(59, 130, 246, 0.08); border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 1px solid rgba(59, 130, 246, 0.2);">
           <p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.6;">
-            <strong>💡 Tip:</strong> You'll receive an email notification whenever a new document is uploaded. Check your email inbox regularly!
+            <strong>Tip:</strong> You'll receive an email notification whenever a new document is uploaded. Check your email inbox regularly!
           </p>
         </div>
       </div>
@@ -206,7 +207,7 @@
       </div>
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" onclick="closePreview()">Close</button>
-        <button type="button" class="btn btn--primary" onclick="downloadFromPreview()">⬇️ Download</button>
+        <button type="button" class="btn btn--primary" onclick="downloadFromPreview()">{{ icons.icon('download', size=14) }} Download</button>
       </div>
     </div>
   </div>

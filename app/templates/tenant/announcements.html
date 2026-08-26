@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Announcements | STMS{% endblock %}
 
 {% block sidebar %}
@@ -45,7 +46,7 @@
         type="text" 
         id="searchInput" 
         class="input" 
-        placeholder="🔍 Search announcements..."
+        placeholder="Search announcements..."
         value="{{ request.args.get('search', '') }}"
       />
       
@@ -53,11 +54,11 @@
         <option value="">All Categories</option>
         {% for cat in stats.available_categories %}
           <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>
-            {% if cat == 'rule_update' %}📜 Rule Update
-            {% elif cat == 'maintenance' %}🔧 Maintenance
-            {% elif cat == 'general' %}📢 General
-            {% elif cat == 'emergency' %}🚨 Emergency
-            {% elif cat == 'event' %}🎉 Event
+            {% if cat == 'rule_update' %}Rule Update
+            {% elif cat == 'maintenance' %}Maintenance
+            {% elif cat == 'general' %}General
+            {% elif cat == 'emergency' %}Emergency
+            {% elif cat == 'event' %}Event
             {% else %}{{ cat|title }}{% endif %}
           </option>
         {% endfor %}
@@ -94,7 +95,7 @@
               {% if announcement.is_pinned %}
                 <div style="position: absolute; top: 12px; right: 12px;">
                   <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
-                    📌 Pinned
+                    {{ icons.icon('pin', size=12) }} Pinned
                   </span>
                 </div>
               {% endif %}
@@ -103,8 +104,7 @@
               {% if announcement.id not in read_ids %}
                 <div style="position: absolute; top: 12px; left: 12px;">
                   <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
-                    🔵 New
-                  </span>
+                    New
                 </div>
               {% endif %}
 
@@ -124,11 +124,11 @@
                   </h4>
                   {% if announcement.category %}
                     <span class="chip" style="margin-top: 8px; display: inline-block;">
-                      {% if announcement.category == 'rule_update' %}📜 Rule Update
-                      {% elif announcement.category == 'maintenance' %}🔧 Maintenance
-                      {% elif announcement.category == 'general' %}📢 General
-                      {% elif announcement.category == 'emergency' %}🚨 Emergency
-                      {% elif announcement.category == 'event' %}🎉 Event
+                      {% if announcement.category == 'rule_update' %}{{ icons.icon('document', size=12) }} Rule Update
+                      {% elif announcement.category == 'maintenance' %}{{ icons.icon('wrench', size=12) }} Maintenance
+                      {% elif announcement.category == 'general' %}{{ icons.icon('megaphone', size=12) }} General
+                      {% elif announcement.category == 'emergency' %}{{ icons.icon('alert-triangle', size=12) }} Emergency
+                      {% elif announcement.category == 'event' %}{{ icons.icon('sparkle', size=12) }} Event
                       {% else %}{{ announcement.category|title }}{% endif %}
                     </span>
                   {% endif %}
@@ -147,13 +147,13 @@
               <!-- Actions -->
               <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 16px; display: flex; gap: 8px;">
                 <button type="button" class="btn btn--ghost btn--sm" data-announcement-id="{{ announcement.id }}" onclick="printAnnouncement(this.dataset.announcementId)">
-                  🖨️ Print
+                  {{ icons.icon('printer', size=13) }} Print
                 </button>
-                
+
                 {% if announcement.id not in read_ids %}
                   <form method="post" action="{{ url_for('tenant.mark_announcement_read', announcement_id=announcement.id) }}" style="display: inline;">
                     <button type="submit" class="btn btn--ghost btn--sm">
-                      ✓ Mark as Read
+                      {{ icons.icon('check-circle', size=13) }} Mark as Read
                     </button>
                   </form>
                 {% else %}
@@ -193,7 +193,7 @@
         </div>
       {% else %}
         <div class="empty-state mt-16">
-          <div class="empty-state__icon">📢</div>
+          <div class="empty-state__icon">{{ icons.icon('megaphone', size=40) }}</div>
           <div class="empty-state__title">No Announcements Found</div>
           <div class="empty-state__text">
             {% if request.args %}

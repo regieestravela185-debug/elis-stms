@@ -74,9 +74,13 @@ def dashboard():
                 for img in parsed_images:
                     img_str = str(img).strip()
                     if img_str:
-                        # Remove leading slash if present
-                        img_str = img_str.lstrip('/')
-                        unit_images.append(url_for('static', filename=img_str))
+                        # Keep the raw path/URL as-is — templates resolve it via
+                        # media_url(), which passes absolute URLs (Supabase
+                        # Storage) through untouched and only falls back to the
+                        # local static folder for relative paths. Wrapping it in
+                        # url_for('static', ...) here always mangled Supabase
+                        # URLs (e.g. "/static/https://...").
+                        unit_images.append(img_str.lstrip('/'))
         except Exception:
             unit_images = []
 

@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Renewal Request | STMS{% endblock %}
 
 {% block sidebar %}
@@ -215,9 +216,9 @@
       {% if stats.days_until_expiry is not none %}
         <div class="expiry-alert {{ stats.expiry_status }}">
           <div class="expiry-icon">
-            {% if stats.expiry_status == 'urgent' %}⚠️
-            {% elif stats.expiry_status == 'soon' %}⏰
-            {% else %}✅{% endif %}
+            {% if stats.expiry_status == 'urgent' %}{{ icons.icon('alert-triangle', size=32) }}
+            {% elif stats.expiry_status == 'soon' %}{{ icons.icon('clock', size=32) }}
+            {% else %}{{ icons.icon('check-circle', size=32) }}{% endif %}
           </div>
           <div style="flex: 1;">
             <strong>
@@ -328,11 +329,11 @@
 
                 <div class="request-actions">
                   <button class="btn-icon btn-print" data-request-id="{{ request.id }}" data-end-date="{{ request.requested_end_date.strftime('%B %d, %Y') }}" data-status="{{ request.status.value|title }}" data-notes="{{ request.notes or '' }}" data-created-date="{{ request.created_at.strftime('%B %d, %Y') }}" onclick="printRequest(this.dataset.requestId, this.dataset.endDate, this.dataset.status, this.dataset.notes, this.dataset.createdDate)">
-                    🖨️ Print
+                    {{ icons.icon('printer', size=13) }} Print
                   </button>
                   {% if request.status.value == 'pending' %}
                     <form method="post" action="{{ url_for('tenant.cancel_renewal_request', renewal_id=request.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this renewal request?');">
-                      <button class="btn-icon btn-cancel" type="submit">❌ Cancel</button>
+                      <button class="btn-icon btn-cancel" type="submit">{{ icons.icon('x-circle', size=13) }} Cancel</button>
                     </form>
                   {% endif %}
                 </div>

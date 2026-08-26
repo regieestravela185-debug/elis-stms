@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Feedback | STMS{% endblock %}
 
 {% block sidebar %}
@@ -230,7 +231,7 @@
         </div>
         <div class="stat-card gold">
           <div class="stat-label">Average Rating</div>
-          <div class="stat-value">{{ "%.1f"|format(stats.avg_rating) }}⭐</div>
+          <div class="stat-value">{{ "%.1f"|format(stats.avg_rating) }} <span style="color:#f59e0b">★</span></div>
           <div class="stat-subtitle">{{ stats.most_common_category }}</div>
         </div>
       </div>
@@ -284,7 +285,7 @@
         <div class="section__header">
           <h3>My Feedback</h3>
           <button class="btn btn--secondary" onclick="printAllFeedback()" style="font-size: 0.875rem;">
-            🖨️ Print All
+            {{ icons.icon('printer', size=13) }} Print All
           </button>
         </div>
 
@@ -343,8 +344,8 @@
                   <div>
                     <div class="feedback-category">{{ feedback.category|replace('_', ' ')|title }}</div>
                     {% if feedback.rating %}
-                      <div class="feedback-stars">
-                        {% for i in range(feedback.rating) %}⭐{% endfor %}
+                      <div class="feedback-stars" style="color:#f59e0b">
+                        {% for i in range(feedback.rating) %}★{% endfor %}
                       </div>
                     {% endif %}
                   </div>
@@ -357,10 +358,10 @@
                 <div class="feedback-actions">
                   {% if feedback.status.value == 'submitted' %}
                     <button class="btn-icon btn-edit" data-feedback-id="{{ feedback.id }}" data-feedback-category="{{ feedback.category }}" data-feedback-rating="{{ feedback.rating or 0 }}" data-feedback-comments="{{ feedback.comments|replace('`', '\\`')|replace('\n', ' ') }}" onclick="openEditModal(this.dataset.feedbackId, this.dataset.feedbackCategory, this.dataset.feedbackRating, this.dataset.feedbackComments)">
-                      ✏️ Edit
+                      {{ icons.icon('edit', size=13) }} Edit
                     </button>
                     <form method="post" action="{{ url_for('tenant.delete_feedback', feedback_id=feedback.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this feedback?');">
-                      <button class="btn-icon btn-delete" type="submit">🗑️ Delete</button>
+                      <button class="btn-icon btn-delete" type="submit">{{ icons.icon('trash', size=13) }} Delete</button>
                     </form>
                   {% endif %}
                 </div>
@@ -369,7 +370,7 @@
           </div>
         {% else %}
           <div class="empty-state mt-16">
-            <div class="empty-state__icon">☺</div>
+            <div class="empty-state__icon">{{ icons.icon('message-circle', size=40) }}</div>
             <div class="empty-state__title">No Feedback</div>
             <div class="empty-state__text">
               {% if request.args.get('search') or request.args.get('category') or request.args.get('status') or request.args.get('rating') %}
@@ -439,11 +440,11 @@
     const ratingLabel = document.getElementById('ratingLabel');
     
     const ratingLabels = {
-      1: '⭐ Poor',
-      2: '⭐⭐ Fair',
-      3: '⭐⭐⭐ Average',
-      4: '⭐⭐⭐⭐ Good',
-      5: '⭐⭐⭐⭐⭐ Excellent'
+      1: 'Poor',
+      2: 'Fair',
+      3: 'Average',
+      4: 'Good',
+      5: 'Excellent'
     };
 
     stars.forEach(star => {
@@ -557,7 +558,7 @@
       
       let feedbackHTML = '';
       feedbacks.forEach((feedback) => {
-        const stars = feedback.rating > 0 ? '⭐'.repeat(feedback.rating) : 'No rating';
+        const stars = feedback.rating > 0 ? '★'.repeat(feedback.rating) : 'No rating';
         const statusBg = feedback.status.value === 'submitted' ? '#fef3c7' : '#d1fae5';
         const statusColor = feedback.status.value === 'submitted' ? '#92400e' : '#065f46';
         const comments = feedback.comments ? feedback.comments.replace(/\n/g, '<br>') : '';
@@ -662,7 +663,7 @@
               <div class="stat-label">Reviewed</div>
             </div>
             <div class="stat-box">
-              <div class="stat-value">${stats.avg_rating.toFixed(1)}⭐</div>
+              <div class="stat-value">${stats.avg_rating.toFixed(1)} ★</div>
               <div class="stat-label">Avg Rating</div>
             </div>
           </div>

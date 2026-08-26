@@ -1,7 +1,8 @@
+{% import "components/_icons.html" as icons %}
 <nav class="side-nav">
   {% if is_expired %}
   <div class="sidebar-expired-badge">
-    <span>⚠️</span> CONTRACT EXPIRED
+    <span>{{ icons.icon('alert-triangle', size=12) }}</span> CONTRACT EXPIRED
   </div>
   {% endif %}
   <a class="side-link side-link--dashboard {% if request.path.startswith('/tenant/dashboard') %}is-active{% endif %}" href="{{ url_for('tenant.dashboard') }}">
@@ -9,7 +10,7 @@
   </a>
   {% if is_expired %}
   <a class="side-link side-link--concerns side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired">
-    <span class="side-ico">🔒</span> Concerns
+    <span class="side-ico">{{ icons.icon('lock', size=15) }}</span> Concerns
   </a>
   {% else %}
   <a class="side-link side-link--concerns {% if request.path.startswith('/tenant/concerns') %}is-active{% endif %}" href="{{ url_for('tenant.concerns') }}">
@@ -39,7 +40,7 @@
   </a>
   {% if is_expired %}
   <a class="side-link side-link--feedback side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired">
-    <span class="side-ico">🔒</span> Feedback
+    <span class="side-ico">{{ icons.icon('lock', size=15) }}</span> Feedback
   </a>
   {% else %}
   <a href="{{ url_for('tenant.feedback') }}" class="side-link side-link--feedback {% if request.path.startswith('/tenant/feedback') %}is-active{% endif %}">
