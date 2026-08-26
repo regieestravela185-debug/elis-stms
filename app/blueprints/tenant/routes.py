@@ -228,8 +228,53 @@ def dashboard():
     if profile.contract_end:
         contract_end_date = profile.contract_end.strftime("%B %d, %Y")
 
+    # --- Smart Insights: rule-based highlights computed from this tenant's
+    # own real history (no external AI/LLM — same approach as the rest of
+    # the system's "smart" features). ---
+    rent_payments = [p for p in db.session.query(Payment).filter(
+        Payment.tenant_profile_id == profile.id, Payment.is_deposit == False
+    ).all()]
+    on_time_rate = None
+    if rent_payments:
+        on_time_rate = round(sum(1 for p in rent_payments if not p.is_late) / len(rent_payments) * 100)
+    total_rent_paid = sum(float(p.amount) for p in rent_payments)
+
+    tenure_months = None
+    if profile.contract_start:
+        today = date.today()
+        tenure_months = (today.year - profile.contract_start.year) * 12 + (today.month - profile.contract_start.month)
+        if today.day < profile.contract_start.day:
+            tenure_months -= 1
+        tenure_months = max(0, tenure_months)
+
+    # A single, priority-ordered recommendation — most actionable/urgent first.
+    if is_expired:
+        insight_message = "Your contract has expired. Submit a renewal request to continue your stay."
+        insight_tone = "urgent"
+    elif days_remaining is not None and days_remaining <= 30 and pending_renewals == 0:
+        insight_message = f"Your contract ends in {days_remaining} day{'s' if days_remaining != 1 else ''}. Consider submitting a renewal request now so there's no gap in your stay."
+        insight_tone = "warning"
+    elif days_until_payment is not None and days_until_payment <= 3:
+        insight_message = f"Rent is due in {days_until_payment} day{'s' if days_until_payment != 1 else ''}. Pay early to keep your on-time streak going."
+        insight_tone = "warning"
+    elif on_time_rate is not None and on_time_rate < 70:
+        insight_message = f"Your on-time payment rate is {on_time_rate}%. Paying by the due date helps keep your account in good standing."
+        insight_tone = "warning"
+    elif on_time_rate == 100 and len(rent_payments) >= 2:
+        insight_message = "You've paid on time every time so far — thank you for being a reliable tenant."
+        insight_tone = "good"
+    else:
+        insight_message = "Everything looks good right now — no urgent action needed on your account."
+        insight_tone = "good"
+
     return render_template(
         "tenant/dashboard.html",
+        on_time_rate=on_time_rate,
+        total_rent_paid=total_rent_paid,
+        rent_payment_count=len(rent_payments),
+        tenure_months=tenure_months,
+        insight_message=insight_message,
+        insight_tone=insight_tone,
         profile=profile,
         unit=unit,
         contract_end_date=contract_end_date,

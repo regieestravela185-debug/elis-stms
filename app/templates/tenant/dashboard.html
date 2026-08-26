@@ -226,6 +226,43 @@ a[href^="tel:"]:hover {
   margin-top: 32px;
 }
 
+/* Smart Insights panel */
+.card-icon{
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 9px;
+  background: rgba(20,20,23,0.05); color: var(--muted);
+  margin-right: 10px; flex-shrink: 0;
+}
+.card-icon svg{ width: 16px; height: 16px; }
+.card-title-row{ display: flex; align-items: center; }
+
+.insight-tiles{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.insight-tile{
+  padding: 18px; border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(20,20,23,0.015);
+  text-align: center;
+  transition: border-color .25s ease, background .25s ease;
+}
+.insight-tile:hover{ border-color: rgba(215,179,91,0.35); background: rgba(215,179,91,0.04); }
+.insight-tile__value{
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 26px; font-weight: 700; color: #B8922F; letter-spacing: -0.01em;
+}
+.insight-tile__label{
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin-top: 6px; font-weight: 600;
+}
+.insight-note{
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: 10px; margin-top: 16px;
+  font-size: 13.5px; line-height: 1.5;
+}
+.insight-note svg{ flex-shrink: 0; }
+.insight-note--good{ background: rgba(16,185,129,0.08); color: #065f46; border: 1px solid rgba(16,185,129,0.25); }
+.insight-note--warning{ background: rgba(245,158,11,0.08); color: #92400e; border: 1px solid rgba(245,158,11,0.25); }
+.insight-note--urgent{ background: rgba(239,68,68,0.08); color: #991b1b; border: 1px solid rgba(239,68,68,0.25); }
+
 /* Responsive Animations */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -501,30 +538,41 @@ a[href^="tel:"]:hover {
     </div>
   </div>
 
-  <!-- Quick Actions -->
+  <!-- Smart Insights -->
   <div style="margin-bottom: 32px;">
-    <div class="card">
-      <div class="section__header">
-        <h3>Quick Actions</h3>
-        <p class="muted">Common tasks</p>
+    <div class="card" style="padding: 24px;">
+      <div class="section__header" style="margin-bottom: 18px;">
+        <div class="card-title-row">
+          <span class="card-icon" style="background: linear-gradient(135deg, rgba(215,179,91,0.16), rgba(184,146,47,0.10)); border: 1px solid rgba(215,179,91,0.35); color: #b8922f;">
+            {{ icons.icon('sparkle', size=16) }}
+          </span>
+          <h3>Smart Insights</h3>
+        </div>
+        <p class="muted">Rule-based highlights from your rental history</p>
       </div>
-      <div class="grid grid--4 mt-16" style="gap: 16px;">
-        <a href="{{ url_for('tenant.payments') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
-          <span style="font-size: 32px; color: #D7B35B;">₱</span>
-          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Pay Rent</div>
-        </a>
-        <a href="{{ url_for('tenant.concerns') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
-          <span style="color: #D7B35B;">{{ icons.icon('wrench', size=28) }}</span>
-          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Submit Concern</div>
-        </a>
-        <a href="{{ url_for('tenant.renewal') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
-          <span style="color: #D7B35B;">{{ icons.icon('refresh-cw', size=28) }}</span>
-          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Renew Contract</div>
-        </a>
-        <a href="{{ url_for('tenant.feedback') }}" class="card card--action" style="text-decoration: none; text-align: center; padding: 20px; border: 2px solid var(--border);">
-          <span style="color: #D7B35B;">{{ icons.icon('message-circle', size=28) }}</span>
-          <div style="margin-top: 8px; font-weight: 600; color: var(--text);">Send Feedback</div>
-        </a>
+
+      <div class="insight-tiles">
+        <div class="insight-tile">
+          <div class="insight-tile__value">{{ (on_time_rate ~ '%') if on_time_rate is not none else '—' }}</div>
+          <div class="insight-tile__label">On-Time Payments</div>
+        </div>
+        <div class="insight-tile">
+          <div class="insight-tile__value">{{ tenure_months if tenure_months is not none else '—' }}</div>
+          <div class="insight-tile__label">Months as Tenant</div>
+        </div>
+        <div class="insight-tile">
+          <div class="insight-tile__value">₱{{ "{:,.0f}".format(total_rent_paid) }}</div>
+          <div class="insight-tile__label">Total Rent Paid</div>
+        </div>
+        <div class="insight-tile">
+          <div class="insight-tile__value">{{ rent_payment_count }}</div>
+          <div class="insight-tile__label">Rent Payments Made</div>
+        </div>
+      </div>
+
+      <div class="insight-note insight-note--{{ insight_tone }}">
+        {% if insight_tone == 'good' %}{{ icons.icon('check-circle', size=18) }}{% else %}{{ icons.icon('alert-triangle', size=18) }}{% endif %}
+        <span>{{ insight_message }}</span>
       </div>
     </div>
   </div>

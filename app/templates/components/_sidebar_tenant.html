@@ -5,104 +5,77 @@
     <span>{{ icons.icon('alert-triangle', size=12) }}</span> CONTRACT EXPIRED
   </div>
   {% endif %}
-  <a class="side-link side-link--dashboard {% if request.path.startswith('/tenant/dashboard') %}is-active{% endif %}" href="{{ url_for('tenant.dashboard') }}">
-    <span class="side-ico">▦</span> Dashboard
-  </a>
+
+  <div class="side-group__label">Overview</div>
+  <a class="side-link side-link--dashboard {% if request.path.startswith('/tenant/dashboard') %}is-active{% endif %}" href="{{ url_for('tenant.dashboard') }}"><span>Dashboard</span></a>
+
+  <div class="side-group__label">Requests</div>
   {% if is_expired %}
-  <a class="side-link side-link--concerns side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired">
-    <span class="side-ico">{{ icons.icon('lock', size=15) }}</span> Concerns
-  </a>
+  <a class="side-link side-link--concerns side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired"><span>Concerns</span></a>
   {% else %}
-  <a class="side-link side-link--concerns {% if request.path.startswith('/tenant/concerns') %}is-active{% endif %}" href="{{ url_for('tenant.concerns') }}">
-    <span class="side-ico">⌁</span> Concerns
-  </a>
+  <a class="side-link side-link--concerns {% if request.path.startswith('/tenant/concerns') %}is-active{% endif %}" href="{{ url_for('tenant.concerns') }}"><span>Concerns</span></a>
   {% endif %}
-  <a class="side-link side-link--payments {% if request.path.startswith('/tenant/payments') %}is-active{% endif %}" href="{{ url_for('tenant.payments') }}">
-    <span class="side-ico">₱</span> Payment History
+  <a class="side-link side-link--renewal {% if request.path.startswith('/tenant/renewal') %}is-active{% endif %} {% if is_expired %}side-link--urgent{% endif %}" href="{{ url_for('tenant.renewal') }}" style="position: relative;">
+    <span>Renewal Request</span>
+    {% if is_expired %}
+      <span class="notification-badge">!</span>
+    {% endif %}
   </a>
+
+  <div class="side-group__label">Finance</div>
+  <a class="side-link side-link--payments {% if request.path.startswith('/tenant/payments') %}is-active{% endif %}" href="{{ url_for('tenant.payments') }}"><span>Payment History</span></a>
+
+  <div class="side-group__label">Communication</div>
   <a class="side-link side-link--announcements {% if request.path.startswith('/tenant/announcements') %}is-active{% endif %}" href="{{ url_for('tenant.announcements') }}" style="position: relative;">
-    <span class="side-ico">◎</span> Announcements
+    <span>Announcements</span>
     {% if unread_announcements_count and unread_announcements_count > 0 %}
       <span class="notification-badge">{{ unread_announcements_count }}</span>
     {% endif %}
   </a>
   <a class="side-link side-link--documents {% if request.path.startswith('/tenant/documents') %}is-active{% endif %}" href="{{ url_for('tenant.documents') }}" style="position: relative;">
-    <span class="side-ico">◉</span> Documents
+    <span>Documents</span>
     {% if unread_documents_count and unread_documents_count > 0 %}
       <span class="notification-badge">{{ unread_documents_count }}</span>
     {% endif %}
   </a>
-  <a class="side-link side-link--renewal {% if request.path.startswith('/tenant/renewal') %}is-active{% endif %} {% if is_expired %}side-link--urgent{% endif %}" href="{{ url_for('tenant.renewal') }}" style="position: relative;">
-    <span class="side-ico">↻</span> Renewal Request
-    {% if is_expired %}
-      <span class="notification-badge">!</span>
-    {% endif %}
-  </a>
   {% if is_expired %}
-  <a class="side-link side-link--feedback side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired">
-    <span class="side-ico">{{ icons.icon('lock', size=15) }}</span> Feedback
-  </a>
+  <a class="side-link side-link--feedback side-link--disabled" href="#" onclick="event.preventDefault(); alert('Your contract has expired. Please submit a renewal request first.');" title="Restricted — contract expired"><span>Feedback</span></a>
   {% else %}
-  <a href="{{ url_for('tenant.feedback') }}" class="side-link side-link--feedback {% if request.path.startswith('/tenant/feedback') %}is-active{% endif %}">
-    <span class="side-ico">✎</span> Feedback
-  </a>
+  <a href="{{ url_for('tenant.feedback') }}" class="side-link side-link--feedback {% if request.path.startswith('/tenant/feedback') %}is-active{% endif %}"><span>Feedback</span></a>
   {% endif %}
-  <a href="{{ url_for('tenant.settings') }}" class="side-link side-link--settings {% if request.path.startswith('/tenant/settings') %}is-active{% endif %}">
-    <span class="side-ico">⚙</span> Settings
-  </a>
+
+  <div class="side-group__label">Account</div>
+  <a href="{{ url_for('tenant.settings') }}" class="side-link side-link--settings {% if request.path.startswith('/tenant/settings') %}is-active{% endif %}"><span>Settings</span></a>
+
   <form method="post" action="{{ url_for('auth.logout') }}" style="display:contents">
-    <button class="side-link side-link--logout" type="submit">
-      <span class="side-ico">→</span> Logout
-    </button>
+    <button class="side-link side-link--logout" type="submit"><span>Logout</span></button>
   </form>
 </nav>
 
 <style>
 /* Keep sidebar white background, only active items get colorful gradients */
 
+.side-group__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(20, 20, 23, 0.38);
+  padding: 14px 14px 6px;
+}
+.side-group__label:first-child { padding-top: 4px; }
+
+.side-link { justify-content: space-between; }
+.side-link > span:first-child { flex: 1; }
+
 /* Colorful gradient backgrounds for ACTIVE menu items only */
-.side-link--dashboard.is-active {
-  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
-}
-
-.side-link--concerns.is-active {
-  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
-}
-
-.side-link--payments.is-active {
-  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
-}
-
-.side-link--announcements.is-active {
-  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
-}
-
-.side-link--documents.is-active {
-  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
-}
-
-.side-link--renewal.is-active {
-  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
-}
-
-.side-link--feedback.is-active {
-  background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
-}
-
+.side-link--dashboard.is-active,
+.side-link--concerns.is-active,
+.side-link--payments.is-active,
+.side-link--announcements.is-active,
+.side-link--documents.is-active,
+.side-link--renewal.is-active,
+.side-link--feedback.is-active,
 .side-link--settings.is-active {
   background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;
   color: white !important;
@@ -157,9 +130,6 @@
 }
 
 .notification-badge {
-  position: absolute;
-  top: 8px;
-  right: 12px;
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
   font-size: 11px;
@@ -183,5 +153,3 @@
   }
 }
 </style>
-
-
