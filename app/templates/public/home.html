@@ -3152,7 +3152,7 @@
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </span>
-            <input class="input input-with-icon-modal" type="password" name="password" id="login_password" placeholder="Enter your password" data-password-input required style="padding-right: 40px;" oninput="validateHomePassword(this)" />
+            <input class="input input-with-icon-modal" type="password" name="password" id="login_password" placeholder="Enter your password" data-password-input required style="padding-right: 40px;" />
             <button type="button" onclick="document.getElementById('login_password').type = document.getElementById('login_password').type === 'password' ? 'text' : 'password'" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; background: none; border: none; padding: 6px; color: #D7B35B; line-height: 1; z-index: 10;">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -3164,7 +3164,6 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             Caps Lock is on
           </div>
-          <div id="home_login_password_error" class="error-message" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Password must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char</div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -4296,27 +4295,6 @@ function validateHomeEmail(input) {
   }
 }
 
-function validateHomePassword(input) {
-  const value = input.value;
-  const errorDiv = document.getElementById('home_login_password_error');
-  const hasUpper = /[A-Z]/.test(value);
-  const hasLower = /[a-z]/.test(value);
-  const hasNumber = /[0-9]/.test(value);
-  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(value);
-  const hasMinLength = value.length >= 8;
-
-  if (value && (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength)) {
-    input.style.borderColor = 'red';
-    errorDiv.style.display = 'block';
-  } else if (value) {
-    input.style.borderColor = '#D7B35B';
-    errorDiv.style.display = 'none';
-  } else {
-    input.style.borderColor = '';
-    errorDiv.style.display = 'none';
-  }
-}
-
 function validateHomeRegisterEmail(input) {
   const value = input.value;
   const errorDiv = document.getElementById('home_register_email_error');
@@ -4356,79 +4334,14 @@ function validateHomeRegisterPassword(input) {
 const homeLoginForm = document.getElementById('homeLoginForm');
 if (homeLoginForm) {
   homeLoginForm.addEventListener('submit', function(e) {
+    // Only the email domain is checked client-side — the password itself
+    // must always be sent to the server so a wrong (or Caps-Locked) guess
+    // gets a real "Invalid email or password" response instead of being
+    // silently blocked here for not looking "strong enough".
     const email = document.getElementById('home_login_email');
-    const password = document.getElementById('login_password');
-    let valid = true;
-
     if (!email.value.endsWith('@gmail.com')) {
       email.style.borderColor = 'red';
       document.getElementById('home_login_email_error').style.display = 'block';
-      valid = false;
-    }
-
-    const hasUpper = /[A-Z]/.test(password.value);
-    const hasLower = /[a-z]/.test(password.value);
-    const hasNumber = /[0-9]/.test(password.value);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password.value);
-    const hasMinLength = password.value.length >= 8;
-
-    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength) {
-      password.style.borderColor = 'red';
-      document.getElementById('home_login_password_error').style.display = 'block';
-      valid = false;
-    }
-
-    if (!valid) {
-      e.preventDefault();
-    }
-  });
-}
-
-const homeRegisterForm = document.getElementById('homeRegisterForm');
-if (homeRegisterForm) {
-  homeRegisterForm.addEventListener('submit', function(e) {
-    const email = document.getElementById('home_register_email');
-    const password = document.getElementById('register_password');
-    let valid = true;
-
-    if (!email.value.endsWith('@gmail.com')) {
-      email.style.borderColor = 'red';
-      document.getElementById('home_register_email_error').style.display = 'block';
-      valid = false;
-    }
-
-    const hasUpper = /[A-Z]/.test(password.value);
-    const hasLower = /[a-z]/.test(password.value);
-    const hasNumber = /[0-9]/.test(password.value);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password.value);
-    const hasMinLength = password.value.length >= 8;
-
-    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength) {
-      password.style.borderColor = 'red';
-      document.getElementById('home_register_password_error').style.display = 'block';
-      valid = false;
-    }
-
-    if (!valid) {
-      e.preventDefault();
-    }
-  });
-}
-</script>
-
-    const hasUpper = /[A-Z]/.test(password.value);
-    const hasLower = /[a-z]/.test(password.value);
-    const hasNumber = /[0-9]/.test(password.value);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password.value);
-    const hasMinLength = password.value.length >= 8;
-
-    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength) {
-      password.style.borderColor = 'red';
-      document.getElementById('home_login_password_error').style.display = 'block';
-      valid = false;
-    }
-
-    if (!valid) {
       e.preventDefault();
     }
   });
