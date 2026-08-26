@@ -432,9 +432,14 @@
     closeBtn && closeBtn.addEventListener("click", closeChat);
   }
 
-  // Homepage units realtime status (database-connected polling)
+  // Homepage units realtime status (database-connected polling) — so a unit
+  // flips from "Available" to "Reserved" for anyone already browsing the
+  // page the moment someone else submits a reservation for it, not just on
+  // their next page load.
   const unitCards = Array.from(document.querySelectorAll(".unit-card[data-unit-id]"));
   const canReserve = !!document.getElementById("reserveForm");
+  const STATUS_LABEL = { available: "Available", reserved: "Reserved — Pending Approval", occupied: "Currently Occupied", unpaid: "Currently Occupied" };
+  const STATUS_TEXT_CLASS = { available: "status-text--available", reserved: "status-text--reserved" };
   let pollDelay = 30000; // start at 30s; backs off on errors/429
   async function pollHomeUnits() {
     if (!unitCards.length) return;
@@ -447,37 +452,45 @@
       unitCards.forEach((card) => {
         const id = card.getAttribute("data-unit-id");
         const unit = id ? map.get(id) : null;
-        if (!unit) return;
-        const badge = card.querySelector(".badge");
+        if (!unit || card.getAttribute("data-unit-status") === unit.status) return;
+        card.setAttribute("data-unit-status", unit.status);
+
+        const badge = card.querySelector(".unit-card__status-badge");
         if (badge) {
-          badge.className = `badge badge--${unit.status}`;
+          badge.className = `unit-card__status-badge badge badge--${unit.status}`;
           badge.textContent = unit.status;
         }
-        const body = card.querySelector(".card__body");
-        if (!body) return;
-        const existingButton = body.querySelector(".js-open-reserve");
-        const existingHint = body.querySelector(".unit-card__hint");
-        if (canReserve && unit.status === "available") {
-          if (!existingButton) {
+
+        const statusTextWrap = card.querySelector(".unit-card__status-text");
+        if (statusTextWrap) {
+          statusTextWrap.setAttribute("data-status", unit.status);
+          const cls = STATUS_TEXT_CLASS[unit.status] || "status-text--occupied";
+          const label = STATUS_LABEL[unit.status] || "Currently Occupied";
+          statusTextWrap.innerHTML = `<span class="status-text ${cls}">${label}</span>`;
+        }
+
+        if (!canReserve) return;
+        const actions = card.querySelector(".unit-card__actions");
+        if (!actions) return;
+        const existingButton = actions.querySelector(".js-open-reserve");
+        const existingHint = actions.querySelector(".unit-card__hint");
+        if (unit.status === "available") {
+          if (existingHint) {
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "btn btn--sm btn--primary js-open-reserve";
             btn.setAttribute("data-unit-id", String(unit.id));
             btn.setAttribute("data-unit-code", unit.unit_code || "");
             btn.textContent = "Reserve";
-            body.appendChild(btn);
+            existingHint.replaceWith(btn);
           }
-          if (existingHint) existingHint.remove();
-        } else if (canReserve && unit.status !== "available") {
-          if (existingButton) existingButton.remove();
-          if (!existingHint) {
-            const p = document.createElement("p");
-            p.className = "unit-card__hint muted";
-            p.textContent = `Currently ${unit.status}`;
-            body.appendChild(p);
-          } else {
-            existingHint.textContent = `Currently ${unit.status}`;
-          }
+        } else if (existingButton) {
+          const span = document.createElement("span");
+          span.className = "unit-card__hint";
+          span.textContent = unit.status;
+          existingButton.replaceWith(span);
+        } else if (existingHint) {
+          existingHint.textContent = unit.status;
         }
       });
     } catch (_) { pollDelay = Math.min(pollDelay * 2, 300000); }
@@ -602,6 +615,7 @@
       }
     });
   }
+
   if (reserveUpload && reserveIdType && reserveIdNumber) {
     reserveUpload.addEventListener("change", async () => {
       const file = reserveUpload.files && reserveUpload.files[0];

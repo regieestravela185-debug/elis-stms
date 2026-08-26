@@ -1532,6 +1532,12 @@
       box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
     }
 
+    .status-text--reserved {
+      background: linear-gradient(135deg, #F59E0B, #FBBF24);
+      color: white;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+    }
+
     @keyframes status-pulse {
       0%, 100% {
         transform: scale(1);
@@ -2140,6 +2146,8 @@
                             <div class="unit-card__status-text" data-status="{{ u.status }}">
                               {% if u.status == 'available' %}
                                 <span class="status-text status-text--available">Available</span>
+                              {% elif u.status == 'reserved' %}
+                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
                               {% else %}
                                 <span class="status-text status-text--occupied">Currently Occupied</span>
                               {% endif %}
@@ -2216,6 +2224,8 @@
                             <div class="unit-card__status-text" data-status="{{ u.status }}">
                               {% if u.status == 'available' %}
                                 <span class="status-text status-text--available">Available</span>
+                              {% elif u.status == 'reserved' %}
+                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
                               {% else %}
                                 <span class="status-text status-text--occupied">Currently Occupied</span>
                               {% endif %}
@@ -2293,6 +2303,8 @@
                             <div class="unit-card__status-text" data-status="{{ u.status }}">
                               {% if u.status == 'available' %}
                                 <span class="status-text status-text--available">Available</span>
+                              {% elif u.status == 'reserved' %}
+                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
                               {% else %}
                                 <span class="status-text status-text--occupied">Currently Occupied</span>
                               {% endif %}
@@ -2371,6 +2383,8 @@
                             <div class="unit-card__status-text" data-status="{{ u.status }}">
                               {% if u.status == 'available' %}
                                 <span class="status-text status-text--available">Available</span>
+                              {% elif u.status == 'reserved' %}
+                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
                               {% else %}
                                 <span class="status-text status-text--occupied">Currently Occupied</span>
                               {% endif %}

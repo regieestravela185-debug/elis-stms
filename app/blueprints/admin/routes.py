@@ -1593,12 +1593,13 @@ def approve_reservation(reservation_id: int):
     db.session.add(ActivityLog(actor_user_id=current_user.id, action="reservation_approved"))  # type: ignore[attr-defined]
     db.session.commit()
 
-    from ...socket_events import emit_payment_notification
+    from ...socket_events import emit_payment_notification, emit_unit_status_update
     emit_payment_notification(profile.id, {
         "amount": float(monthly_payment.amount),
         "tenant_name": user.full_name,
         "unit_code": unit.unit_code,
     })
+    emit_unit_status_update()
 
     _send_reservation_result_email(r.email, status=ReservationStatus.APPROVED, unit_code=unit.unit_code)
     flash("Reservation approved. User is now a Tenant. Deposit and monthly payment recorded.", "success")

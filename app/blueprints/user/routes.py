@@ -34,7 +34,8 @@ try:
         FACE_VERIFICATION_AVAILABLE,
         LIVENESS_DETECTION_AVAILABLE,
     )
-except ImportError:
+except Exception as _face_verification_import_error:  # broader than ImportError: a missing system lib (e.g. opencv) can raise other errors too
+    print(f"WARNING: face_verification unavailable, fake-ID/ID-authenticity checks disabled: {_face_verification_import_error!r}")
     FACE_VERIFICATION_AVAILABLE = False
     LIVENESS_DETECTION_AVAILABLE = False
     verify_identity = None
@@ -195,8 +196,10 @@ def reserve_post(unit_id: int):
         deposit_status=DepositStatus.HELD,
         status=ReservationStatus.PENDING,
     )
-    if verification_status == VerificationStatus.VERIFIED:
-        unit.status = UnitStatus.RESERVED
+    # Reserve the unit immediately so it stops showing as "Available" to other
+    # visitors while this reservation is pending admin review — otherwise two
+    # people could both submit a reservation for the same unit.
+    unit.status = UnitStatus.RESERVED
 
     db.session.add(reservation)
     db.session.flush()  # Get reservation.id for verification log
@@ -233,6 +236,9 @@ def reserve_post(unit_id: int):
     )
     db.session.add(verification_log)
     db.session.commit()
+
+    from ...socket_events import emit_unit_status_update
+    emit_unit_status_update()
 
     from ...email_helper import send_reservation_submitted_email
     try:
