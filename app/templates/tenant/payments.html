@@ -14,36 +14,36 @@
   <div id="paymentsBaseUrl" data-base-url="{{ url_for('tenant.payments') }}" style="display: none;"></div>
   <!-- Payment Statistics -->
   <div class="grid grid--4" style="gap: 16px; margin-bottom: 24px;">
-    <div class="card card--lift" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white;">
-      <div style="font-size: 28px; font-weight: 900; margin-bottom: 4px;">₱{{ "{:,.2f}".format(stats.total_amount) }}</div>
-      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Total Paid</div>
+    <div class="card card--lift">
+      <div style="font-size: 26px; font-weight: 700; margin-bottom: 8px; color: #D7B35B;">₱{{ "{:,.2f}".format(stats.total_amount) }}</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Total Paid</div>
     </div>
-    
-    <div class="card card--lift" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
-      <div style="font-size: 28px; font-weight: 900; margin-bottom: 4px;">{{ stats.total_count }}</div>
-      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Total Payments</div>
+
+    <div class="card card--lift">
+      <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #3b82f6;">{{ stats.total_count }}</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Total Payments</div>
     </div>
-    
-    <div class="card card--lift" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-      <div style="font-size: 14px; font-weight: 900; margin-bottom: 4px;">
+
+    <div class="card card--lift">
+      <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #10b981;">
         {% if stats.last_payment %}
           {{ (stats.last_payment.paid_at|to_ph).strftime('%b %d, %Y') }}
         {% else %}
           No payments yet
         {% endif %}
       </div>
-      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Last Payment</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Last Payment</div>
     </div>
-    
-    <div class="card card--lift" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
-      <div style="font-size: 14px; font-weight: 900; margin-bottom: 4px;">
+
+    <div class="card card--lift">
+      <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #f59e0b;">
         {% if stats.next_payment_due %}
           {{ stats.next_payment_due.strftime('%b %d, %Y') }}
         {% else %}
           N/A
         {% endif %}
       </div>
-      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Next Payment Due</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Next Payment Due</div>
     </div>
   </div>
 
@@ -218,7 +218,7 @@
       {% endfor %}
     {% else %}
       <div class="empty-state mt-16">
-        <div class="empty-state__icon">₱</div>
+        <div class="empty-state__icon">{{ icons.icon('banknote', size=40) }}</div>
         <div class="empty-state__title">No Payments Found</div>
         <div class="empty-state__text">
           {% if request.args %}

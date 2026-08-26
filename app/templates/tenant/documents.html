@@ -7,21 +7,21 @@
 {% endblock %}
 
 {% block topbar_left %}
-  <div class="topbar__title">{{ icons.icon('document') }} My Documents</div>
+  <div class="topbar__title">My Documents</div>
 {% endblock %}
 
 {% block content %}
   <div id="documentsBaseUrl" data-base-url="{{ url_for('tenant.documents') }}" style="display: none;"></div>
   <section class="dash-panel">
     <!-- Info Banner -->
-    <div style="background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border: 2px solid rgba(215, 179, 91, 0.3); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.1);">
-      <div style="display: flex; align-items: center; gap: 20px;">
-        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.3);">
-          {{ icons.icon('document', size=30) }}
-        </div>
+    <div class="card" style="padding: 20px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span class="card-icon" style="background: rgba(215,179,91,0.16); border: 1px solid rgba(215,179,91,0.35); color: #b8922f; width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          {{ icons.icon('document', size=20) }}
+        </span>
         <div style="flex: 1;">
-          <h3 style="margin: 0 0 8px 0; color: #92400e; font-size: 20px; font-weight: 700;">Your Document Center</h3>
-          <p style="margin: 0; color: #78350f; font-size: 15px; line-height: 1.6;">
+          <h3 style="margin: 0 0 4px 0; font-size: 16px;">Your Document Center</h3>
+          <p class="muted" style="margin: 0; font-size: 14px; line-height: 1.6;">
             Access your lease agreements, receipts, certificates, and utility bills. All documents uploaded by admin will appear here and you'll receive email notifications.
           </p>
         </div>
@@ -30,32 +30,32 @@
 
     {% if documents %}
       <!-- Statistics Summary -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
-          <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px;">{{ documents|length }}</div>
-          <div style="font-size: 14px; opacity: 0.95;">Total Documents</div>
+      <div class="grid grid--4" style="gap: 16px; margin-bottom: 24px;">
+        <div class="card card--lift">
+          <div style="font-size: 32px; font-weight: 700; margin-bottom: 8px; color: #3b82f6;">{{ documents|length }}</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Total Documents</div>
         </div>
-        
-        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
-          <div style="font-size: 24px; font-weight: 900; margin-bottom: 8px;">{{ "%.1f"|format(stats.total_size_mb) }} MB</div>
-          <div style="font-size: 14px; opacity: 0.95;">Total Size</div>
+
+        <div class="card card--lift">
+          <div style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #10b981;">{{ "%.1f"|format(stats.total_size_mb) }} MB</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Total Size</div>
         </div>
-        
-        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
-          <div style="font-size: 14px; font-weight: 900; margin-bottom: 8px;">
+
+        <div class="card card--lift">
+          <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #f59e0b;">
             {% if stats.latest_upload %}
               {{ stats.latest_upload.strftime('%b %d, %Y') }}
             {% else %}
               N/A
             {% endif %}
           </div>
-          <div style="font-size: 14px; opacity: 0.95;">Latest Upload</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Latest Upload</div>
         </div>
-        
+
         {% for doc_type, docs in docs_by_type.items() %}
-          <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 12px rgba(215, 179, 91, 0.3);">
-            <div style="font-size: 36px; font-weight: 900; margin-bottom: 8px;">{{ docs|length }}</div>
-            <div style="font-size: 13px; opacity: 0.95;">{{ doc_type|replace('_', ' ')|title }}</div>
+          <div class="card card--lift">
+            <div style="font-size: 32px; font-weight: 700; margin-bottom: 8px; color: #D7B35B;">{{ docs|length }}</div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--muted);">{{ doc_type|replace('_', ' ')|title }}</div>
           </div>
         {% endfor %}
       </div>
@@ -101,7 +101,7 @@
       <!-- Documents Grid -->
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
         {% for doc in documents %}
-          <div class="document-card" data-type="{{ doc.document_type }}" style="position: relative; padding: 24px; border-radius: 16px; border: 2px solid #e5e7eb; transition: all 0.3s; background: white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+          <div class="card document-card" data-type="{{ doc.document_type }}" style="position: relative; padding: 24px;">
             <!-- Document Icon -->
             {% set doc_icon_bg_class = 'doc-icon-bg-default' %}
             {% if doc.document_type == 'lease_agreement' %}
@@ -119,17 +119,15 @@
             {% elif doc.document_type == 'internet_bill' %}
               {% set doc_icon_bg_class = 'doc-icon-bg-internet' %}
             {% endif %}
-            <div style="width: 72px; height: 72px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);" class="{{ doc_icon_bg_class }}">
-              <span style="color: #fff;">
-                {% if doc.document_type == 'lease_agreement' %}{{ icons.icon('document', size=32) }}
-                {% elif doc.document_type == 'receipt' %}{{ icons.icon('document', size=32) }}
-                {% elif doc.document_type == 'certificate' %}{{ icons.icon('award', size=32) }}
-                {% elif doc.document_type == 'rules' %}{{ icons.icon('document', size=32) }}
-                {% elif doc.document_type == 'electricity_bill' %}{{ icons.icon('zap', size=32) }}
-                {% elif doc.document_type == 'water_bill' %}{{ icons.icon('droplet', size=32) }}
-                {% elif doc.document_type == 'internet_bill' %}{{ icons.icon('wifi', size=32) }}
-                {% else %}{{ icons.icon('clipboard', size=32) }}{% endif %}
-              </span>
+            <div style="width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;" class="{{ doc_icon_bg_class }}">
+              {% if doc.document_type == 'lease_agreement' %}{{ icons.icon('document', size=26) }}
+              {% elif doc.document_type == 'receipt' %}{{ icons.icon('document', size=26) }}
+              {% elif doc.document_type == 'certificate' %}{{ icons.icon('award', size=26) }}
+              {% elif doc.document_type == 'rules' %}{{ icons.icon('document', size=26) }}
+              {% elif doc.document_type == 'electricity_bill' %}{{ icons.icon('zap', size=26) }}
+              {% elif doc.document_type == 'water_bill' %}{{ icons.icon('droplet', size=26) }}
+              {% elif doc.document_type == 'internet_bill' %}{{ icons.icon('wifi', size=26) }}
+              {% else %}{{ icons.icon('clipboard', size=26) }}{% endif %}
             </div>
 
             <!-- Document Info -->
@@ -164,7 +162,7 @@
 
             <!-- Actions -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <button type="button" class="btn btn--sm" style="text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; font-weight: 600;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="previewDocument(this.dataset.docUrl, this.dataset.docTitle)">
+              <button type="button" class="btn btn--ghost btn--sm" style="text-align: center;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="previewDocument(this.dataset.docUrl, this.dataset.docTitle)">
                 {{ icons.icon('eye', size=14) }} Preview
               </button>
               <a href="{{ media_url(doc.file_path) }}" download class="btn btn--primary btn--sm" style="text-align: center; font-weight: 600;" data-doc-id="{{ doc.id }}" onclick="trackDownload(this.dataset.docId)">
@@ -180,8 +178,8 @@
 
     {% else %}
       <div class="empty-state" style="text-align: center; padding: 80px 20px;">
-        <div style="width: 120px; height: 120px; margin: 0 auto 24px; background: linear-gradient(135deg, rgba(215, 179, 91, 0.15) 0%, rgba(201, 168, 74, 0.08) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(215, 179, 91, 0.3);">
-          <span style="color: #D7B35B;">{{ icons.icon('document', size=56) }}</span>
+        <div style="width: 96px; height: 96px; margin: 0 auto 24px; background: rgba(215, 179, 91, 0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(215, 179, 91, 0.3);">
+          <span style="color: #b8922f;">{{ icons.icon('document', size=44) }}</span>
         </div>
         <div class="empty-state__title" style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">No Documents Yet</div>
         <div class="empty-state__text" style="font-size: 16px; color: #666; max-width: 500px; margin: 0 auto; line-height: 1.6;">
@@ -241,14 +239,14 @@
       color: #666;
       max-width: 400px;
     }
-    .doc-icon-bg-lease { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
-    .doc-icon-bg-receipt { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-    .doc-icon-bg-certificate { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-    .doc-icon-bg-rules { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
-    .doc-icon-bg-electricity { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
-    .doc-icon-bg-water { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
-    .doc-icon-bg-internet { background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); }
-    .doc-icon-bg-default { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+    .doc-icon-bg-lease { background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.28); color: #2563eb; }
+    .doc-icon-bg-receipt { background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.28); color: #059669; }
+    .doc-icon-bg-certificate { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.28); color: #b45309; }
+    .doc-icon-bg-rules { background: rgba(139, 92, 246, 0.12); border: 1px solid rgba(139, 92, 246, 0.28); color: #6d28d9; }
+    .doc-icon-bg-electricity { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.28); color: #b45309; }
+    .doc-icon-bg-water { background: rgba(14, 165, 233, 0.12); border: 1px solid rgba(14, 165, 233, 0.28); color: #0369a1; }
+    .doc-icon-bg-internet { background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.28); color: #7e22ce; }
+    .doc-icon-bg-default { background: rgba(107, 114, 128, 0.12); border: 1px solid rgba(107, 114, 128, 0.28); color: #4b5563; }
     .doc-chip-lease { background: rgba(59, 130, 246, 0.15); color: #1e40af; }
     .doc-chip-receipt { background: rgba(16, 185, 129, 0.15); color: #065f46; }
     .doc-chip-certificate { background: rgba(245, 158, 11, 0.15); color: #92400e; }

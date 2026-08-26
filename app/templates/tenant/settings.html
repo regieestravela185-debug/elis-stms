@@ -19,47 +19,43 @@
       margin-bottom: 24px;
     }
     .profile-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
       padding: 24px;
-      border-radius: 12px;
       text-align: center;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .avatar {
-      width: 100px;
-      height: 100px;
+      width: 88px;
+      height: 88px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.3);
+      background: rgba(215,179,91,0.14);
+      border: 1px solid rgba(215,179,91,0.35);
+      color: #8a6d1e;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2.5rem;
-      font-weight: bold;
+      font-size: 2rem;
+      font-weight: 700;
       margin: 0 auto 16px;
-      border: 4px solid rgba(255,255,255,0.5);
+      font-family: 'Playfair Display', Georgia, serif;
     }
-    .avatar-color-0 { background: #667eea; }
-    .avatar-color-1 { background: #f093fb; }
-    .avatar-color-2 { background: #4facfe; }
-    .avatar-color-3 { background: #43e97b; }
-    .avatar-color-4 { background: #fa709a; }
     .profile-name {
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 600;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
     .profile-email {
       font-size: 0.875rem;
-      opacity: 0.9;
+      color: var(--muted);
       margin-bottom: 4px;
     }
     .profile-role {
       display: inline-block;
       padding: 4px 12px;
-      background: rgba(255,255,255,0.2);
+      background: rgba(215,179,91,0.14);
+      color: #8a6d1e;
+      border: 1px solid rgba(215,179,91,0.35);
       border-radius: 12px;
       font-size: 0.75rem;
+      font-weight: 600;
       margin-top: 8px;
     }
     .info-grid {
@@ -69,18 +65,18 @@
       margin-top: 16px;
     }
     .info-item {
-      background: rgba(255,255,255,0.1);
+      background: rgba(20,20,23,0.03);
       padding: 12px;
       border-radius: 8px;
     }
     .info-label {
       font-size: 0.75rem;
-      opacity: 0.8;
+      color: var(--muted);
       margin-bottom: 4px;
     }
     .info-value {
       font-size: 0.875rem;
-      font-weight: 500;
+      font-weight: 600;
     }
     .activity-grid {
       display: grid;
@@ -151,10 +147,7 @@
       font-size: 1rem;
     }
     .security-card {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      color: white;
       padding: 20px;
-      border-radius: 12px;
       margin-bottom: 24px;
     }
     .security-score {
@@ -164,22 +157,25 @@
       margin-top: 12px;
     }
     .score-circle {
-      width: 60px;
-      height: 60px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
-      font-weight: bold;
+      flex-shrink: 0;
     }
+    .score-circle--good { background: rgba(16,185,129,0.14); border: 1px solid rgba(16,185,129,0.35); color: #059669; }
+    .score-circle--warn { background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.35); color: #b45309; }
+    .score-circle--bad { background: rgba(239,68,68,0.14); border: 1px solid rgba(239,68,68,0.35); color: #dc2626; }
+    .score-circle--unknown { background: rgba(20,20,23,0.06); border: 1px solid rgba(20,20,23,0.12); color: var(--muted); }
     .security-tips {
-      background: rgba(255,255,255,0.1);
+      background: rgba(20,20,23,0.03);
       padding: 12px;
       border-radius: 8px;
       margin-top: 12px;
       font-size: 0.875rem;
+      color: var(--muted);
     }
     .security-tips ul {
       margin: 8px 0 0 20px;
@@ -278,9 +274,8 @@
   <div class="settings-grid">
     <!-- Profile Sidebar -->
     <div>
-      <div class="profile-card">
-        {% set avatar_color_index = current_user.id % 5 %}
-        <div class="avatar avatar-color-{{ avatar_color_index }}">
+      <div class="card profile-card">
+        <div class="avatar">
           {{ current_user.full_name.split()[0][0] }}{{ current_user.full_name.split()[-1][0] if current_user.full_name.split()|length > 1 else '' }}
         </div>
         <div class="profile-name">{{ current_user.full_name }}</div>
@@ -327,22 +322,20 @@
       </div>
 
       <!-- Security Information -->
-      <div class="security-card">
-        <h3 style="margin: 0 0 8px 0;">{{ icons.icon('lock') }} Account Security</h3>
-        <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Your account security status and recommendations</p>
-        
+      <div class="card security-card">
+        <h3 style="margin: 0 0 8px 0; font-size: 16px;">{{ icons.icon('lock', size=16) }} Account Security</h3>
+        <p class="muted" style="margin: 0; font-size: 0.875rem;">Your account security status and recommendations</p>
+
         <div class="security-score">
-          <div class="score-circle">
-            {% if days_since_password_change is none %}
-              ?
-            {% elif days_since_password_change < 90 %}
-              ✓
-            {% elif days_since_password_change < 180 %}
-              {{ icons.icon('alert-triangle', size=20) }}
-            {% else %}
-              !
-            {% endif %}
-          </div>
+          {% if days_since_password_change is none %}
+            <div class="score-circle score-circle--unknown">{{ icons.icon('lock', size=22) }}</div>
+          {% elif days_since_password_change < 90 %}
+            <div class="score-circle score-circle--good">{{ icons.icon('check-circle', size=22) }}</div>
+          {% elif days_since_password_change < 180 %}
+            <div class="score-circle score-circle--warn">{{ icons.icon('alert-triangle', size=22) }}</div>
+          {% else %}
+            <div class="score-circle score-circle--bad">{{ icons.icon('alert-triangle', size=22) }}</div>
+          {% endif %}
           <div style="flex: 1;">
             <div style="font-weight: 600; margin-bottom: 4px;">
               {% if days_since_password_change is none %}
@@ -355,7 +348,7 @@
                 Update Recommended
               {% endif %}
             </div>
-            <div style="font-size: 0.875rem; opacity: 0.9;">
+            <div class="muted" style="font-size: 0.875rem;">
               {% if days_since_password_change is none %}
                 Set a new password to improve security
               {% else %}
@@ -510,14 +503,12 @@
             <div id="confirm_password_error" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Passwords do not match</div>
           </div>
 
-          <button class="btn btn--primary mt-24" type="submit" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); border-color: #D7B35B;">{{ icons.icon('save', size=14) }} Save Changes</button>
+          <button class="btn btn--primary mt-24" type="submit">{{ icons.icon('save', size=14) }} Save Changes</button>
         </form>
       </div>
     </div>
   </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
 function togglePassword(fieldId) {
   const field = document.getElementById(fieldId);

@@ -13,25 +13,25 @@
 {% block content %}
   <!-- Statistics -->
   <div class="grid grid--3" style="gap: 16px; margin-bottom: 24px;">
-    <div class="card card--lift" style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); color: white;">
-      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.total }}</div>
-      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Total Announcements</div>
+    <div class="card card--lift">
+      <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #D7B35B;">{{ stats.total }}</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Total Announcements</div>
     </div>
-    
-    <div class="card card--lift" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
-      <div style="font-size: 32px; font-weight: 900; margin-bottom: 4px;">{{ stats.unread }}</div>
-      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Unread</div>
+
+    <div class="card card--lift">
+      <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #ef4444;">{{ stats.unread }}</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Unread</div>
     </div>
-    
-    <div class="card card--lift" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
-      <div style="font-size: 14px; font-weight: 900; margin-bottom: 4px;">
+
+    <div class="card card--lift">
+      <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #3b82f6;">
         {% if stats.latest %}
           {{ stats.latest.created_at.strftime('%b %d, %Y') }}
         {% else %}
           No announcements
         {% endif %}
       </div>
-      <div style="font-size: 13px; opacity: 0.95; font-weight: 600;">Latest</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Latest</div>
     </div>
   </div>
 
@@ -105,6 +105,7 @@
                 <div style="position: absolute; top: 12px; left: 12px;">
                   <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
                     New
+                  </span>
                 </div>
               {% endif %}
 
@@ -157,8 +158,8 @@
                     </button>
                   </form>
                 {% else %}
-                  <span class="muted" style="font-size: 12px; display: flex; align-items: center;">
-                    ✓ Read
+                  <span class="muted" style="font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                    {{ icons.icon('check-circle', size=13) }} Read
                   </span>
                 {% endif %}
               </div>

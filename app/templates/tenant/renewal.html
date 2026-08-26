@@ -12,45 +12,6 @@
 
 {% block content %}
   <style>
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .stat-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .stat-card.green {
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    }
-    .stat-card.yellow {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-    .stat-card.red {
-      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    }
-    .stat-card.blue {
-      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    .stat-label {
-      font-size: 0.875rem;
-      opacity: 0.9;
-      margin-bottom: 8px;
-    }
-    .stat-value {
-      font-size: 2rem;
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-    .stat-subtitle {
-      font-size: 0.75rem;
-      opacity: 0.8;
-    }
     .expiry-alert {
       padding: 16px;
       border-radius: 8px;
@@ -180,35 +141,28 @@
       .filter-row {
         grid-template-columns: 1fr;
       }
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
     }
   </style>
 
   <div class="dash-grid">
     <section class="dash-panel">
       <!-- Statistics Dashboard -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Total Requests</div>
-          <div class="stat-value">{{ stats.total }}</div>
-          <div class="stat-subtitle">All time</div>
+      <div class="grid grid--4" style="gap: 16px; margin-bottom: 24px;">
+        <div class="card card--lift">
+          <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #D7B35B;">{{ stats.total }}</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Total Requests</div>
         </div>
-        <div class="stat-card yellow">
-          <div class="stat-label">Pending</div>
-          <div class="stat-value">{{ stats.pending }}</div>
-          <div class="stat-subtitle">Awaiting approval</div>
+        <div class="card card--lift">
+          <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #eab308;">{{ stats.pending }}</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Pending</div>
         </div>
-        <div class="stat-card green">
-          <div class="stat-label">Approved</div>
-          <div class="stat-value">{{ stats.approved }}</div>
-          <div class="stat-subtitle">Successfully approved</div>
+        <div class="card card--lift">
+          <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #10b981;">{{ stats.approved }}</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Approved</div>
         </div>
-        <div class="stat-card red">
-          <div class="stat-label">Rejected</div>
-          <div class="stat-value">{{ stats.rejected }}</div>
-          <div class="stat-subtitle">Not approved</div>
+        <div class="card card--lift">
+          <div style="font-size: 36px; font-weight: 700; margin-bottom: 8px; color: #ef4444;">{{ stats.rejected }}</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Rejected</div>
         </div>
       </div>
 
@@ -351,7 +305,7 @@
           </div>
         {% else %}
           <div class="empty-state mt-16">
-            <div class="empty-state__icon">↻</div>
+            <div class="empty-state__icon">{{ icons.icon('refresh-cw', size=40) }}</div>
             <div class="empty-state__title">No Renewal Requests</div>
             <div class="empty-state__text">
               {% if request.args.get('search') or request.args.get('status') %}
