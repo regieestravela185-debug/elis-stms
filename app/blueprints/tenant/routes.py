@@ -1312,7 +1312,18 @@ def feedback():
         'most_common_category': most_common_category.replace('_', ' ').title()
     }
 
-    return render_template("tenant/feedback.html", feedbacks=feedbacks, stats=stats, profile=profile)
+    feedbacks_json = [
+        {
+            "category": f.category,
+            "rating": f.rating,
+            "comments": f.comments,
+            "status": {"value": f.status.value},
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+        }
+        for f in feedbacks
+    ]
+
+    return render_template("tenant/feedback.html", feedbacks=feedbacks, feedbacks_json=feedbacks_json, stats=stats, profile=profile)
 
 
 @bp.post("/feedback")
