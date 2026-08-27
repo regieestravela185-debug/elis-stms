@@ -848,6 +848,7 @@ def submit_payment_proof():
         payment_month=payment_month or None,
         payment_status="pending",
         proof_file=proof_path,
+        payment_method="bank_transfer",
         is_deposit=False,
     )
     db.session.add(payment)

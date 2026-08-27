@@ -366,6 +366,11 @@ class Payment(db.Model):
     # payments admin enters directly.
     proof_file = db.Column(db.String(500), nullable=True)
 
+    # How the tenant paid: 'cash', 'bank_transfer', 'other'. Tenant-submitted
+    # proofs are always 'bank_transfer'; admin picks it when entering a
+    # payment manually.
+    payment_method = db.Column(db.String(20), nullable=True)
+
     tenant_profile = db.relationship("TenantProfile")
 
     @property

@@ -1038,5 +1038,137 @@ The Elis Center Management
 </body>
 </html>
 """
-    
+
     send_email_async(subject, inquirer_email, inquirer_name, html_content, text_content)
+
+
+def send_payment_verified_email(tenant_name, tenant_email, amount, unit_code, payment_method="cash", payment_month=None):
+    """Send confirmation email when a payment is verified/recorded — whether
+    admin entered it directly (cash/other) or approved a tenant-submitted
+    bank transfer proof."""
+    from datetime import date
+
+    method_label = {"cash": "Cash", "bank_transfer": "Bank Transfer", "other": "Other"}.get(payment_method, "Cash")
+    amount_text = f"₱{float(amount):,.2f}"
+    month_text = f" for {payment_month}" if payment_month else ""
+
+    subject = f"Payment Received - {amount_text} ({method_label})"
+
+    text_content = f"""
+Dear {tenant_name},
+
+We've received and confirmed your payment{month_text} for Unit {unit_code}.
+
+Amount: {amount_text}
+Method: {method_label}
+
+Thank you for your payment. You can view your full payment history and download
+your official receipt anytime from your tenant portal.
+
+Thank you,
+The Elis Center Management
+"""
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Received</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Payment Received</h2>
+            <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid #10b981; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <p style="margin: 0; color: #059669; font-size: 32px; font-weight: 700;">{amount_text}</p>
+                <p style="margin: 6px 0 0 0; color: #059669; font-size: 14px; font-weight: 600;">Confirmed{month_text}</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                We've received and confirmed your payment for <strong>Unit {unit_code}</strong>.
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
+                <p style="margin: 0 0 4px 0; color: #666666; font-size: 13px;"><strong>Payment Method:</strong> {method_label}</p>
+            </div>
+            <p style="margin: 0; color: #666666; line-height: 1.6;">
+                You can view your full payment history and download your official receipt anytime from your tenant portal.
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_payment_rejected_email(tenant_name, tenant_email, amount, unit_code, reason):
+    """Send email when admin rejects a tenant-submitted bank transfer proof."""
+    from datetime import date
+
+    amount_text = f"₱{float(amount):,.2f}"
+    subject = f"Payment Proof Needs Attention - {amount_text}"
+
+    text_content = f"""
+Dear {tenant_name},
+
+Your submitted payment proof of {amount_text} for Unit {unit_code} could not be verified.
+
+Reason: {reason}
+
+Please review the details and resubmit your payment proof through your tenant portal.
+
+Thank you,
+The Elis Center Management
+"""
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Proof Needs Attention</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Payment Proof Needs Attention</h2>
+            <div style="background: rgba(239, 68, 68, 0.08); border: 2px solid #ef4444; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <p style="margin: 0; color: #dc2626; font-size: 28px; font-weight: 700;">{amount_text}</p>
+                <p style="margin: 6px 0 0 0; color: #dc2626; font-size: 14px; font-weight: 600;">Could not be verified</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                Your submitted payment proof for <strong>Unit {unit_code}</strong> could not be verified.
+            </p>
+            <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 24px 0;">
+                <p style="margin: 0 0 4px 0; color: #666666; font-size: 13px;"><strong>Reason:</strong></p>
+                <p style="margin: 0; color: #1a1a1a; font-size: 14px;">{reason}</p>
+            </div>
+            <p style="margin: 0; color: #666666; line-height: 1.6;">
+                Please review the details above and resubmit your payment proof through your tenant portal.
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)

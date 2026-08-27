@@ -240,18 +240,31 @@
           </div>
 
           <!-- Details -->
-          <div class="grid grid--2" style="gap: 16px; margin-bottom: 12px;">
+          <div class="grid grid--3" style="gap: 16px; margin-bottom: 12px;">
             <div>
               <div class="kicker">Receipt Number</div>
               <div style="font-size: 14px; font-weight: 600; margin-top: 4px;">
                 {{ payment.receipt_number or ('OR-' + '%06d'|format(payment.id)) }}
               </div>
             </div>
-            
+
             <div>
               <div class="kicker">Reference</div>
               <div style="font-size: 14px; margin-top: 4px;">
                 {{ payment.reference or 'N/A' }}
+              </div>
+            </div>
+
+            <div>
+              <div class="kicker">Payment Method</div>
+              <div style="font-size: 14px; font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                {% if payment.payment_method == 'bank_transfer' %}
+                  {{ icons.icon('bank', size=14) }} Bank Transfer
+                {% elif payment.payment_method == 'other' %}
+                  {{ icons.icon('wallet', size=14) }} Other
+                {% else %}
+                  {{ icons.icon('banknote', size=14) }} Cash
+                {% endif %}
               </div>
             </div>
           </div>

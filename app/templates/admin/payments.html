@@ -420,6 +420,14 @@
           <label class="label">Reference</label>
           <input class="input" name="reference" placeholder="OR / Txn ref (optional)" />
 </div>
+        <div>
+          <label class="label">Payment Method *</label>
+          <select class="input" name="payment_method" required>
+            <option value="cash" selected>Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="other">Other</option>
+          </select>
+</div>
         <div class="align-end">
           <button class="btn btn--primary w-full" type="submit" style="background: #22c55e; border-color: #22c55e;">
              Add Payment

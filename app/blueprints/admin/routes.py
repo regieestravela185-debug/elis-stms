@@ -2310,6 +2310,9 @@ def add_payment():
     amount = request.form.get("amount") or "0"
     reference = (request.form.get("reference") or "").strip()
     payment_month = (request.form.get("payment_month") or "").strip()
+    payment_method = (request.form.get("payment_method") or "cash").strip()
+    if payment_method not in ("cash", "bank_transfer", "other"):
+        payment_method = "cash"
 
     profile = db.session.get(TenantProfile, tenant_profile_id)
     if not profile:
@@ -2360,6 +2363,7 @@ def add_payment():
         is_late=is_late,
         payment_status="late" if is_late else "verified",
         payment_month=payment_month or None,
+        payment_method=payment_method,
     )
     db.session.add(p)
     db.session.flush()
@@ -2379,6 +2383,17 @@ def add_payment():
         "tenant_name": profile.user.full_name if profile.user else None,
         "unit_code": unit.unit_code if unit else None,
     })
+
+    if profile.user and profile.user.email:
+        from ...email_helper import send_payment_verified_email
+        send_payment_verified_email(
+            tenant_name=profile.user.full_name,
+            tenant_email=profile.user.email,
+            amount=float(p.amount),
+            unit_code=unit.unit_code if unit else "N/A",
+            payment_method=payment_method,
+            payment_month=payment_month or None,
+        )
 
     if duplicate_warning:
         flash(duplicate_warning, "warning")
@@ -2420,6 +2435,17 @@ def approve_payment_proof(payment_id: int):
         "unit_code": unit.unit_code if unit else None,
     })
 
+    if profile.user and profile.user.email:
+        from ...email_helper import send_payment_verified_email
+        send_payment_verified_email(
+            tenant_name=profile.user.full_name,
+            tenant_email=profile.user.email,
+            amount=float(payment.amount),
+            unit_code=unit.unit_code if unit else "N/A",
+            payment_method=payment.payment_method or "bank_transfer",
+            payment_month=payment.payment_month,
+        )
+
     flash("Payment proof approved and recorded (with ledger hash).", "success")
     return redirect(url_for("admin.payments"))
 
@@ -2435,10 +2461,24 @@ def reject_payment_proof(payment_id: int):
     if not payment or payment.payment_status != 'pending':
         abort(404)
 
+    profile = db.session.get(TenantProfile, payment.tenant_profile_id)
+    unit = db.session.get(Unit, profile.unit_id) if profile else None
+
     reason = (request.form.get("reason") or "").strip()
+    final_reason = reason or "Rejected by admin — please resubmit with a clearer receipt or correct details."
     payment.payment_status = "rejected"
-    payment.notes = reason or "Rejected by admin — please resubmit with a clearer receipt or correct details."
+    payment.notes = final_reason
     db.session.commit()
+
+    if profile and profile.user and profile.user.email:
+        from ...email_helper import send_payment_rejected_email
+        send_payment_rejected_email(
+            tenant_name=profile.user.full_name,
+            tenant_email=profile.user.email,
+            amount=float(payment.amount),
+            unit_code=unit.unit_code if unit else "N/A",
+            reason=final_reason,
+        )
 
     flash("Payment proof rejected. The tenant has been notified.", "success")
     return redirect(url_for("admin.payments"))
