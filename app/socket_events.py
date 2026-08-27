@@ -197,3 +197,13 @@ def emit_feedback_notification(feedback_data):
     """Emit new feedback notification to admins"""
     socketio.emit('new_feedback', feedback_data, room='admin')
     emit_dashboard_metrics_update()
+
+
+def emit_announcement_notification(announcement_data):
+    """Emit a new-announcement notification to every connected tenant."""
+    socketio.emit('new_announcement', announcement_data, room='tenant')
+
+
+def emit_document_notification(user_id, document_data):
+    """Emit a new-document notification to one specific tenant (by User.id)."""
+    socketio.emit('new_document', document_data, room=f'tenant_{user_id}')

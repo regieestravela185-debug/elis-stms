@@ -336,17 +336,17 @@
 </div>
           <div class="topbar__right">
             <div class="nav__env nav__env--inline">{% include "components/_env_widget.html" %}</div>
-            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
-            <!-- Notification bell (admin only) -->
+            {% if current_user.is_authenticated and current_user.role.value in ('admin', 'tenant') %}
+            <!-- Notification bell -->
             <div class="topbar-widget js-dropdown">
-              <button type="button" class="topbar-iconbtn js-dropdown-toggle" aria-label="Notifications">
+              <button type="button" class="topbar-iconbtn js-dropdown-toggle" aria-label="Notifications" id="notifBellBtn">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
                 {% if nav_notif_total %}<span class="topbar-dot">{{ nav_notif_total if nav_notif_total < 100 else '99+' }}</span>{% endif %}
               </button>
               <div class="topbar-menu topbar-menu--notif js-dropdown-menu" hidden>
                 <div class="topbar-menu__head">
                   <span>Notifications</span>
-                  {% if nav_notif_total %}<span class="topbar-menu__count">{{ nav_notif_total }} pending</span>{% endif %}
+                  {% if nav_notif_total %}<span class="topbar-menu__count">{{ nav_notif_total }} {{ 'pending' if current_user.role.value == 'admin' else 'unread' }}</span>{% endif %}
                 </div>
                 <div class="topbar-menu__body">
                   {% for n in nav_notifications %}
@@ -483,6 +483,8 @@
           window.socket.on('new_concern', function(d){ bump('Concern', (d && d.subject) || 'New concern', 'Just now', '/admin/concerns'); });
           window.socket.on('new_renewal', function(d){ bump('Renewal', 'New renewal request', 'Just now', '/admin/renewals'); });
           window.socket.on('new_feedback', function(d){ bump('Feedback', 'New feedback received', 'Just now', '/admin/feedbacks'); });
+          window.socket.on('new_announcement', function(d){ bump('Announcement', (d && d.title) || 'New announcement', 'Just now', '/tenant/announcements'); });
+          window.socket.on('new_document', function(d){ bump('Document', (d && d.title) || 'New document', 'Just now', '/tenant/documents'); });
         }
 
         // --- Global search ---

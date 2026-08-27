@@ -147,6 +147,79 @@ def create_app(config_object: type[Config] = Config) -> Flask:
         except Exception:
             return empty
 
+    @app.context_processor
+    def _inject_tenant_nav():
+        """Unread announcements + documents for the tenant topbar notification bell.
+
+        Mirrors _inject_admin_nav's shape (nav_notifications/nav_notif_total)
+        but scoped to a tenant's own unread items — the two things that
+        already have real is_read/is_viewed tracking, so the bell count never
+        goes stale or shows something already seen.
+        """
+        # Return {} (not a zeroed dict) whenever this doesn't apply — this
+        # context processor runs after _inject_admin_nav, and Flask merges
+        # processor outputs with dict.update(), so returning the same keys
+        # here (even zeroed) would stomp an admin's real notification data.
+        try:
+            from flask_login import current_user as _cu
+            from .models import Role
+            if not (_cu.is_authenticated and _cu.role == Role.TENANT):
+                return {}
+
+            from .extensions import db as _db
+            from .models import TenantProfile, Announcement, AnnouncementRead, Document
+
+            profile = _db.session.query(TenantProfile).filter(
+                TenantProfile.user_id == _cu.id
+            ).first()
+            if not profile:
+                return {}
+
+            read_ids = [
+                r[0] for r in _db.session.query(AnnouncementRead.announcement_id)
+                .filter(AnnouncementRead.user_id == _cu.id).all()
+            ]
+            unread_announcements = (
+                _db.session.query(Announcement)
+                .filter(Announcement.is_active == True)
+                .filter(_db.or_(Announcement.expires_at.is_(None), Announcement.expires_at >= datetime.utcnow()))
+                .filter(_db.or_(Announcement.target_audience == 'all', Announcement.target_audience == 'tenants'))
+                .filter(~Announcement.id.in_(read_ids) if read_ids else True)
+                .order_by(Announcement.created_at.desc())
+                .limit(5)
+                .all()
+            )
+            unread_documents = (
+                _db.session.query(Document)
+                .filter(Document.tenant_profile_id == profile.id, Document.is_viewed == False)
+                .order_by(Document.uploaded_at.desc())
+                .limit(5)
+                .all()
+            )
+
+            notifs = []
+            for a in unread_announcements:
+                notifs.append({
+                    "type": "Announcement", "title": a.title,
+                    "subtitle": a.category.replace('_', ' ').title() if a.category else "New update",
+                    "time": a.created_at, "url": url_for("tenant.announcements"),
+                })
+            for d in unread_documents:
+                notifs.append({
+                    "type": "Document", "title": d.title,
+                    "subtitle": d.document_type.replace('_', ' ').title(),
+                    "time": d.uploaded_at, "url": url_for("tenant.documents"),
+                })
+            notifs.sort(key=lambda n: n["time"] or datetime.min, reverse=True)
+            notifs = notifs[:8]
+
+            return {
+                "nav_notifications": notifs,
+                "nav_notif_total": len(unread_announcements) + len(unread_documents),
+            }
+        except Exception:
+            return {}
+
     # Add custom Jinja2 filters
     @app.template_filter('from_json')
     def from_json_filter(value):

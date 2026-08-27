@@ -2475,6 +2475,15 @@ def create_announcement():
     )
     db.session.add(announcement)
     db.session.commit()
+
+    if target_audience in ("all", "tenants"):
+        from ...socket_events import emit_announcement_notification
+        emit_announcement_notification({
+            "id": announcement.id,
+            "title": announcement.title,
+            "category": announcement.category,
+        })
+
     flash("Announcement created successfully.", "success")
     return redirect(url_for("admin.announcements"))
 
@@ -2732,7 +2741,14 @@ def upload_document():
     )
     db.session.add(document)
     db.session.commit()
-    
+
+    from ...socket_events import emit_document_notification
+    emit_document_notification(profile.user_id, {
+        "id": document.id,
+        "title": document.title,
+        "document_type": document.document_type,
+    })
+
     # Send email notification to tenant
     _send_document_notification_email(
         tenant_name=profile.user.full_name,
