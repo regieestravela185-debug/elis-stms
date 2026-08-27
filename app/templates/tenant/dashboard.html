@@ -414,7 +414,13 @@ a[href^="tel:"]:hover {
         {% endif %}
       </div>
 
-      {% if is_expired %}
+      {% if pending_renewals and pending_renewals > 0 %}
+      <div class="mt-16" style="padding: 16px; background: rgba(59, 130, 246, 0.08); border-left: 4px solid #3b82f6; border-radius: 8px;">
+        <strong style="color: #2563eb; font-size: 16px;">{{ icons.icon('refresh-cw', size=16) }} Renewal Request Pending</strong>
+        <p class="muted" style="margin-top: 8px; font-size: 14px;">You already have a renewal request awaiting admin approval. No need to submit another one.</p>
+        <a href="{{ url_for('tenant.renewal') }}" class="btn btn--ghost btn--sm mt-8">View Request Status</a>
+      </div>
+      {% elif is_expired %}
       <div class="mt-16" style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; border-radius: 8px;">
         <strong style="color: #ef4444; font-size: 16px;">{{ icons.icon('alert-triangle', size=16) }} Contract Expired</strong>
         <p class="muted" style="margin-top: 8px; font-size: 14px;">Your contract ended on <strong style="color: #ef4444;">{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>. Submit a renewal request to continue your stay, or contact the office for assistance.</p>
@@ -709,7 +715,7 @@ a[href^="tel:"]:hover {
         <a href="{{ url_for('tenant.announcements') }}" class="btn btn--primary w-full mt-16">View All Announcements</a>
       {% else %}
         <div class="empty-state mt-16">
-          <div class="empty-state__icon">◎</div>
+          <div class="empty-state__icon">{{ icons.icon('megaphone', size=40) }}</div>
           <div class="empty-state__title">No Announcements</div>
           <div class="empty-state__text">Check back later for updates from the admin.</div>
         </div>

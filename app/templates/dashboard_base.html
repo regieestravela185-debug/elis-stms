@@ -366,7 +366,11 @@
             <!-- Profile dropdown -->
             <div class="topbar-widget js-dropdown">
               <button type="button" class="topbar__user js-dropdown-toggle">
-                <div class="topbar__avatar">{{ (current_user.full_name[:1] if current_user.is_authenticated else "U") }}</div>
+                {% if current_user.is_authenticated and current_user.profile_picture %}
+                  <div class="topbar__avatar" style="overflow:hidden; padding:0;"><img src="{{ media_url(current_user.profile_picture) }}" alt="{{ current_user.full_name }}" style="width:100%; height:100%; object-fit:cover;" /></div>
+                {% else %}
+                  <div class="topbar__avatar">{{ (current_user.full_name[:1] if current_user.is_authenticated else "U") }}</div>
+                {% endif %}
                 <div class="topbar__meta">
                   <div class="topbar__name">{{ current_user.full_name if current_user.is_authenticated else "Guest" }}</div>
                   <div class="topbar__role muted">{{ current_user.role.value if current_user.is_authenticated else "" }}</div>

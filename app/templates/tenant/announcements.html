@@ -41,30 +41,31 @@
       <h3>Search & Filter</h3>
     </div>
     
-    <div class="grid grid--2" style="gap: 12px; margin-top: 16px;">
-      <input 
-        type="text" 
-        id="searchInput" 
-        class="input" 
-        placeholder="Search announcements..."
-        value="{{ request.args.get('search', '') }}"
-      />
-      
-      <select id="categoryFilter" class="input">
-        <option value="">All Categories</option>
-        {% for cat in stats.available_categories %}
-          <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>
-            {% if cat == 'rule_update' %}Rule Update
-            {% elif cat == 'maintenance' %}Maintenance
-            {% elif cat == 'general' %}General
-            {% elif cat == 'emergency' %}Emergency
-            {% elif cat == 'event' %}Event
-            {% else %}{{ cat|title }}{% endif %}
-          </option>
-        {% endfor %}
-      </select>
+    <input
+      type="text"
+      id="searchInput"
+      class="input"
+      placeholder="Search announcements..."
+      value="{{ request.args.get('search', '') }}"
+    />
+
+    <input type="hidden" id="categoryFilter" value="{{ request.args.get('category', '') }}" />
+    <div class="category-chips mt-16">
+      <button type="button" class="category-chip {{ 'is-active' if not request.args.get('category') else '' }}" data-category="">
+        All Categories
+      </button>
+      {% for cat in stats.available_categories %}
+        <button type="button" class="category-chip {{ 'is-active' if request.args.get('category') == cat else '' }}" data-category="{{ cat }}">
+          {% if cat == 'rule_update' %}{{ icons.icon('document', size=13) }} Rule Update
+          {% elif cat == 'maintenance' %}{{ icons.icon('wrench', size=13) }} Maintenance
+          {% elif cat == 'general' %}{{ icons.icon('megaphone', size=13) }} General
+          {% elif cat == 'emergency' %}{{ icons.icon('alert-triangle', size=13) }} Emergency
+          {% elif cat == 'event' %}{{ icons.icon('sparkle', size=13) }} Event
+          {% else %}{{ cat|title }}{% endif %}
+        </button>
+      {% endfor %}
     </div>
-    
+
     <div style="margin-top: 12px;">
       <button type="button" class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
     </div>
@@ -231,13 +232,49 @@
     .announcement-bg-pinned { background: linear-gradient(to right, rgba(239, 68, 68, 0.03), transparent); }
     .announcement-header-margin { margin-top: 32px; }
     .announcement-title-bold { font-weight: 900; }
+
+    .category-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .category-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(20,20,23,0.14);
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .category-chip:hover {
+      border-color: rgba(215,179,91,0.4);
+      color: var(--text);
+    }
+    .category-chip.is-active {
+      background: rgba(215,179,91,0.14);
+      border-color: rgba(215,179,91,0.45);
+      color: #8a6d1e;
+    }
   </style>
 
   <script>
     // Filter functionality
     const searchInput = document.getElementById('searchInput');
     const categoryFilter = document.getElementById('categoryFilter');
-    
+
+    document.querySelectorAll('.category-chip').forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        categoryFilter.value = chip.dataset.category;
+        applyFilters();
+      });
+    });
+
     function applyFilters() {
       const params = new URLSearchParams();
       if (searchInput.value) params.set('search', searchInput.value);

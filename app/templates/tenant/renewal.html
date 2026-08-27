@@ -214,6 +214,25 @@
           </div>
         </div>
 
+        {% if stats.contract_progress is not none %}
+        <div class="mt-16">
+          <div class="row row--gap" style="font-size: 0.875rem; margin-bottom: 6px;">
+            <span class="kicker" style="margin-bottom:0;">Lease Term Progress</span>
+            <span class="muted">
+              {% if stats.days_until_expiry is not none and stats.days_until_expiry >= 0 %}
+                {{ stats.days_until_expiry }} day{{ 's' if stats.days_until_expiry != 1 else '' }} remaining
+              {% else %}
+                Contract ended
+              {% endif %}
+            </span>
+          </div>
+          <div style="background: rgba(0,0,0,0.05); border-radius: 8px; height: 14px; overflow: hidden;">
+            <div style="background: linear-gradient(90deg, #D7B35B, #C9A84A); height: 100%; width: {{ stats.contract_progress }}%; transition: width 0.3s ease;"></div>
+          </div>
+          <div class="muted" style="font-size: 0.75rem; margin-top: 4px;">{{ stats.contract_progress }}% of lease term elapsed</div>
+        </div>
+        {% endif %}
+
         <form method="post" action="{{ url_for('tenant.create_renewal_request') }}" class="form mt-16">
           <div>
             <label class="label">Requested End Date</label>

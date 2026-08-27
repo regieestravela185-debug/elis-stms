@@ -22,6 +22,11 @@
       padding: 24px;
       text-align: center;
     }
+    .avatar-upload {
+      position: relative;
+      width: 88px;
+      margin: 0 auto 16px;
+    }
     .avatar {
       width: 88px;
       height: 88px;
@@ -34,8 +39,30 @@
       justify-content: center;
       font-size: 2rem;
       font-weight: 700;
-      margin: 0 auto 16px;
       font-family: 'Playfair Display', Georgia, serif;
+    }
+    .avatar--photo {
+      object-fit: cover;
+    }
+    .avatar-upload__btn {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #D7B35B;
+      color: #211a08;
+      border: 2px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      transition: transform .15s ease;
+    }
+    .avatar-upload__btn:hover {
+      transform: scale(1.08);
     }
     .profile-name {
       font-size: 1.15rem;
@@ -275,9 +302,22 @@
     <!-- Profile Sidebar -->
     <div>
       <div class="card profile-card">
-        <div class="avatar">
-          {{ current_user.full_name.split()[0][0] }}{{ current_user.full_name.split()[-1][0] if current_user.full_name.split()|length > 1 else '' }}
+        <div class="avatar-upload">
+          {% if current_user.profile_picture %}
+            <img class="avatar avatar--photo" src="{{ media_url(current_user.profile_picture) }}" alt="{{ current_user.full_name }}" />
+          {% else %}
+            <div class="avatar">
+              {{ current_user.full_name.split()[0][0] }}{{ current_user.full_name.split()[-1][0] if current_user.full_name.split()|length > 1 else '' }}
+            </div>
+          {% endif %}
+          <button type="button" class="avatar-upload__btn" title="Change photo" onclick="document.getElementById('avatarInput').click();">
+            {{ icons.icon('edit', size=14) }}
+          </button>
         </div>
+        <form id="avatarForm" method="post" action="{{ url_for('tenant.update_settings') }}" enctype="multipart/form-data" style="display:none;">
+          <input type="hidden" name="full_name" value="{{ current_user.full_name }}" />
+          <input type="file" id="avatarInput" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" onchange="this.form.submit()" />
+        </form>
         <div class="profile-name">{{ current_user.full_name }}</div>
         <div class="profile-email">{{ current_user.email }}</div>
         <div class="profile-role">{{ icons.icon('home', size=13) }} TENANT</div>

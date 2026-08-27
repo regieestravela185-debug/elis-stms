@@ -746,12 +746,26 @@ def payments():
     all_payments = db.session.query(Payment).filter(Payment.tenant_profile_id == profile.id).all()
     available_years = sorted(set(p.paid_at.year for p in all_payments), reverse=True)
 
+    # Yearly totals summary — always computed from full payment history,
+    # independent of whatever filters are currently applied to the list.
+    from collections import defaultdict
+    yearly_totals = defaultdict(lambda: {'total': 0.0, 'count': 0})
+    for p in all_payments:
+        y = p.paid_at.year
+        yearly_totals[y]['total'] += float(p.amount)
+        yearly_totals[y]['count'] += 1
+    yearly_summary = [
+        {'year': y, 'total': v['total'], 'count': v['count']}
+        for y, v in sorted(yearly_totals.items(), reverse=True)
+    ]
+
     stats = {
         'total_amount': total_amount,
         'total_count': total_count,
         'last_payment': last_payment,
         'next_payment_due': next_payment_due,
-        'available_years': available_years
+        'available_years': available_years,
+        'yearly_summary': yearly_summary,
     }
 
     return render_template("tenant/payments.html", payments=payments, stats=stats, profile=profile)
@@ -1057,6 +1071,18 @@ def documents():
         if doc_type not in docs_by_type:
             docs_by_type[doc_type] = []
         docs_by_type[doc_type].append(doc)
+
+    # Flag utility bills that are likely outdated (a newer billing cycle has
+    # probably passed). No stored "expiry date" exists for documents, so this
+    # is a simple rule-based heuristic off the upload date — same approach as
+    # the rest of the system's "smart" features (no external AI involved).
+    UTILITY_BILL_TYPES = {'electricity_bill', 'water_bill', 'internet_bill'}
+    STALE_BILL_DAYS = 35
+    for doc in documents:
+        doc.is_stale_bill = (
+            doc.document_type in UTILITY_BILL_TYPES
+            and (datetime.utcnow() - doc.uploaded_at).days > STALE_BILL_DAYS
+        )
     
     # Calculate statistics
     import os
@@ -1169,7 +1195,7 @@ def renewal():
     if profile.contract_end:
         today = date.today()
         days_until_expiry = (profile.contract_end - today).days
-        
+
         if days_until_expiry <= 7:
             expiry_status = 'urgent'
         elif days_until_expiry <= 14:
@@ -1177,13 +1203,24 @@ def renewal():
         else:
             expiry_status = 'safe'
 
+    # Contract progress (% of lease term elapsed) — same calc as the dashboard's
+    # Contract Monitoring bar, so both pages agree on the number.
+    contract_progress = None
+    if profile.contract_start and profile.contract_end:
+        today = date.today()
+        total_days = (profile.contract_end - profile.contract_start).days
+        days_elapsed = (today - profile.contract_start).days + 1
+        if total_days > 0:
+            contract_progress = max(0, min(100, int((days_elapsed / total_days) * 100)))
+
     stats = {
         'total': total_requests,
         'pending': pending_requests,
         'approved': approved_requests,
         'rejected': rejected_requests,
         'days_until_expiry': days_until_expiry,
-        'expiry_status': expiry_status
+        'expiry_status': expiry_status,
+        'contract_progress': contract_progress,
     }
 
     return render_template("tenant/renewal.html", profile=profile, renewal_requests=renewal_requests, stats=stats)
@@ -1479,6 +1516,31 @@ def update_settings():
 
     # Update name
     current_user.full_name = full_name  # type: ignore[attr-defined]
+
+    # Profile photo (optional)
+    avatar_file = request.files.get("avatar")
+    if avatar_file and avatar_file.filename:
+        allowed_ext = {"jpg", "jpeg", "png", "webp", "gif"}
+        ext = avatar_file.filename.rsplit(".", 1)[-1].lower() if "." in avatar_file.filename else ""
+        if ext not in allowed_ext:
+            flash("Profile photo must be a JPG, PNG, WEBP, or GIF image.", "warning")
+            return redirect(url_for("tenant.settings"))
+
+        from werkzeug.utils import secure_filename
+        import os
+        from datetime import datetime as _dt
+
+        filename = secure_filename(avatar_file.filename)
+        filename = f"{current_user.id}_{_dt.now().strftime('%Y%m%d_%H%M%S')}_{filename}"  # type: ignore[attr-defined]
+
+        upload_dir = os.path.join("app", "static", "uploads", "avatars")
+        os.makedirs(upload_dir, exist_ok=True)
+        filepath = os.path.join(upload_dir, filename)
+        avatar_file.save(filepath)
+
+        from ... import supabase_storage
+        _url = supabase_storage.upload_local_file(filepath, f"avatars/{filename}")
+        current_user.profile_picture = _url or f"uploads/avatars/{filename}"  # type: ignore[attr-defined]
 
     # Update email preferences
     profile.email_announcements = email_announcements

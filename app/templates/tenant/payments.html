@@ -47,6 +47,24 @@
     </div>
   </div>
 
+  {% if stats.yearly_summary and stats.yearly_summary|length > 1 %}
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="section__header">
+      <h3>{{ icons.icon('bank', size=16) }} Yearly Summary</h3>
+      <p class="muted">Total paid per year, across your full history</p>
+    </div>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 16px;">
+      {% for row in stats.yearly_summary %}
+        <div style="padding: 12px; background: rgba(215, 179, 91, 0.05); border-radius: 8px; border-left: 3px solid #D7B35B;">
+          <div class="kicker">{{ row.year }}</div>
+          <div style="font-size: 18px; font-weight: 700; color: #D7B35B; margin-top: 4px;">₱{{ "{:,.2f}".format(row.total) }}</div>
+          <div class="muted" style="font-size: 12px;">{{ row.count }} payment{{ 's' if row.count != 1 else '' }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Search & Filter -->
   <div class="card" style="margin-bottom: 24px;">
     <div class="section__header">

@@ -175,25 +175,24 @@
               <p style="line-height: 1.6; margin-bottom: 12px;">{{ concern.description }}</p>
 
               <!-- Status Timeline -->
-              <div style="background: rgba(215, 179, 91, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
-                <div class="kicker" style="margin-bottom: 8px;">Status Timeline</div>
-                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                  <div style="flex: 1; min-width: 150px;">
-                    <div style="font-size: 11px; color: #666;">Created</div>
-                    <div style="font-size: 13px; font-weight: 600;">{{ concern.created_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+              {% set reached_progress = concern.status.value in ('in_progress', 'resolved') %}
+              {% set reached_resolved = concern.status.value == 'resolved' %}
+              <div style="background: rgba(215, 179, 91, 0.05); padding: 16px 12px; border-radius: 8px; margin-bottom: 12px;">
+                <div class="concern-stepper">
+                  <div class="concern-step is-done">
+                    <div class="concern-step__dot">{{ icons.icon('check-circle', size=14) }}</div>
+                    <div class="concern-step__label">Created<br><span class="muted" style="font-size:11px">{{ concern.created_at.strftime('%b %d') }}</span></div>
                   </div>
-                  {% if concern.in_progress_at %}
-                  <div style="flex: 1; min-width: 150px;">
-                    <div style="font-size: 11px; color: #666;">In Progress</div>
-                    <div style="font-size: 13px; font-weight: 600;">{{ concern.in_progress_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                  <div class="concern-step__line {{ 'is-done' if reached_progress else '' }}"></div>
+                  <div class="concern-step {{ 'is-done' if reached_progress else '' }}">
+                    <div class="concern-step__dot">{% if reached_progress %}{{ icons.icon('check-circle', size=14) }}{% else %}2{% endif %}</div>
+                    <div class="concern-step__label">In Progress{% if concern.in_progress_at %}<br><span class="muted" style="font-size:11px">{{ concern.in_progress_at.strftime('%b %d') }}</span>{% endif %}</div>
                   </div>
-                  {% endif %}
-                  {% if concern.resolved_at %}
-                  <div style="flex: 1; min-width: 150px;">
-                    <div style="font-size: 11px; color: #666;">Resolved</div>
-                    <div style="font-size: 13px; font-weight: 600;">{{ concern.resolved_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                  <div class="concern-step__line {{ 'is-done' if reached_resolved else '' }}"></div>
+                  <div class="concern-step {{ 'is-done' if reached_resolved else '' }}">
+                    <div class="concern-step__dot">{% if reached_resolved %}{{ icons.icon('check-circle', size=14) }}{% else %}3{% endif %}</div>
+                    <div class="concern-step__label">Resolved{% if concern.resolved_at %}<br><span class="muted" style="font-size:11px">{{ concern.resolved_at.strftime('%b %d') }}</span>{% endif %}</div>
                   </div>
-                  {% endif %}
                 </div>
               </div>
 
@@ -405,6 +404,57 @@
   </div>
 
   <style>
+    .concern-stepper {
+      display: flex;
+      align-items: flex-start;
+    }
+    .concern-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 90px;
+      flex-shrink: 0;
+    }
+    .concern-step__dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid rgba(20,20,23,0.15);
+      color: rgba(20,20,23,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .concern-step.is-done .concern-step__dot {
+      background: #D7B35B;
+      border-color: #D7B35B;
+      color: #fff;
+    }
+    .concern-step__label {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(20,20,23,0.55);
+      line-height: 1.4;
+    }
+    .concern-step.is-done .concern-step__label {
+      color: var(--text);
+    }
+    .concern-step__line {
+      flex: 1;
+      height: 2px;
+      background: rgba(20,20,23,0.12);
+      margin-top: 13px;
+      min-width: 20px;
+    }
+    .concern-step__line.is-done {
+      background: #D7B35B;
+    }
     .star-rating {
       font-size: 32px;
       cursor: pointer;
