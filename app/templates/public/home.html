@@ -1129,6 +1129,87 @@
       background: rgba(255, 255, 255, 0.8);
     }
 
+    /* Testimonials carousel */
+    .testimonial-carousel {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .testimonial-viewport {
+      overflow: hidden;
+      flex: 1;
+      min-width: 0;
+    }
+    .testimonial-track {
+      display: flex;
+      transition: transform 0.5s cubic-bezier(.4,0,.2,1);
+    }
+    .testimonial-track--center {
+      justify-content: center;
+    }
+    .testimonial-slide {
+      flex: 0 0 33.3333%;
+      min-width: 0;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+    .testimonial-card {
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .testimonial-arrow {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(215,179,91,0.35);
+      background: #fff;
+      color: #b8922f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background .2s ease, transform .2s ease, opacity .2s ease;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .testimonial-arrow:hover {
+      background: rgba(215,179,91,0.1);
+      transform: scale(1.06);
+    }
+    .testimonial-arrow:disabled {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
+    }
+    .testimonial-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .testimonial-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(215,179,91,0.25);
+      border: none;
+      cursor: pointer;
+      transition: background .2s ease, transform .2s ease;
+      padding: 0;
+    }
+    .testimonial-dot.active {
+      background: #D7B35B;
+      transform: scale(1.3);
+    }
+    @media (max-width: 900px) {
+      .testimonial-slide { flex-basis: 100%; }
+      .testimonial-arrow { width: 38px; height: 38px; }
+    }
+    @media (min-width: 901px) and (max-width: 1240px) {
+      .testimonial-slide { flex-basis: 50%; }
+    }
+
     .unit-thumbnails {
       display: flex;
       gap: 8px;
@@ -2686,22 +2767,35 @@
         </p>
       {% endif %}
     </div>
-    <div class="grid grid--3 mt-16">
-      {% for t in testimonials[:6] %}
-        <div class="card card--lift home-enhanced-card">
-          <div style="color:#D7B35B; font-size:1.1rem; letter-spacing:2px; margin-bottom:8px;">
-            {% for i in range(1, 6) %}{{ '★' if i <= t.rating else '☆' }}{% endfor %}
-          </div>
-          <p class="muted">&ldquo;{{ t.comments[:160] }}{% if t.comments|length > 160 %}&hellip;{% endif %}&rdquo;</p>
-          <div style="margin-top:12px; font-weight:700;">
-            {{ t.tenant_profile.user.full_name if t.tenant_profile and t.tenant_profile.user else 'Verified Tenant' }}
-          </div>
-          <div class="muted" style="font-size:0.85rem;">
-            {{ t.unit.unit_code if t.unit else '' }}{% if t.category %} &middot; {{ t.category|replace('_', ' ')|title }}{% endif %}
-          </div>
+    <div class="testimonial-carousel mt-16" id="testimonialCarousel">
+      <button type="button" class="testimonial-arrow testimonial-arrow--prev" id="testimonialPrev" aria-label="Previous testimonials">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="testimonial-viewport">
+        <div class="testimonial-track" id="testimonialTrack">
+          {% for t in testimonials %}
+            <div class="testimonial-slide">
+              <div class="card card--lift home-enhanced-card testimonial-card">
+                <div style="color:#D7B35B; font-size:1.1rem; letter-spacing:2px; margin-bottom:8px;">
+                  {% for i in range(1, 6) %}{{ '★' if i <= t.rating else '☆' }}{% endfor %}
+                </div>
+                <p class="muted">&ldquo;{{ t.comments[:160] }}{% if t.comments|length > 160 %}&hellip;{% endif %}&rdquo;</p>
+                <div style="margin-top:12px; font-weight:700;">
+                  {{ t.tenant_profile.user.full_name if t.tenant_profile and t.tenant_profile.user else 'Verified Tenant' }}
+                </div>
+                <div class="muted" style="font-size:0.85rem;">
+                  {{ t.unit.unit_code if t.unit else '' }}{% if t.category %} &middot; {{ t.category|replace('_', ' ')|title }}{% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+      </div>
+      <button type="button" class="testimonial-arrow testimonial-arrow--next" id="testimonialNext" aria-label="Next testimonials">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
     </div>
+    <div class="testimonial-dots" id="testimonialDots"></div>
   </section>
   {% endif %}
 
@@ -4451,6 +4545,104 @@ if (homeRegisterForm) {
       setTimeout(autoDismissFlashMessages, 200);
     }
   });
+})();
+</script>
+
+<script>
+// Testimonials carousel — auto-rotates, pauses on hover, responsive slides-per-view
+(function() {
+  const track = document.getElementById('testimonialTrack');
+  const carousel = document.getElementById('testimonialCarousel');
+  if (!track || !carousel) return;
+
+  const slideCount = track.children.length;
+  const dotsWrap = document.getElementById('testimonialDots');
+  const prevBtn = document.getElementById('testimonialPrev');
+  const nextBtn = document.getElementById('testimonialNext');
+
+  function perView() {
+    const w = window.innerWidth;
+    if (w <= 900) return 1;
+    if (w <= 1240) return 2;
+    return 3;
+  }
+
+  let pv = perView();
+  let pageCount = Math.max(1, Math.ceil(slideCount / pv));
+  let index = 0;
+  let autoplayTimer = null;
+
+  function buildDots() {
+    dotsWrap.innerHTML = '';
+    if (pageCount <= 1) return;
+    for (let i = 0; i < pageCount; i++) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'testimonial-dot' + (i === index ? ' active' : '');
+      dot.setAttribute('aria-label', 'Go to testimonials page ' + (i + 1));
+      dot.addEventListener('click', function() {
+        goTo(i);
+        resetAutoplay();
+      });
+      dotsWrap.appendChild(dot);
+    }
+  }
+
+  function update() {
+    const centered = slideCount < pv;
+    track.classList.toggle('testimonial-track--center', centered);
+    track.style.transform = centered ? 'none' : 'translateX(-' + (index * 100) + '%)';
+    Array.from(dotsWrap.children).forEach(function(d, i) {
+      d.classList.toggle('active', i === index);
+    });
+    if (prevBtn) prevBtn.disabled = pageCount <= 1;
+    if (nextBtn) nextBtn.disabled = pageCount <= 1;
+  }
+
+  function goTo(i) {
+    index = ((i % pageCount) + pageCount) % pageCount;
+    update();
+  }
+
+  function next() { goTo(index + 1); }
+  function prev() { goTo(index - 1); }
+
+  function startAutoplay() {
+    if (pageCount <= 1) return;
+    autoplayTimer = setInterval(next, 6000);
+  }
+  function stopAutoplay() {
+    if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; }
+  }
+  function resetAutoplay() {
+    stopAutoplay();
+    startAutoplay();
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', function() { prev(); resetAutoplay(); });
+  if (nextBtn) nextBtn.addEventListener('click', function() { next(); resetAutoplay(); });
+
+  carousel.addEventListener('mouseenter', stopAutoplay);
+  carousel.addEventListener('mouseleave', startAutoplay);
+
+  let resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      const newPv = perView();
+      if (newPv !== pv) {
+        pv = newPv;
+        pageCount = Math.max(1, Math.ceil(slideCount / pv));
+        index = Math.min(index, pageCount - 1);
+        buildDots();
+        update();
+      }
+    }, 150);
+  });
+
+  buildDots();
+  update();
+  startAutoplay();
 })();
 </script>
 {% endblock %}
