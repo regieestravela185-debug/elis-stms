@@ -130,7 +130,7 @@
       </div>
     </div>
     
-    <div class="grid grid--2" style="gap: 12px; margin-top: 12px;">
+    <div class="grid grid--3" style="gap: 12px; margin-top: 12px;">
       <div>
         <label class="label" style="font-size: 12px;">Date From</label>
         <input type="date" id="dateFrom" class="input" value="{{ request.args.get('date_from', '') }}" />
@@ -139,8 +139,17 @@
         <label class="label" style="font-size: 12px;">Date To</label>
         <input type="date" id="dateTo" class="input" value="{{ request.args.get('date_to', '') }}" />
       </div>
+      <div>
+        <label class="label" style="font-size: 12px;">Payment Method</label>
+        <select id="methodFilter" class="input">
+          <option value="">All Methods</option>
+          <option value="cash" {% if request.args.get('method') == 'cash' %}selected{% endif %}>Cash</option>
+          <option value="bank_transfer" {% if request.args.get('method') == 'bank_transfer' %}selected{% endif %}>Bank Transfer</option>
+          <option value="other" {% if request.args.get('method') == 'other' %}selected{% endif %}>Other</option>
+        </select>
+      </div>
     </div>
-    
+
     <div style="margin-top: 12px;">
       <button type="button" class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
     </div>
@@ -372,7 +381,8 @@
     const monthFilter = document.getElementById('monthFilter');
     const dateFrom = document.getElementById('dateFrom');
     const dateTo = document.getElementById('dateTo');
-    
+    const methodFilter = document.getElementById('methodFilter');
+
     function applyFilters() {
       const params = new URLSearchParams();
       if (searchInput.value) params.set('search', searchInput.value);
@@ -380,7 +390,8 @@
       if (monthFilter.value) params.set('month', monthFilter.value);
       if (dateFrom.value) params.set('date_from', dateFrom.value);
       if (dateTo.value) params.set('date_to', dateTo.value);
-      
+      if (methodFilter.value) params.set('method', methodFilter.value);
+
       const baseUrl = document.getElementById('paymentsBaseUrl').dataset.baseUrl;
       window.location.href = `${baseUrl}?${params.toString()}`;
     }
@@ -399,5 +410,6 @@
     monthFilter.addEventListener('change', applyFilters);
     dateFrom.addEventListener('change', applyFilters);
     dateTo.addEventListener('change', applyFilters);
+    methodFilter.addEventListener('change', applyFilters);
   </script>
 {% endblock %}

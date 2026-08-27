@@ -471,7 +471,17 @@
             <option value="deposit">Deposit</option>
           </select>
 </div>
-        
+
+        <div class="filter-group">
+          <label class="filter-label">Payment Method</label>
+          <select class="input" id="methodSelect">
+            <option value="">All Methods</option>
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="other">Other</option>
+          </select>
+</div>
+
         <div class="filter-group">
           <label class="filter-label">Building</label>
           <select class="input" id="buildingSelect">
@@ -525,6 +535,7 @@
                 <th>Building</th>
                 <th>Unit</th>
                 <th>Type</th>
+                <th>Method</th>
                 <th>Status</th>
                 <th>Amount</th>
                 <th>Reference</th>
@@ -540,7 +551,8 @@
                     data-date="{{ payment.paid_at.timestamp() }}"
                     data-amount="{{ payment.amount }}"
                     data-tenant="{{ payment.tenant_profile.user.full_name.lower() }}"
-                    data-unit="{{ payment.tenant_profile.unit.unit_code.lower() }}">
+                    data-unit="{{ payment.tenant_profile.unit.unit_code.lower() }}"
+                    data-method="{{ payment.payment_method or 'cash' }}">
                   <td class="muted" style="font-size: 12px;">
                     {{ payment.paid_at.strftime("%b %d, %Y") }}
                     <div style="font-size: 10px; margin-top: 2px;">{{ payment.paid_at.strftime("%I:%M %p") }}</div>
@@ -565,6 +577,15 @@
                       {% endif %}
                     {% else %}
                       <span class="badge badge--monthly">Monthly</span>
+                    {% endif %}
+</td>
+                  <td>
+                    {% if payment.payment_method == 'bank_transfer' %}
+                      <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 11px;">Bank Transfer</span>
+                    {% elif payment.payment_method == 'other' %}
+                      <span class="badge" style="background: rgba(148, 163, 184, 0.2); color: #475569; border: 1px solid rgba(148, 163, 184, 0.4); font-size: 11px;">Other</span>
+                    {% else %}
+                      <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 11px;">Cash</span>
                     {% endif %}
 </td>
                   <td>
@@ -682,6 +703,7 @@
     // Filters
     const searchInput = document.getElementById('searchInput');
     const typeSelect = document.getElementById('typeSelect');
+    const methodSelect = document.getElementById('methodSelect');
     const buildingSelect = document.getElementById('buildingSelect');
     const sortSelect = document.getElementById('sortSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
@@ -743,28 +765,31 @@
     function filterTable() {
       const searchTerm = searchInput.value.toLowerCase().trim();
       const typeValue = typeSelect.value.toLowerCase();
+      const methodValue = methodSelect.value.toLowerCase();
       const buildingCode = buildingSelect.value.toUpperCase();
       const sortBy = sortSelect.value;
-      
+
       let visibleRows = [];
-      
+
       allRows.forEach(row => {
         const tenant = row.getAttribute('data-tenant');
         const unit = row.getAttribute('data-unit');
         const type = row.getAttribute('data-type');
+        const method = row.getAttribute('data-method');
         const building = row.getAttribute('data-building');
         const floor = row.getAttribute('data-floor');
         const floorFilter = (document.getElementById('floorSelect') || {value: ''}).value;
-        
-        const matchesSearch = !searchTerm || 
-          tenant.includes(searchTerm) || 
+
+        const matchesSearch = !searchTerm ||
+          tenant.includes(searchTerm) ||
           unit.includes(searchTerm);
-        
+
         const matchesType = !typeValue || type === typeValue;
+        const matchesMethod = !methodValue || method === methodValue;
         const matchesBuilding = !buildingCode || building === buildingCode;
         const matchesFloor = !floorFilter || floor === floorFilter;
-        
-        if (matchesSearch && matchesType && matchesBuilding && matchesFloor) {
+
+        if (matchesSearch && matchesType && matchesMethod && matchesBuilding && matchesFloor) {
           visibleRows.push(row);
         }
       });
@@ -789,7 +814,7 @@
           noResultsRow = document.createElement('tr');
           noResultsRow.id = 'noResultsRow';
           noResultsRow.innerHTML = `
-            <td colspan="10" style="text-align: center; padding: 60px 20px;">
+            <td colspan="11" style="text-align: center; padding: 60px 20px;">
               <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Payments Found</div>
               <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
 </td>
@@ -804,13 +829,15 @@
     clearFiltersBtn.addEventListener('click', function() {
       searchInput.value = '';
       typeSelect.value = '';
+      methodSelect.value = '';
       buildingSelect.value = '';
       sortSelect.value = 'newest';
       filterTable();
     });
-    
+
     searchInput.addEventListener('input', debounce(filterTable, 400));
     typeSelect.addEventListener('change', filterTable);
+    methodSelect.addEventListener('change', filterTable);
     buildingSelect.addEventListener('change', filterTable);
     const floorSelect = document.getElementById('floorSelect');
     if (floorSelect) floorSelect.addEventListener('change', filterTable);

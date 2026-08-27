@@ -671,6 +671,7 @@ def payments():
     date_to = request.args.get('date_to', '').strip()
     year = request.args.get('year', '').strip()
     month = request.args.get('month', '').strip()
+    method = request.args.get('method', '').strip()
 
     # Base query
     query = db.session.query(Payment).filter(Payment.tenant_profile_id == profile.id)
@@ -683,7 +684,14 @@ def payments():
                 Payment.receipt_number.ilike(f'%{search}%')
             )
         )
-    
+
+    if method:
+        if method == 'cash':
+            # Payments recorded before payment_method existed default to Cash.
+            query = query.filter(db.or_(Payment.payment_method == 'cash', Payment.payment_method.is_(None)))
+        else:
+            query = query.filter(Payment.payment_method == method)
+
     if date_from:
         try:
             from datetime import datetime
