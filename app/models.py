@@ -355,11 +355,16 @@ class Payment(db.Model):
     deposit_transaction_type = db.Column(db.String(50), nullable=True)  # 'deposit_paid', 'deposit_returned', 'deposit_deducted'
 
     # Payment improvements
-    payment_status = db.Column(db.String(20), nullable=False, default='verified')  # verified, pending, late
+    payment_status = db.Column(db.String(20), nullable=False, default='verified')  # verified, pending, late, rejected
     is_late = db.Column(db.Boolean, nullable=False, default=False)
     breakdown_json = db.Column(db.Text, nullable=True)  # JSON: {rent, utilities, late_fee, other}
     receipt_number = db.Column(db.String(50), nullable=True)  # OR number
     payment_month = db.Column(db.String(7), nullable=True)  # "YYYY-MM" billing cycle this payment covers
+
+    # Tenant-submitted proof of payment (e.g. bank transfer screenshot/receipt).
+    # Set when a tenant self-reports a payment for admin to verify; NULL for
+    # payments admin enters directly.
+    proof_file = db.Column(db.String(500), nullable=True)
 
     tenant_profile = db.relationship("TenantProfile")
 

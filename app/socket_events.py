@@ -169,10 +169,10 @@ def emit_dashboard_metrics_update():
     socketio.emit('dashboard_metrics_update', metrics, room='admin')
 
 
-def emit_payment_notification(tenant_profile_id, payment_data):
-    """Emit payment notification to specific tenant and all admins"""
+def emit_payment_notification(user_id, payment_data):
+    """Emit payment notification to specific tenant (by User.id) and all admins"""
     # Notify tenant
-    socketio.emit('payment_received', payment_data, room=f'tenant_{tenant_profile_id}')
+    socketio.emit('payment_received', payment_data, room=f'tenant_{user_id}')
     
     # Notify all admins
     socketio.emit('new_payment', payment_data, room='admin')
@@ -197,6 +197,11 @@ def emit_feedback_notification(feedback_data):
     """Emit new feedback notification to admins"""
     socketio.emit('new_feedback', feedback_data, room='admin')
     emit_dashboard_metrics_update()
+
+
+def emit_payment_proof_notification(payment_data):
+    """Emit new tenant-submitted payment proof notification to admins"""
+    socketio.emit('new_payment_proof', payment_data, room='admin')
 
 
 def emit_announcement_notification(announcement_data):

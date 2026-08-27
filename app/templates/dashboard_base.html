@@ -485,6 +485,8 @@
           window.socket.on('new_feedback', function(d){ bump('Feedback', 'New feedback received', 'Just now', '/admin/feedbacks'); });
           window.socket.on('new_announcement', function(d){ bump('Announcement', (d && d.title) || 'New announcement', 'Just now', '/tenant/announcements'); });
           window.socket.on('new_document', function(d){ bump('Document', (d && d.title) || 'New document', 'Just now', '/tenant/documents'); });
+          window.socket.on('new_payment_proof', function(d){ bump('Payment', (d && d.tenant_name ? d.tenant_name + ' submitted a payment' : 'New payment proof submitted'), 'Awaiting verification', '/admin/payments'); });
+          window.socket.on('payment_received', function(d){ bump('Payment', 'Payment verified', (d && d.amount ? '₱' + Number(d.amount).toLocaleString() + ' confirmed' : 'Just now'), '/tenant/payments'); });
         }
 
         // --- Global search ---

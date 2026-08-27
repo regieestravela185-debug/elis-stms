@@ -284,6 +284,52 @@
       {% endif %}
 </div>
 
+    <!-- Pending Payment Proofs — tenant-submitted bank transfer receipts awaiting review -->
+    <div class="card" style="padding: 20px; margin-bottom: 28px; {% if pending_proofs %}border: 2px solid rgba(59, 130, 246, 0.3);{% endif %}">
+      <div class="section__header" style="margin-bottom: 14px;">
+        <div class="card-title-row">
+          <span class="card-icon" style="{% if pending_proofs %}background: rgba(59,130,246,0.1); color: #2563eb;{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+          <h3>Pending Payment Proofs</h3>
+        </div>
+        <p class="muted">Bank transfer receipts submitted by tenants, awaiting your verification</p>
+      </div>
+      {% if pending_proofs %}
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          {% for p in pending_proofs %}
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; border-radius: 12px; border: 1px solid var(--border); flex-wrap: wrap;">
+              <div style="min-width: 0; flex: 1;">
+                <div style="font-weight: 700; font-size: 0.9rem;">
+                  {{ p.tenant_profile.user.full_name if p.tenant_profile and p.tenant_profile.user else 'Unknown tenant' }}
+                  <span class="muted" style="font-weight: 500;">— {{ p.tenant_profile.unit.unit_code if p.tenant_profile and p.tenant_profile.unit else '' }}</span>
+                </div>
+                <div class="muted" style="font-size: 0.8rem; margin-top: 4px;">
+                  ₱{{ '{:,.2f}'.format(p.amount|float) }} • Ref: {{ p.reference or 'N/A' }}
+                  {% if p.payment_month %} • {{ p.payment_month }}{% endif %}
+                  • Submitted {{ (p.paid_at|to_ph).strftime('%b %d, %Y %I:%M %p') }}
+                </div>
+                {% if p.notes %}<div class="muted" style="font-size: 0.78rem; margin-top: 4px; font-style: italic;">"{{ p.notes }}"</div>{% endif %}
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                {% if p.proof_file %}
+                  <a href="{{ media_url(p.proof_file) }}" target="_blank" class="btn btn--ghost btn--sm">View Receipt</a>
+                {% endif %}
+                <form method="post" action="{{ url_for('admin.approve_payment_proof', payment_id=p.id) }}" style="display: inline;" onsubmit="return confirm('Approve this payment? It will be recorded with a ledger hash.');">
+                  <button type="submit" class="btn btn--primary btn--sm">Approve</button>
+                </form>
+                <button type="button" class="btn btn--ghost btn--sm" style="color: #ef4444;" onclick="openRejectProofModal({{ p.id }})">Reject</button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 24px 20px;">
+          <div class="empty-state__text">No pending payment proofs right now.</div>
+        </div>
+      {% endif %}
+    </div>
+
     <!-- Statistics Cards -->
     <div class="payments-stats">
       <div class="stat-card stat-card--total">
@@ -553,6 +599,37 @@
       {% endif %}
 </div>
   </section>
+
+  <!-- Reject Payment Proof Modal -->
+  <div class="modal" id="rejectProofModal" hidden>
+    <div class="modal__backdrop" onclick="closeRejectProofModal()"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x" onclick="closeRejectProofModal()">×</button>
+      <h3 class="modal__title">Reject Payment Proof</h3>
+      <p class="muted" style="margin-top: -8px; margin-bottom: 16px; font-size: 13px;">The tenant will see this reason and can resubmit.</p>
+      <form method="post" id="rejectProofForm">
+        <label class="label">Reason</label>
+        <textarea class="input" name="reason" rows="3" required placeholder="e.g. Receipt is unreadable, amount doesn't match, wrong reference number..."></textarea>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" onclick="closeRejectProofModal()">Cancel</button>
+          <button type="submit" class="btn btn--primary" style="background: #ef4444; border-color: #ef4444;">Reject Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openRejectProofModal(paymentId) {
+      document.getElementById('rejectProofModal').hidden = false;
+      document.getElementById('rejectProofForm').action = '/admin/payments/' + paymentId + '/reject';
+    }
+    function closeRejectProofModal() {
+      document.getElementById('rejectProofModal').hidden = true;
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeRejectProofModal();
+    });
+  </script>
 
   <script>
   document.addEventListener('DOMContentLoaded', function() {

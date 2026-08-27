@@ -96,6 +96,7 @@ def create_app(config_object: type[Config] = Config) -> Flask:
             from .models import (
                 Reservation, ReservationStatus, Concern, ConcernStatus,
                 RenewalRequest, RenewalRequestStatus, Inquiry, InquiryStatus,
+                Payment,
             )
 
             counts = {
@@ -107,6 +108,8 @@ def create_app(config_object: type[Config] = Config) -> Flask:
                     RenewalRequest.status == RenewalRequestStatus.PENDING).count(),
                 "inquiries": db.session.query(Inquiry).filter(
                     Inquiry.status == InquiryStatus.PENDING).count(),
+                "payment_proofs": db.session.query(Payment).filter(
+                    Payment.payment_status == 'pending').count(),
             }
 
             notifs = []
@@ -136,13 +139,25 @@ def create_app(config_object: type[Config] = Config) -> Flask:
                     "subtitle": "Awaiting response", "time": i.created_at,
                     "url": url_for("admin.inquiries"),
                 })
+            for p in (db.session.query(Payment)
+                      .filter(Payment.payment_status == 'pending')
+                      .order_by(Payment.paid_at.desc()).limit(5).all()):
+                tenant_name = (
+                    p.tenant_profile.user.full_name
+                    if p.tenant_profile and p.tenant_profile.user else "Unknown tenant"
+                )
+                notifs.append({
+                    "type": "Payment", "title": f"{tenant_name} — ₱{float(p.amount):,.2f}",
+                    "subtitle": "Payment proof awaiting review", "time": p.paid_at,
+                    "url": url_for("admin.payments"),
+                })
             notifs.sort(key=lambda n: n["time"] or datetime.min, reverse=True)
             notifs = notifs[:8]
 
             return {
                 "nav_counts": counts,
                 "nav_notifications": notifs,
-                "nav_notif_total": counts["reservations"] + counts["concerns"] + counts["inquiries"],
+                "nav_notif_total": counts["reservations"] + counts["concerns"] + counts["inquiries"] + counts["payment_proofs"],
             }
         except Exception:
             return empty

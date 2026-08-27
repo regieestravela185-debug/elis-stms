@@ -1594,7 +1594,7 @@ def approve_reservation(reservation_id: int):
     db.session.commit()
 
     from ...socket_events import emit_payment_notification, emit_unit_status_update
-    emit_payment_notification(profile.id, {
+    emit_payment_notification(user.id, {
         "amount": float(monthly_payment.amount),
         "tenant_name": user.full_name,
         "unit_code": unit.unit_code,
@@ -1765,7 +1765,16 @@ def payments():
     from ...jobs import shift_month
 
     tenants = db.session.query(TenantProfile).order_by(TenantProfile.created_at.desc()).limit(200).all()
-    payments = db.session.query(Payment).order_by(Payment.paid_at.desc()).limit(100).all()
+    # Confirmed payments only — tenant-submitted proofs awaiting review live
+    # in their own "Pending Payment Proofs" section below, and rejected ones
+    # aren't real recorded payments, so neither belongs in this list/stats.
+    payments = (
+        db.session.query(Payment)
+        .filter(Payment.payment_status.notin_(['pending', 'rejected']))
+        .order_by(Payment.paid_at.desc())
+        .limit(100)
+        .all()
+    )
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     today = date.today()
     today_dt = dt.combine(today, dt.min.time())  # Convert to datetime for comparison
@@ -1788,6 +1797,7 @@ def payments():
             db.session.query(Payment)
             .filter(Payment.tenant_profile_id == profile.id)
             .filter(Payment.is_deposit == False)  # noqa: E712
+            .filter(Payment.payment_status.notin_(['pending', 'rejected']))
             .filter(Payment.paid_at >= cycle_start)
             .first()
             is not None
@@ -1805,6 +1815,14 @@ def payments():
 
     blockchain_status = verify_blockchain_chain()
 
+    # Tenant-submitted bank transfer proofs awaiting admin review.
+    pending_proofs = (
+        db.session.query(Payment)
+        .filter(Payment.payment_status == 'pending')
+        .order_by(Payment.paid_at.desc())
+        .all()
+    )
+
     return render_template(
         "admin/payments.html",
         tenants=tenants,
@@ -1815,6 +1833,7 @@ def payments():
         timedelta=timedelta,
         unpaid_this_month=unpaid_this_month,
         blockchain_status=blockchain_status,
+        pending_proofs=pending_proofs,
     )
 
 
@@ -2355,7 +2374,7 @@ def add_payment():
     db.session.commit()
 
     from ...socket_events import emit_payment_notification
-    emit_payment_notification(profile.id, {
+    emit_payment_notification(profile.user_id, {
         "amount": float(p.amount),
         "tenant_name": profile.user.full_name if profile.user else None,
         "unit_code": unit.unit_code if unit else None,
@@ -2365,6 +2384,63 @@ def add_payment():
         flash(duplicate_warning, "warning")
     else:
         flash("Payment recorded (with ledger hash).", "success")
+    return redirect(url_for("admin.payments"))
+
+
+@bp.post("/payments/<int:payment_id>/approve")
+@login_required
+def approve_payment_proof(payment_id: int):
+    """Approve a tenant-submitted bank transfer proof — turns it into a
+    real, ledger-backed payment record, same as one admin enters directly."""
+    _ensure_admin()
+    payment = db.session.get(Payment, payment_id)
+    if not payment or payment.payment_status != 'pending':
+        abort(404)
+
+    profile = db.session.get(TenantProfile, payment.tenant_profile_id)
+    if not profile:
+        abort(404)
+
+    is_late = _is_rent_payment_late(profile, payment.paid_at, payment.payment_month or "")
+    payment.payment_status = "late" if is_late else "verified"
+    payment.is_late = is_late
+
+    _generate_payment_ledger(payment)
+
+    unit = db.session.get(Unit, profile.unit_id)
+    if unit and unit.status == UnitStatus.UNPAID:
+        unit.status = UnitStatus.OCCUPIED
+
+    db.session.commit()
+
+    from ...socket_events import emit_payment_notification
+    emit_payment_notification(profile.user_id, {
+        "amount": float(payment.amount),
+        "tenant_name": profile.user.full_name if profile.user else None,
+        "unit_code": unit.unit_code if unit else None,
+    })
+
+    flash("Payment proof approved and recorded (with ledger hash).", "success")
+    return redirect(url_for("admin.payments"))
+
+
+@bp.post("/payments/<int:payment_id>/reject")
+@login_required
+def reject_payment_proof(payment_id: int):
+    """Reject a tenant-submitted bank transfer proof (e.g. unreadable receipt,
+    amount mismatch). Keeps the record — with the tenant's reason attached —
+    instead of deleting it, so there's a visible trail on both sides."""
+    _ensure_admin()
+    payment = db.session.get(Payment, payment_id)
+    if not payment or payment.payment_status != 'pending':
+        abort(404)
+
+    reason = (request.form.get("reason") or "").strip()
+    payment.payment_status = "rejected"
+    payment.notes = reason or "Rejected by admin — please resubmit with a clearer receipt or correct details."
+    db.session.commit()
+
+    flash("Payment proof rejected. The tenant has been notified.", "success")
     return redirect(url_for("admin.payments"))
 
 

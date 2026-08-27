@@ -716,12 +716,15 @@ def payments():
 
     payments = query.order_by(Payment.paid_at.desc()).all()
 
-    # Calculate statistics
-    total_amount = sum(float(p.amount) for p in payments)
-    total_count = len(payments)
-    
+    # Calculate statistics — pending/rejected proof submissions aren't
+    # confirmed money received yet, so they're shown in the list (tenant
+    # needs to see their status) but excluded from the totals.
+    confirmed_payments = [p for p in payments if p.payment_status not in ('pending', 'rejected')]
+    total_amount = sum(float(p.amount) for p in confirmed_payments)
+    total_count = len(confirmed_payments)
+
     # Last payment
-    last_payment = payments[0] if payments else None
+    last_payment = confirmed_payments[0] if confirmed_payments else None
     
     # Next payment due (assuming monthly on contract start day)
     next_payment_due = None
@@ -742,8 +745,11 @@ def payments():
                     next_payment_day = date(today.year, today.month + 1, 28)
         next_payment_due = next_payment_day
     
-    # Get available years for filter
-    all_payments = db.session.query(Payment).filter(Payment.tenant_profile_id == profile.id).all()
+    # Get available years for filter (confirmed payments only)
+    all_payments = db.session.query(Payment).filter(
+        Payment.tenant_profile_id == profile.id,
+        Payment.payment_status.notin_(['pending', 'rejected']),
+    ).all()
     available_years = sorted(set(p.paid_at.year for p in all_payments), reverse=True)
 
     # Yearly totals summary — always computed from full payment history,
@@ -759,6 +765,8 @@ def payments():
         for y, v in sorted(yearly_totals.items(), reverse=True)
     ]
 
+    pending_count = sum(1 for p in payments if p.payment_status == 'pending')
+
     stats = {
         'total_amount': total_amount,
         'total_count': total_count,
@@ -766,9 +774,95 @@ def payments():
         'next_payment_due': next_payment_due,
         'available_years': available_years,
         'yearly_summary': yearly_summary,
+        'pending_count': pending_count,
     }
 
     return render_template("tenant/payments.html", payments=payments, stats=stats, profile=profile)
+
+
+@bp.post("/payments/submit-proof")
+@login_required
+def submit_payment_proof():
+    """Tenant self-reports a bank transfer payment with a receipt/screenshot.
+
+    Creates a Payment row with payment_status='pending' — it does NOT count
+    toward totals or generate a ledger hash until an admin reviews and
+    approves it (see admin.approve_payment_proof).
+    """
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+    blocked = _ensure_active_contract(profile, is_expired)
+    if blocked:
+        return blocked
+
+    amount = request.form.get("amount") or "0"
+    reference = (request.form.get("reference") or "").strip()
+    payment_month = (request.form.get("payment_month") or "").strip()
+    notes = (request.form.get("notes") or "").strip()
+    proof = request.files.get("proof")
+
+    try:
+        amount_val = float(amount)
+    except ValueError:
+        amount_val = 0
+
+    if amount_val <= 0:
+        flash("Please enter a valid payment amount.", "warning")
+        return redirect(url_for("tenant.payments"))
+
+    if not reference:
+        flash("Please enter the bank transfer reference number.", "warning")
+        return redirect(url_for("tenant.payments"))
+
+    if not proof or not proof.filename:
+        flash("Please attach a screenshot or photo of your payment receipt.", "warning")
+        return redirect(url_for("tenant.payments"))
+
+    allowed_ext = {"jpg", "jpeg", "png", "webp", "gif", "pdf"}
+    ext = proof.filename.rsplit(".", 1)[-1].lower() if "." in proof.filename else ""
+    if ext not in allowed_ext:
+        flash("Receipt must be an image (JPG/PNG/WEBP/GIF) or a PDF.", "warning")
+        return redirect(url_for("tenant.payments"))
+
+    from werkzeug.utils import secure_filename
+    import os
+    from datetime import datetime as _dt
+
+    filename = secure_filename(proof.filename)
+    filename = f"{profile.id}_{_dt.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+
+    upload_dir = os.path.join("app", "static", "uploads", "payment_proofs")
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+    proof.save(filepath)
+
+    from ... import supabase_storage
+    _url = supabase_storage.upload_local_file(filepath, f"payment_proofs/{filename}")
+    proof_path = _url or f"uploads/payment_proofs/{filename}"
+
+    payment = Payment(
+        tenant_profile_id=profile.id,
+        amount=amount_val,
+        reference=reference,
+        notes=notes or None,
+        payment_month=payment_month or None,
+        payment_status="pending",
+        proof_file=proof_path,
+        is_deposit=False,
+    )
+    db.session.add(payment)
+    db.session.commit()
+
+    from ...socket_events import emit_payment_proof_notification
+    emit_payment_proof_notification({
+        "id": payment.id,
+        "amount": amount_val,
+        "tenant_name": profile.user.full_name if profile.user else None,
+        "unit_code": profile.unit.unit_code if profile.unit else None,
+    })
+
+    flash("Payment proof submitted. Admin will review and verify it shortly.", "success")
+    return redirect(url_for("tenant.payments"))
 
 
 @bp.get("/payments/export")
@@ -824,7 +918,10 @@ def payment_receipt(payment_id: int):
     payment = db.session.get(Payment, payment_id)
     if not payment or payment.tenant_profile_id != profile.id:
         abort(404)
-    
+    if payment.payment_status in ('pending', 'rejected'):
+        flash("This payment hasn't been verified by admin yet, so there's no official receipt for it.", "warning")
+        return redirect(url_for("tenant.payments"))
+
     # Generate PDF receipt
     from flask import make_response
     from reportlab.lib.pagesizes import letter

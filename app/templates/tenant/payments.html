@@ -47,6 +47,27 @@
     </div>
   </div>
 
+  <!-- Submit Bank Transfer Proof -->
+  <div class="card" style="margin-bottom: 24px; padding: 20px;">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+      <span class="card-icon" style="background: rgba(215,179,91,0.16); border: 1px solid rgba(215,179,91,0.35); color: #b8922f; width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        {{ icons.icon('bank', size=20) }}
+      </span>
+      <div style="flex: 1; min-width: 200px;">
+        <h3 style="margin: 0 0 4px 0; font-size: 16px;">Paid via Bank Transfer?</h3>
+        <p class="muted" style="margin: 0; font-size: 14px;">Send your receipt or screenshot so admin can verify your payment.</p>
+      </div>
+      <button type="button" class="btn btn--primary" onclick="document.getElementById('paymentProofModal').hidden = false;">
+        {{ icons.icon('upload', size=14) }} Submit Payment Proof
+      </button>
+    </div>
+    {% if stats.pending_count and stats.pending_count > 0 %}
+      <div style="margin-top: 16px; padding: 10px 12px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 3px solid #3b82f6; font-size: 13px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+        {{ icons.icon('clock', size=14) }} You have {{ stats.pending_count }} payment{{ 's' if stats.pending_count != 1 else '' }} awaiting admin verification.
+      </div>
+    {% endif %}
+  </div>
+
   {% if stats.yearly_summary and stats.yearly_summary|length > 1 %}
   <div class="card" style="margin-bottom: 24px;">
     <div class="section__header">
@@ -135,7 +156,11 @@
     {% if payments %}
       {% for payment in payments %}
         {% set payment_border_class = 'payment-border-on-time' %}
-        {% if payment.is_late %}
+        {% if payment.payment_status == 'pending' %}
+          {% set payment_border_class = 'payment-border-pending' %}
+        {% elif payment.payment_status == 'rejected' %}
+          {% set payment_border_class = 'payment-border-rejected' %}
+        {% elif payment.is_late %}
           {% set payment_border_class = 'payment-border-late' %}
         {% endif %}
         <div class="card {{ payment_border_class }}" style="margin-bottom: 16px; padding: 20px;">
@@ -146,24 +171,39 @@
               <span class="muted" style="margin-left: 8px; font-size: 13px;">{{ (payment.paid_at|to_ph).strftime('%I:%M %p') }}</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <!-- Status Badge -->
-              {% if payment.is_late %}
-                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
-                  {{ icons.icon('alert-triangle', size=12) }} Late Payment
+              {% if payment.payment_status == 'pending' %}
+                <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
+                  {{ icons.icon('clock', size=12) }} Awaiting Verification
+                </span>
+              {% elif payment.payment_status == 'rejected' %}
+                <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+                  {{ icons.icon('x-circle', size=12) }} Rejected
                 </span>
               {% else %}
-                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
-                  {{ icons.icon('check-circle', size=12) }} On Time
-                </span>
-              {% endif %}
+                <!-- Status Badge -->
+                {% if payment.is_late %}
+                  <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
+                    {{ icons.icon('alert-triangle', size=12) }} Late Payment
+                  </span>
+                {% else %}
+                  <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
+                    {{ icons.icon('check-circle', size=12) }} On Time
+                  </span>
+                {% endif %}
 
-              {% if payment.payment_status == 'verified' %}
                 <span class="chip" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
                   {{ icons.icon('check-circle', size=12) }} Verified
                 </span>
               {% endif %}
             </div>
           </div>
+
+          {% if payment.payment_status == 'rejected' and payment.notes %}
+            <div style="background: rgba(239, 68, 68, 0.06); padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 3px solid #ef4444;">
+              <div class="kicker">Reason</div>
+              <p style="margin-top: 4px; font-size: 13px;">{{ payment.notes }}</p>
+            </div>
+          {% endif %}
 
           <!-- Amount -->
           <div style="background: rgba(215, 179, 91, 0.05); padding: 16px; border-radius: 8px; margin-bottom: 12px;">
@@ -216,7 +256,7 @@
             </div>
           </div>
 
-          {% if payment.notes %}
+          {% if payment.notes and payment.payment_status != 'rejected' %}
             <div style="background: rgba(59, 130, 246, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 3px solid #3b82f6;">
               <div class="kicker">Notes</div>
               <p style="margin-top: 4px; font-size: 13px;">{{ payment.notes }}</p>
@@ -224,13 +264,31 @@
           {% endif %}
 
           <!-- Actions -->
-          <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; gap: 8px;">
-            <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--primary btn--sm">
-              {{ icons.icon('download', size=13) }} Download Receipt
-            </a>
-            <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--ghost btn--sm">
-              {{ icons.icon('printer', size=13) }} Print Receipt
-            </a>
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            {% if payment.payment_status in ('pending', 'rejected') %}
+              {% if payment.proof_file %}
+                <a href="{{ media_url(payment.proof_file) }}" target="_blank" class="btn btn--ghost btn--sm">
+                  {{ icons.icon('eye', size=13) }} View Submitted Proof
+                </a>
+              {% endif %}
+              {% if payment.payment_status == 'rejected' %}
+                <button type="button" class="btn btn--primary btn--sm" onclick="document.getElementById('paymentProofModal').hidden = false;">
+                  {{ icons.icon('upload', size=13) }} Resubmit
+                </button>
+              {% endif %}
+            {% else %}
+              <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--primary btn--sm">
+                {{ icons.icon('download', size=13) }} Download Receipt
+              </a>
+              <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--ghost btn--sm">
+                {{ icons.icon('printer', size=13) }} Print Receipt
+              </a>
+              {% if payment.proof_file %}
+                <a href="{{ media_url(payment.proof_file) }}" target="_blank" class="btn btn--ghost btn--sm">
+                  {{ icons.icon('eye', size=13) }} View Submitted Proof
+                </a>
+              {% endif %}
+            {% endif %}
           </div>
         </div>
       {% endfor %}
@@ -249,6 +307,35 @@
     {% endif %}
   </div>
 
+  <!-- Submit Payment Proof Modal -->
+  <div class="modal" id="paymentProofModal" hidden>
+    <div class="modal__backdrop" onclick="document.getElementById('paymentProofModal').hidden = true;"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x" onclick="document.getElementById('paymentProofModal').hidden = true;">×</button>
+      <h3 class="modal__title">Submit Payment Proof</h3>
+      <p class="muted" style="margin-top: -8px; margin-bottom: 16px; font-size: 13px;">For bank transfer payments — admin will review and verify this before it's added to your official payment history.</p>
+      <form method="post" action="{{ url_for('tenant.submit_payment_proof') }}" class="form" enctype="multipart/form-data">
+        <label class="label">Amount Paid</label>
+        <input class="input" type="number" name="amount" step="0.01" min="0.01" required placeholder="e.g. 4500.00" />
+
+        <label class="label">Bank Transfer Reference Number</label>
+        <input class="input" type="text" name="reference" required placeholder="Reference/transaction number from your bank" />
+
+        <label class="label">For Billing Month (optional)</label>
+        <input class="input" type="month" name="payment_month" />
+
+        <label class="label">Notes (optional)</label>
+        <textarea class="input" name="notes" rows="2" placeholder="Any additional details..."></textarea>
+
+        <label class="label">Receipt / Screenshot</label>
+        <input type="file" class="input" name="proof" accept="image/png,image/jpeg,image/webp,image/gif,.pdf" required />
+        <p class="muted" style="font-size: 12px; margin-top: 4px;">Image (JPG/PNG/WEBP/GIF) or PDF.</p>
+
+        <button class="btn btn--primary" type="submit" style="margin-top: 16px;">{{ icons.icon('upload', size=14) }} Submit for Verification</button>
+      </form>
+    </div>
+  </div>
+
   <style>
     .card--lift {
       transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -261,6 +348,8 @@
     
     .payment-border-late { border-left: 4px solid #f59e0b; }
     .payment-border-on-time { border-left: 4px solid #10b981; }
+    .payment-border-pending { border-left: 4px solid #3b82f6; }
+    .payment-border-rejected { border-left: 4px solid #ef4444; }
   </style>
 
   <script>
