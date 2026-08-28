@@ -49,6 +49,20 @@
         </div>
       </div>
 
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="section__header">
+          <div class="card-title-row">
+            <span class="card-icon" style="background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); color: #2563eb;">
+              {{ icons.icon('shield', size=16) }}
+            </span>
+            <h3>Security Deposit Release</h3>
+          </div>
+        </div>
+        <div class="mt-16" style="font-size: 14px; line-height: 1.6; color: var(--muted);">
+          Your security deposit is released <strong>1 month after you move out</strong>, not immediately — this gives admin time to check for any pending bills or unpaid rent before the deposit (or what's left of it) is returned to you.
+        </div>
+      </div>
+
       {% set active_notice = notices | selectattr('status.value', 'in', ['pending', 'acknowledged']) | first %}
 
       {% if active_notice %}
