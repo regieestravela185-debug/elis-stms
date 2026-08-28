@@ -138,6 +138,10 @@ class User(db.Model, UserMixin):
     banned_at = db.Column(db.DateTime, nullable=True)
     archived_at = db.Column(db.DateTime, nullable=True)
     ban_reason = db.Column(db.String(255), nullable=True)
+    # Why this account was archived — e.g. "Moved out", "Contract expired",
+    # "Manually archived by admin". Shown next to the Archived badge so
+    # admin doesn't have to guess.
+    archive_reason = db.Column(db.String(255), nullable=True)
 
     tenant_profile = db.relationship("TenantProfile", back_populates="user", uselist=False)
 

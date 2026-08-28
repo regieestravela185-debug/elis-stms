@@ -345,7 +345,7 @@
                           <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;" onclick="return confirm('Unban {{ u.full_name }}?')">Unban</button>
                         </form>
                       {% elif u.is_archived %}
-                        <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; font-size: 10px;">Archived</span>
+                        <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; font-size: 10px;" title="{{ u.archive_reason or 'Archived' }}">Archived{% if u.archive_reason %} — {{ u.archive_reason }}{% endif %}</span>
                         <form method="post" action="{{ url_for('admin.unarchive_user', user_id=u.id) }}" style="display: inline;">
                           <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;" onclick="return confirm('Restore {{ u.full_name }} from archive?')">Restore</button>
                         </form>

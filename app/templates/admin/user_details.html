@@ -245,6 +245,12 @@
                Unverified
 </span>
           {% endif %}
+
+          {% if user.is_archived %}
+            <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3); font-size: 14px; padding: 8px 16px;">
+              Archived{% if user.archive_reason %} — {{ user.archive_reason }}{% endif %}
+</span>
+          {% endif %}
 </div>
 </div>
 </div>

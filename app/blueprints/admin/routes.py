@@ -2267,7 +2267,10 @@ def archive_user(user_id: int):
             unit = db.session.get(Unit, profile.unit_id)
             if unit and unit.status == UnitStatus.OCCUPIED:
                 unit.status = UnitStatus.AVAILABLE
+            user.archive_reason = "Contract expired"
         user.role = Role.USER
+    else:
+        user.archive_reason = "Manually archived by admin"
 
     db.session.add(ActivityLog(
         actor_user_id=current_user.id,  # type: ignore[attr-defined]
@@ -2288,6 +2291,7 @@ def unarchive_user(user_id: int):
 
     user.is_archived = False
     user.archived_at = None
+    user.archive_reason = None
 
     # Note: User remains as USER (not TENANT) and unit remains available
     # To become a tenant again, admin must assign a new unit through normal process
@@ -3632,6 +3636,7 @@ def process_move_out(profile_id: int):
     if user:
         user.is_archived = True
         user.archived_at = datetime.utcnow()
+        user.archive_reason = f"Moved out — {actual_move_out_date.strftime('%b %d, %Y')}"
         user.role = Role.USER
 
     db.session.add(ActivityLog(
