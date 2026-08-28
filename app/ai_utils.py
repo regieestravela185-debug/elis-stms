@@ -143,6 +143,20 @@ def suggest_reply(category: Optional[str] = None, text: str = "") -> str:
     return _REPLY_TEMPLATES["general"]
 
 
+WATER_BILL_RATES = {
+    "1-2": 205.0,
+    "3-4": 305.0,
+    "5-6": 405.0,
+}
+
+
+def compute_water_bill(pax_range: Optional[str]) -> Optional[float]:
+    """Fixed monthly water bill for a residential unit, by occupant-count
+    bracket. Commercial units pay their own water bill directly and don't
+    use this. Returns None if the unit has no pax_range set yet."""
+    return WATER_BILL_RATES.get(pax_range)
+
+
 def churn_score(days_to_expiry: Optional[int], late_payments: int = 0,
                 open_concerns: int = 0, avg_rating: Optional[float] = None) -> dict:
     """Heuristic renewal/churn risk. Returns {'score':0-100,'level','reasons':[...]}.

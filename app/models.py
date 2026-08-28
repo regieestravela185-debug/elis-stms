@@ -185,6 +185,12 @@ class Unit(db.Model):
     floor = db.Column(db.Integer, nullable=True)
     type = db.Column(db.String(64), nullable=True)  # commercial/residential/etc
     description = db.Column(db.Text, nullable=True)
+
+    # Occupant-count bracket for residential units — "1-2", "3-4", "5-6" —
+    # used to compute the fixed monthly water bill (see
+    # ai_utils.compute_water_bill). Not applicable to commercial units,
+    # which pay their own electric/water directly.
+    pax_range = db.Column(db.String(10), nullable=True)
     unit_images_json = db.Column(db.Text, nullable=True)  # JSON array of image URLs
 
     # Archive functionality (soft delete)

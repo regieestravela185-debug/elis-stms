@@ -351,7 +351,7 @@
 </div>
           <div>
             <label class="label">Type</label>
-            <select class="input" name="type">
+            <select class="input" name="type" id="unitTypeSelect" onchange="toggleUnitPaxField()">
               <option value="">Select type...</option>
               <option value="residential" {% if edit_unit and edit_unit.type == 'residential' %}selected{% endif %}>Residential</option>
               <option value="commercial" {% if edit_unit and edit_unit.type == 'commercial' %}selected{% endif %}>Commercial</option>
@@ -360,6 +360,16 @@
 </div>
 
         <div class="grid grid--2 mt-16">
+          <div id="unitPaxGroup" style="display:none;">
+            <label class="label">Pax (for water bill)</label>
+            <select class="input" name="pax_range">
+              <option value="">Not set</option>
+              <option value="1-2" {% if edit_unit and edit_unit.pax_range == '1-2' %}selected{% endif %}>1-2 pax (₱205/month)</option>
+              <option value="3-4" {% if edit_unit and edit_unit.pax_range == '3-4' %}selected{% endif %}>3-4 pax (₱305/month)</option>
+              <option value="5-6" {% if edit_unit and edit_unit.pax_range == '5-6' %}selected{% endif %}>5-6 pax (₱405/month)</option>
+            </select>
+            <p class="muted" style="font-size: 0.8rem; margin-top: 4px;">Residential only — used to show the tenant their fixed monthly water bill.</p>
+</div>
           <div>
             <label class="label">Status *</label>
             <select class="input" name="status" required>
@@ -405,6 +415,13 @@
 </div>
 
         <script>
+          function toggleUnitPaxField() {
+            const type = document.getElementById('unitTypeSelect').value;
+            const paxGroup = document.getElementById('unitPaxGroup');
+            paxGroup.style.display = (type === 'residential') ? '' : 'none';
+          }
+          document.addEventListener('DOMContentLoaded', toggleUnitPaxField);
+
           function validateImageCount(input) {
             const maxImages = 4;
             const errorDiv = document.getElementById('imageCountError');

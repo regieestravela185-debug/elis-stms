@@ -1180,6 +1180,9 @@ def create_unit():
     unit_type = (request.form.get("type") or "").strip()
     status = (request.form.get("status") or "available").strip()
     description = (request.form.get("description") or "").strip()
+    pax_range = (request.form.get("pax_range") or "").strip()
+    if pax_range not in ("1-2", "3-4", "5-6"):
+        pax_range = None
 
     if not building_id or not unit_number or not unit_code or not price_monthly:
         flash("Please fill all required fields.", "warning")
@@ -1250,6 +1253,7 @@ def create_unit():
         type=unit_type or None,
         status=UnitStatus(status),
         description=description or None,
+        pax_range=pax_range,
         unit_images_json=json.dumps(image_urls) if image_urls else None
     )
     db.session.add(unit)
@@ -1313,6 +1317,9 @@ def update_unit(unit_id: int):
     unit_type = (request.form.get("type") or "").strip()
     status = (request.form.get("status") or "available").strip()
     description = (request.form.get("description") or "").strip()
+    pax_range = (request.form.get("pax_range") or "").strip()
+    if pax_range not in ("1-2", "3-4", "5-6"):
+        pax_range = None
 
     if not building_id or not unit_number or not unit_code or not price_monthly:
         flash("Please fill all required fields.", "warning")
@@ -1390,6 +1397,7 @@ def update_unit(unit_id: int):
     unit.type = unit_type or None
     unit.status = UnitStatus(status)
     unit.description = description or None
+    unit.pax_range = pax_range
 
     db.session.commit()
 
@@ -1482,6 +1490,7 @@ def duplicate_unit(unit_id: int):
         floor=duplicate_floor,
         type=original.type,
         description=original.description,
+        pax_range=original.pax_range,
         unit_images_json=original.unit_images_json
     )
 
