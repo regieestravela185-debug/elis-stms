@@ -99,7 +99,13 @@ def reserve_post(unit_id: int):
     move_in_date_raw = request.form.get("move_in_date") or ""
     move_out_date_raw = request.form.get("move_out_date") or ""
 
-    if not full_name or not email or not contact or not move_in_date_raw or not move_out_date_raw:
+    # Commercial units are contract-term based (fixed move-out/lease end).
+    # Residential units are month-to-month — no move-out date is collected;
+    # the tenant just keeps paying monthly until they submit a Move-Out
+    # Notice later, from their portal.
+    is_commercial = "commercial" in (unit.type or "").lower()
+
+    if not full_name or not email or not contact or not move_in_date_raw or (is_commercial and not move_out_date_raw):
         flash("Please complete the reservation form.", "warning")
         return redirect(url_for("public.home") + "#units")
     if not re.fullmatch(r"\d{11}", contact):
@@ -112,24 +118,23 @@ def reserve_post(unit_id: int):
         flash("Invalid move-in date.", "warning")
         return redirect(url_for("public.home") + "#units")
 
-    try:
-        move_out = date.fromisoformat(move_out_date_raw)
-    except ValueError:
-        flash("Invalid move-out date.", "warning")
-        return redirect(url_for("public.home") + "#units")
+    move_out = None
+    if is_commercial:
+        try:
+            move_out = date.fromisoformat(move_out_date_raw)
+        except ValueError:
+            flash("Invalid move-out date.", "warning")
+            return redirect(url_for("public.home") + "#units")
 
-    if move_out <= move_in:
-        flash("Move-out date must be after move-in date.", "warning")
-        return redirect(url_for("public.home") + "#units")
+        if move_out <= move_in:
+            flash("Move-out date must be after move-in date.", "warning")
+            return redirect(url_for("public.home") + "#units")
 
-    # Minimum stay: residential = 1 month, commercial = 1 year. Rent is charged
-    # in full-month blocks either way, so this floor keeps that consistent.
-    is_commercial = "commercial" in (unit.type or "").lower()
-    min_move_out = move_in + (relativedelta(years=1) if is_commercial else relativedelta(months=1))
-    if move_out < min_move_out:
-        term_label = "1 year" if is_commercial else "1 month"
-        flash(f"Minimum contract term for this unit is {term_label}. Please choose a move-out date on or after {min_move_out.strftime('%B %d, %Y')}.", "warning")
-        return redirect(url_for("public.home") + "#units")
+        # Minimum stay: commercial units are 1-year contract terms.
+        min_move_out = move_in + relativedelta(years=1)
+        if move_out < min_move_out:
+            flash(f"Minimum contract term for this unit is 1 year. Please choose a move-out date on or after {min_move_out.strftime('%B %d, %Y')}.", "warning")
+            return redirect(url_for("public.home") + "#units")
 
     upload = request.files.get("id_upload")
     upload_path = None

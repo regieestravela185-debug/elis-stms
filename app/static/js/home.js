@@ -71,12 +71,17 @@
       const reserveMoveInDateReset = document.getElementById("reserveMoveInDate");
       const reserveMoveOutDateReset = document.getElementById("reserveMoveOutDate");
       const reserveMoveOutHintReset = document.getElementById("reserveMoveOutHint");
+      const reserveMoveOutGroup = document.getElementById("reserveMoveOutGroup");
+      const reserveResidentialNote = document.getElementById("reserveResidentialNote");
+      const isCommercialUnit = unitType.toLowerCase().includes("commercial");
       if (reserveMoveInDateReset) reserveMoveInDateReset.value = "";
       if (reserveMoveOutDateReset) reserveMoveOutDateReset.value = "";
+      // Residential units are month-to-month — no move-out date to collect.
+      if (reserveMoveOutGroup) reserveMoveOutGroup.style.display = isCommercialUnit ? "" : "none";
+      if (reserveResidentialNote) reserveResidentialNote.style.display = isCommercialUnit ? "none" : "";
+      if (reserveMoveOutDateReset) reserveMoveOutDateReset.required = isCommercialUnit;
       if (reserveMoveOutHintReset) {
-        reserveMoveOutHintReset.textContent = unitType.toLowerCase().includes("commercial")
-          ? "Commercial units require a minimum 1-year contract. Pick a move-in date and we'll set this automatically."
-          : "Residential units require a minimum 1-month stay. Pick a move-in date and we'll set this automatically.";
+        reserveMoveOutHintReset.textContent = "Commercial units require a minimum 1-year contract. Pick a move-in date and we'll set this automatically.";
       }
       if (reserveUnitId) reserveUnitId.value = unitId;
       reserveUnitCode.value = unitCode;
@@ -606,12 +611,11 @@
     reserveMoveInDate.min = today;
     reserveMoveOutDate.min = today;
 
-    // Residential = minimum 1 month, commercial = minimum 1 year.
-    // Rent is charged in full-month blocks either way.
-    function minTermMoveOut(moveInStr, isCommercial) {
+    // Commercial units only — minimum 1-year contract term. Residential
+    // units have no move-out date to compute (month-to-month, field hidden).
+    function minTermMoveOut(moveInStr) {
       const d = new Date(moveInStr + "T00:00:00");
-      if (isCommercial) d.setFullYear(d.getFullYear() + 1);
-      else d.setMonth(d.getMonth() + 1);
+      d.setFullYear(d.getFullYear() + 1);
       return toLocalDateStr(d);
     }
 
@@ -620,17 +624,16 @@
       const reserveForm = document.getElementById("reserveForm");
       const unitType = (reserveForm ? reserveForm.getAttribute("data-unit-type") || "" : "").toLowerCase();
       const isCommercial = unitType.includes("commercial");
-      const minMoveOut = minTermMoveOut(selectedMoveIn, isCommercial);
+      if (!isCommercial) return;
 
+      const minMoveOut = minTermMoveOut(selectedMoveIn);
       reserveMoveOutDate.min = minMoveOut;
       // Auto-fill the minimum term so users don't have to work it out themselves;
       // they can still push it later, just never earlier than the minimum.
       reserveMoveOutDate.value = minMoveOut;
 
       if (reserveMoveOutHint) {
-        reserveMoveOutHint.textContent = isCommercial
-          ? "Set automatically to a 1-year minimum contract for commercial units. You may choose a later date."
-          : "Set automatically to a 1-month minimum stay for residential units. You may choose a later date.";
+        reserveMoveOutHint.textContent = "Set automatically to a 1-year minimum contract for commercial units. You may choose a later date.";
       }
     });
   }

@@ -273,7 +273,12 @@
                   {% endif %}
 </div>
 </div>
-              <button type="button" class="btn btn--primary btn--sm js-record-payment" data-tenant-id="{{ u.tenant_profile_id }}" style="flex-shrink: 0; white-space: nowrap;">Record Payment</button>
+              <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                <button type="button" class="btn btn--primary btn--sm js-record-payment" data-tenant-id="{{ u.tenant_profile_id }}" style="white-space: nowrap;">Record Payment</button>
+                <form method="post" action="{{ url_for('admin.dismiss_outstanding', profile_id=u.tenant_profile_id) }}" onsubmit="return confirm('Dismiss this outstanding notice for {{ u.tenant_name }} this cycle? It will reappear automatically next billing cycle if still unpaid.');">
+                  <button type="submit" class="btn btn--ghost btn--sm" style="white-space: nowrap;" title="Excuse this tenant for this billing cycle only">Dismiss</button>
+                </form>
+              </div>
 </div>
           {% endfor %}
 </div>
@@ -315,9 +320,7 @@
                 {% if p.proof_file %}
                   <a href="{{ media_url(p.proof_file) }}" target="_blank" class="btn btn--ghost btn--sm">View Receipt</a>
                 {% endif %}
-                <form method="post" action="{{ url_for('admin.approve_payment_proof', payment_id=p.id) }}" style="display: inline;" onsubmit="return confirm('Approve this payment? It will be recorded with a ledger hash.');">
-                  <button type="submit" class="btn btn--primary btn--sm">Approve</button>
-                </form>
+                <button type="button" class="btn btn--primary btn--sm" onclick="openApproveProofModal({{ p.id }}, {{ p.amount|float }})">Approve</button>
                 <button type="button" class="btn btn--ghost btn--sm" style="color: #ef4444;" onclick="openRejectProofModal({{ p.id }})">Reject</button>
               </div>
             </div>
@@ -629,6 +632,24 @@
 </div>
   </section>
 
+  <!-- Approve Payment Proof Modal -->
+  <div class="modal" id="approveProofModal" hidden>
+    <div class="modal__backdrop" onclick="closeApproveProofModal()"></div>
+    <div class="modal__card">
+      <button type="button" class="modal__x" onclick="closeApproveProofModal()">×</button>
+      <h3 class="modal__title">Approve Payment</h3>
+      <p class="muted" style="margin-top: -8px; margin-bottom: 16px; font-size: 13px;">Correct the amount if needed — e.g. a half-month final payment for a move-out.</p>
+      <form method="post" id="approveProofForm">
+        <label class="label">Amount</label>
+        <input class="input" type="number" step="0.01" min="0.01" name="amount" id="approveProofAmount" required />
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" onclick="closeApproveProofModal()">Cancel</button>
+          <button type="submit" class="btn btn--primary">Approve Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Reject Payment Proof Modal -->
   <div class="modal" id="rejectProofModal" hidden>
     <div class="modal__backdrop" onclick="closeRejectProofModal()"></div>
@@ -655,8 +676,16 @@
     function closeRejectProofModal() {
       document.getElementById('rejectProofModal').hidden = true;
     }
+    function openApproveProofModal(paymentId, amount) {
+      document.getElementById('approveProofModal').hidden = false;
+      document.getElementById('approveProofForm').action = '/admin/payments/' + paymentId + '/approve';
+      document.getElementById('approveProofAmount').value = amount;
+    }
+    function closeApproveProofModal() {
+      document.getElementById('approveProofModal').hidden = true;
+    }
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeRejectProofModal();
+      if (e.key === 'Escape') { closeRejectProofModal(); closeApproveProofModal(); }
     });
   </script>
 

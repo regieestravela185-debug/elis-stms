@@ -409,6 +409,12 @@ def send_reservation_submitted_email(
     total_due = float(monthly_price) + float(deposit_amount)
     fmt = lambda n: f"₱{n:,.2f}"
     floor_label = f"{floor}{'st' if floor == 1 else 'nd' if floor == 2 else 'rd' if floor == 3 else 'th'} Floor" if floor else "—"
+    move_out_line = f"- Move-out date: {move_out_date.strftime('%B %d, %Y')}\n" if move_out_date else "- Tenancy: Month-to-month (no fixed end date — rent continues until you give move-out notice)\n"
+    move_out_row_html = (
+        f'<tr><td style="padding: 4px 0; color: #888888;">Move-out date</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{move_out_date.strftime("%B %d, %Y")}</td></tr>'
+        if move_out_date else
+        '<tr><td style="padding: 4px 0; color: #888888;">Tenancy</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">Month-to-month</td></tr>'
+    )
 
     subject = f"Reservation Received — Unit {unit_code} — The Elis Center STMS"
 
@@ -424,8 +430,7 @@ Unit details:
 - Reservation deposit: {fmt(float(deposit_amount))} (one month's rent + ₱1,000, refundable after contract ends minus damages and unpaid bills)
 - Total due on approval: {fmt(total_due)}
 - Move-in date: {move_in_date.strftime('%B %d, %Y')}
-- Move-out date: {move_out_date.strftime('%B %d, %Y')}
-
+{move_out_line}
 Our team will review your submitted ID and reservation details. You'll receive another email as soon as it's approved or if we need anything else from you.
 
 Thank you,
@@ -460,7 +465,7 @@ The Elis Center Management
                 <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #444444;">
                     <tr><td style="padding: 4px 0; color: #888888;">Floor</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{floor_label}</td></tr>
                     <tr><td style="padding: 4px 0; color: #888888;">Move-in date</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{move_in_date.strftime('%B %d, %Y')}</td></tr>
-                    <tr><td style="padding: 4px 0; color: #888888;">Move-out date</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{move_out_date.strftime('%B %d, %Y')}</td></tr>
+                    {move_out_row_html}
                 </table>
             </div>
 

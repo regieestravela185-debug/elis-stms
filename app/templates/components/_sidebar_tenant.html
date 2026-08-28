@@ -15,12 +15,18 @@
   {% else %}
   <a class="side-link side-link--concerns {% if request.path.startswith('/tenant/concerns') %}is-active{% endif %}" href="{{ url_for('tenant.concerns') }}"><span>Concerns</span></a>
   {% endif %}
+  {% if is_commercial_tenant %}
   <a class="side-link side-link--renewal {% if request.path.startswith('/tenant/renewal') %}is-active{% endif %} {% if is_expired %}side-link--urgent{% endif %}" href="{{ url_for('tenant.renewal') }}" style="position: relative;">
     <span>Renewal Request</span>
     {% if is_expired %}
       <span class="notification-badge">!</span>
     {% endif %}
   </a>
+  {% else %}
+  <a class="side-link side-link--renewal {% if request.path.startswith('/tenant/move-out-notice') %}is-active{% endif %}" href="{{ url_for('tenant.move_out_notice') }}">
+    <span>Move-Out Notice</span>
+  </a>
+  {% endif %}
 
   <div class="side-group__label">Finance</div>
   <a class="side-link side-link--payments {% if request.path.startswith('/tenant/payments') %}is-active{% endif %}" href="{{ url_for('tenant.payments') }}"><span>Payment History</span></a>

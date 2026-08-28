@@ -52,6 +52,13 @@ class RenewalRequestStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+class MoveOutNoticeStatus(str, enum.Enum):
+    PENDING = "pending"          # submitted, admin hasn't acted yet
+    ACKNOWLEDGED = "acknowledged"  # admin has seen/confirmed it, move-out not yet processed
+    CANCELLED = "cancelled"        # tenant changed their mind, or admin cancelled it
+    COMPLETED = "completed"        # move-out has been processed (see Process Move-Out)
+
+
 class FeedbackStatus(str, enum.Enum):
     SUBMITTED = "submitted"
     REVIEWED = "reviewed"
@@ -200,7 +207,10 @@ class Reservation(db.Model):
     id_type = db.Column(db.String(64), nullable=True)
     id_number = db.Column(db.String(120), nullable=True)
     move_in_date = db.Column(db.Date, nullable=False)
-    move_out_date = db.Column(db.Date, nullable=False)
+    # NULL for residential units — no fixed lease end, rent continues
+    # month-to-month until the tenant gives move-out notice. Still required
+    # for commercial units, which are contract-term based.
+    move_out_date = db.Column(db.Date, nullable=True)
     id_upload_path = db.Column(db.String(255), nullable=True)
     ocr_name = db.Column(db.String(120), nullable=True)
     ocr_id_number = db.Column(db.String(80), nullable=True)
@@ -320,6 +330,12 @@ class TenantProfile(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     last_renewal_reminder_sent = db.Column(db.Date, nullable=True)
     last_payment_reminder_sent = db.Column(db.Date, nullable=True)
+
+    # "YYYY-MM" of a billing cycle admin has manually excused from the
+    # Outstanding-This-Month list for this ONE tenant (e.g. they've already
+    # given move-out notice for that period, so being unpaid isn't
+    # delinquency). Naturally stops applying once the cycle rolls over.
+    dismissed_outstanding_month = db.Column(db.String(7), nullable=True)
 
     # Email preferences
     email_announcements = db.Column(db.Boolean, nullable=False, default=True)
@@ -556,6 +572,45 @@ class RenewalRequest(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     tenant_profile = db.relationship("TenantProfile")
+
+
+class MoveOutNotice(db.Model):
+    """Residential-only equivalent of a renewal request — residential units
+    have no fixed contract end, so instead of renewing, a tenant gives
+    advance notice of the date they intend to move out. Admin reviews it,
+    can message back, edit the date if the tenant's plan changes, or
+    cancel it if the tenant decides to stay after all. Full history is kept
+    (nothing is deleted) so early-vs-late notice can be reconstructed later.
+    """
+    __tablename__ = "move_out_notices"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tenant_profile_id = db.Column(db.Integer, db.ForeignKey("tenant_profiles.id"), nullable=False, index=True)
+
+    # The tenant's originally-submitted date — preserved even if admin later
+    # edits planned_move_out_date, so "did they give early or late notice"
+    # can always be answered against what was actually first said.
+    original_move_out_date = db.Column(db.Date, nullable=False)
+    # Current planned date — starts equal to original_move_out_date; admin
+    # may adjust this if the tenant's plans change before the actual move-out.
+    planned_move_out_date = db.Column(db.Date, nullable=False)
+
+    notes = db.Column(db.Text, nullable=True)  # tenant's message
+    admin_response = db.Column(db.Text, nullable=True)  # admin's reply / edit log
+    admin_response_at = db.Column(db.DateTime, nullable=True)
+    admin_response_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    status = db.Column(
+        db.Enum(MoveOutNoticeStatus, values_callable=_enum_values, native_enum=False),
+        nullable=False,
+        default=MoveOutNoticeStatus.PENDING,
+    )
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    tenant_profile = db.relationship("TenantProfile", foreign_keys=[tenant_profile_id])
+    responder = db.relationship("User", foreign_keys=[admin_response_by])
 
 
 class Feedback(db.Model):

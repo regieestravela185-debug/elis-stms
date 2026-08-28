@@ -1,0 +1,132 @@
+{% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
+{% block title %}Move-Out Notice | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Move-Out Notice</div>
+{% endblock %}
+
+{% block content %}
+  <style>
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .status-badge.pending { background: #fef3c7; color: #92400e; }
+    .status-badge.acknowledged { background: #dbeafe; color: #1e40af; }
+    .status-badge.cancelled { background: #fee2e2; color: #991b1b; }
+    .status-badge.completed { background: #d1fae5; color: #065f46; }
+    .notice-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+  </style>
+
+  <div class="dash-grid">
+    <section class="dash-panel">
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="section__header">
+          <div class="card-title-row">
+            <span class="card-icon" style="background: rgba(215,179,91,0.16); border: 1px solid rgba(215,179,91,0.35); color: #b8922f;">
+              {{ icons.icon('home', size=16) }}
+            </span>
+            <h3>Your Tenancy is Month-to-Month</h3>
+          </div>
+          <p class="muted">Residential units have no fixed end date — you continue paying monthly rent for as long as you stay.</p>
+        </div>
+        <div class="mt-16" style="font-size: 14px; line-height: 1.6; color: var(--muted);">
+          When you're ready to move out, please give admin at least <strong>2 weeks to 1 month</strong> of advance notice using the form below. This helps admin plan ahead and ensures your final month's charge and security deposit are computed fairly.
+        </div>
+      </div>
+
+      {% set active_notice = notices | selectattr('status.value', 'in', ['pending', 'acknowledged']) | first %}
+
+      {% if active_notice %}
+        <div class="card">
+          <div class="section__header">
+            <h3>Your Active Move-Out Notice</h3>
+          </div>
+          <div class="notice-card mt-16" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <strong style="font-size: 1.1rem;">{{ active_notice.planned_move_out_date.strftime('%B %d, %Y') }}</strong>
+              <span class="status-badge {{ active_notice.status.value }}">{{ active_notice.status.value|title }}</span>
+            </div>
+            {% if active_notice.planned_move_out_date != active_notice.original_move_out_date %}
+              <p class="muted" style="font-size: 0.8rem;">Originally requested: {{ active_notice.original_move_out_date.strftime('%B %d, %Y') }} (date was updated by admin)</p>
+            {% endif %}
+            {% if active_notice.notes %}
+              <p class="muted mt-8" style="font-size: 0.875rem;">{{ active_notice.notes }}</p>
+            {% endif %}
+            {% if active_notice.admin_response %}
+              <div style="background: rgba(215, 179, 91, 0.08); padding: 12px; border-radius: 8px; margin-top: 12px; border-left: 3px solid #D7B35B;">
+                <div class="kicker">Message from Admin</div>
+                <p style="margin-top: 4px; font-size: 13px; white-space: pre-wrap;">{{ active_notice.admin_response }}</p>
+              </div>
+            {% endif %}
+            <div class="muted" style="font-size: 0.75rem; margin-top: 12px;">Submitted {{ active_notice.created_at.strftime('%b %d, %Y') }}</div>
+
+            <form method="post" action="{{ url_for('tenant.cancel_move_out_notice', notice_id=active_notice.id) }}" class="mt-16" onsubmit="return confirm('Cancel this move-out notice? You will remain a tenant with no changes to your account.');">
+              <button class="btn btn--ghost btn--sm" type="submit" style="color: #ef4444;">{{ icons.icon('x-circle', size=13) }} I'm Not Moving Out Anymore — Cancel</button>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="section__header">
+            <h3>Submit Move-Out Notice</h3>
+            <p class="muted">Let admin know when you plan to leave</p>
+          </div>
+          <form method="post" action="{{ url_for('tenant.create_move_out_notice') }}" class="form mt-16">
+            <div>
+              <label class="label">Intended Move-Out Date</label>
+              <input class="input" type="date" name="move_out_date" min="{{ today }}" required />
+            </div>
+            <div class="mt-16">
+              <label class="label">Notes (optional)</label>
+              <textarea class="input" name="notes" rows="4" placeholder="Any details admin should know..."></textarea>
+            </div>
+            <button class="btn btn--primary mt-16" type="submit">{{ icons.icon('upload', size=14) }} Submit Notice</button>
+          </form>
+        </div>
+      {% endif %}
+    </section>
+
+    <aside class="dash-panel dash-panel--side">
+      <div class="card">
+        <div class="section__header">
+          <h3>Notice History</h3>
+        </div>
+        {% set past_notices = notices | rejectattr('status.value', 'in', ['pending', 'acknowledged']) | list %}
+        {% if past_notices %}
+          <div class="mt-16">
+            {% for notice in past_notices %}
+              <div class="notice-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="font-size: 0.95rem;">{{ notice.planned_move_out_date.strftime('%B %d, %Y') }}</strong>
+                  <span class="status-badge {{ notice.status.value }}">{{ notice.status.value|title }}</span>
+                </div>
+                <div class="muted" style="font-size: 0.75rem; margin-top: 6px;">Submitted {{ notice.created_at.strftime('%b %d, %Y') }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state mt-16">
+            <div class="empty-state__icon">{{ icons.icon('clock', size=40) }}</div>
+            <div class="empty-state__title">No History Yet</div>
+            <div class="empty-state__text">Past move-out notices will appear here.</div>
+          </div>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+{% endblock %}

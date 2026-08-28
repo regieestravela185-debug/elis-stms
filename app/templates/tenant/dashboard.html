@@ -435,6 +435,28 @@ a[href^="tel:"]:hover {
       {% endif %}
     </div>
   </div>
+  {% elif profile.contract_start and not is_commercial_tenant %}
+  <div style="margin-bottom: 32px;">
+    <div class="card" style="background: rgba(215,179,91,0.05); border: 2px solid rgba(215,179,91,0.3);">
+      <div class="section__header">
+        <h3>Month-to-Month Tenancy</h3>
+        <p class="muted">Your unit has no fixed end date — you continue paying monthly for as long as you stay</p>
+      </div>
+      <div class="grid grid--2 mt-16">
+        <div>
+          <div class="kicker">Move-in Date</div>
+          <strong>{{ profile.contract_start.strftime('%B %d, %Y') }}</strong>
+        </div>
+        <div>
+          <div class="kicker">Status</div>
+          <strong class="mono" style="color: #22c55e;">ACTIVE — MONTH-TO-MONTH</strong>
+        </div>
+      </div>
+      <div class="mt-16">
+        <a href="{{ url_for('tenant.move_out_notice') }}" class="btn btn--ghost btn--sm">Planning to move out? Submit a notice</a>
+      </div>
+    </div>
+  </div>
   {% endif %}
 
   <!-- Payment Reminder Widget -->

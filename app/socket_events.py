@@ -193,6 +193,11 @@ def emit_renewal_notification(renewal_data):
     emit_dashboard_metrics_update()
 
 
+def emit_move_out_notice_notification(notice_data):
+    """Emit new move-out notice notification to admins"""
+    socketio.emit('new_move_out_notice', notice_data, room='admin')
+
+
 def emit_feedback_notification(feedback_data):
     """Emit new feedback notification to admins"""
     socketio.emit('new_feedback', feedback_data, room='admin')

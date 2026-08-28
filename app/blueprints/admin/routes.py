@@ -20,6 +20,8 @@ from ...models import (
     Feedback,
     FeedbackStatus,
     IdentityVerification,
+    MoveOutNotice,
+    MoveOutNoticeStatus,
     Payment,
     PaymentLedger,
     PaymentRiskLevel,
@@ -187,6 +189,73 @@ def _is_rent_payment_late(profile: TenantProfile, paid_at: datetime, payment_mon
     due_date = date(year, month, due_day)
 
     return paid_at.date() > due_date
+
+
+def _compute_final_month_charge(profile: "TenantProfile", actual_move_out_date: date) -> dict:
+    """Rule-based computation for a residential tenant's final (partial)
+    billing cycle when they move out mid-month.
+
+    The billing cycle is anchored to the tenant's own move-in day, NOT the
+    calendar month — e.g. a tenant who started Jan 5 has cycles Jan5-Feb4,
+    Feb5-Mar4, etc. The half/full cutoff is 15 days INTO that cycle (day
+    1-15 of the cycle = half month, day 16+ = full month), matching the
+    owner's "kalagitnaan ng buwan" rule applied to their own anniversary
+    day rather than the calendar's 1st-15th/16th-31st.
+
+    - If that final cycle is already fully paid, no additional charge.
+    - If unpaid and the cycle's due date hasn't arrived yet (admin is
+      processing ahead of time / tenant gave early notice), the amount is
+      just a recommendation for the normal Payment collected at that due
+      date — nothing is auto-created.
+    - If unpaid and the due date has already passed (late notice), the
+      amount is meant to be deducted from the security deposit instead,
+      since there's no more chance to collect it as a regular payment.
+    """
+    import calendar
+    from ...jobs import shift_month
+
+    unit_price = float(profile.unit.price_monthly) if profile.unit and profile.unit.price_monthly else 0.0
+
+    # Locate the billing cycle (anchored to contract_start's day-of-month)
+    # that covers the move-out date.
+    cycle_start = None
+    if profile.contract_start:
+        due_day = min(profile.contract_start.day, calendar.monthrange(actual_move_out_date.year, actual_move_out_date.month)[1])
+        this_month_due = date(actual_move_out_date.year, actual_move_out_date.month, due_day)
+        cycle_start = this_month_due if this_month_due <= actual_move_out_date else shift_month(this_month_due, -1)
+
+    if cycle_start:
+        days_into_cycle = (actual_move_out_date - cycle_start).days + 1
+    else:
+        days_into_cycle = actual_move_out_date.day  # fallback if no contract_start on record
+    half_or_full = "half" if days_into_cycle <= 15 else "full"
+    amount = round(unit_price / 2, 2) if half_or_full == "half" else round(unit_price, 2)
+
+    already_paid = False
+    if cycle_start:
+        cycle_start_dt = datetime.combine(cycle_start, datetime.min.time())
+        already_paid = (
+            db.session.query(Payment)
+            .filter(Payment.tenant_profile_id == profile.id)
+            .filter(Payment.is_deposit == False)  # noqa: E712
+            .filter(Payment.payment_status.notin_(["pending", "rejected"]))
+            .filter(Payment.paid_at >= cycle_start_dt)
+            .first()
+            is not None
+        )
+
+    due_date_passed = bool(cycle_start and date.today() >= cycle_start)
+    needs_charge = not already_paid and cycle_start is not None
+    is_late = needs_charge and due_date_passed
+
+    return {
+        "half_or_full": half_or_full,
+        "amount": amount if needs_charge else 0.0,
+        "needs_charge": needs_charge,
+        "is_late": is_late,
+        "already_paid": already_paid,
+        "cycle_start": cycle_start,
+    }
 
 
 def _generate_payment_ledger(payment: Payment) -> None:
@@ -936,8 +1005,17 @@ def tenant_monitoring():
     
     threshold_warning = today + timedelta(days=30) # 1 month
     
+    # Active (pending/acknowledged) move-out notices, keyed by tenant_profile_id
+    active_notices = (
+        db.session.query(MoveOutNotice)
+        .filter(MoveOutNotice.status.in_([MoveOutNoticeStatus.PENDING, MoveOutNoticeStatus.ACKNOWLEDGED]))
+        .all()
+    )
+    notices_by_profile = {n.tenant_profile_id: n for n in active_notices}
+
     monitoring_data = []
     for t in tenants:
+        is_commercial = bool(t.unit and "commercial" in (t.unit.type or "").lower())
         days_remaining = (t.contract_end - today).days if t.contract_end else None
         
         # Calculate duration
@@ -953,7 +1031,12 @@ def tenant_monitoring():
                 status = "Urgent"
             elif days_remaining <= 30:
                 status = "Near Expiry"
-                
+
+        move_out_notice = notices_by_profile.get(t.id) if not is_commercial else None
+        if move_out_notice:
+            status = "Moving Out"
+
+
         # Check for renewal request
         renewal = db.session.query(RenewalRequest).filter(
             RenewalRequest.tenant_profile_id == t.id,
@@ -976,15 +1059,17 @@ def tenant_monitoring():
 
         monitoring_data.append({
             "profile": t,
+            "is_commercial": is_commercial,
             "days_remaining": days_remaining,
             "status": status,
             "has_pending_renewal": renewal is not None,
+            "move_out_notice": move_out_notice,
             "duration_days": duration_days,
             "churn": churn,
         })
-    
+
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
-        
+
     return render_template(
         "admin/tenant_monitoring.html",
         monitoring_data=monitoring_data,
@@ -1802,12 +1887,14 @@ def payments():
             .first()
             is not None
         )
-        if not already_paid:
+        cycle_key = next_due.strftime('%Y-%m')
+        if not already_paid and profile.dismissed_outstanding_month != cycle_key:
             unpaid_this_month.append({
                 "tenant_profile_id": profile.id,
                 "tenant_name": profile.user.full_name,
                 "unit_code": profile.unit.unit_code,
                 "due_date": next_due,
+                "cycle_key": cycle_key,
                 "days": (next_due - today).days,  # negative = overdue
             })
 
@@ -1835,6 +1922,34 @@ def payments():
         blockchain_status=blockchain_status,
         pending_proofs=pending_proofs,
     )
+
+
+@bp.post("/tenants/<int:profile_id>/dismiss-outstanding")
+@login_required
+def dismiss_outstanding(profile_id: int):
+    """Excuse ONE tenant's current billing cycle from the "Outstanding This
+    Month" list — e.g. admin already knows/agreed they'll pay late this
+    cycle with no penalty. Only suppresses this specific cycle; it
+    reappears automatically once the next due date rolls around."""
+    _ensure_admin()
+    import calendar
+    from ...jobs import shift_month
+
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile or not profile.contract_start:
+        abort(404)
+
+    today = date.today()
+    due_day = min(profile.contract_start.day, calendar.monthrange(today.year, today.month)[1])
+    next_due = date(today.year, today.month, due_day)
+    if next_due < today:
+        next_due = shift_month(next_due, 1)
+
+    profile.dismissed_outstanding_month = next_due.strftime('%Y-%m')
+    db.session.commit()
+
+    flash(f"Outstanding notice dismissed for {profile.user.full_name} for this billing cycle.", "success")
+    return redirect(url_for("admin.payments"))
 
 
 @bp.get("/deposits")
@@ -2037,14 +2152,17 @@ def user_details(user_id: int):
     # Get user's reservations
     reservations = db.session.query(Reservation).filter(Reservation.user_id == user_id).order_by(Reservation.created_at.desc()).all()
     
-    # Get tenant profile if exists
+    # Get tenant profile if exists — looked up regardless of the user's
+    # CURRENT role, since an archived former tenant (e.g. after move-out or
+    # an expired contract) is reverted to Role.USER but should still show
+    # their full history here rather than disappearing.
     tenant_profile = None
     payments = []
     concerns = []
     documents = []
     feedbacks = []
-    if user.role == Role.TENANT:
-        tenant_profile = db.session.query(TenantProfile).filter(TenantProfile.user_id == user_id).first()
+    if user.role in (Role.TENANT, Role.USER):
+        tenant_profile = db.session.query(TenantProfile).filter(TenantProfile.user_id == user_id).order_by(TenantProfile.id.desc()).first()
         if tenant_profile:
             payments = db.session.query(Payment).filter(Payment.tenant_profile_id == tenant_profile.id).order_by(Payment.paid_at.desc()).limit(10).all()
             concerns = db.session.query(Concern).filter(Concern.tenant_profile_id == tenant_profile.id).order_by(Concern.created_at.desc()).limit(10).all()
@@ -2415,6 +2533,18 @@ def approve_payment_proof(payment_id: int):
     profile = db.session.get(TenantProfile, payment.tenant_profile_id)
     if not profile:
         abort(404)
+
+    # Admin can correct the amount before approving — e.g. a residential
+    # tenant's final move-out payment is a half-month amount, but they
+    # submitted proof for the full monthly rent by mistake (or vice versa).
+    amount_override = (request.form.get("amount") or "").strip()
+    if amount_override:
+        try:
+            new_amount = float(amount_override)
+            if new_amount > 0:
+                payment.amount = new_amount
+        except ValueError:
+            pass
 
     is_late = _is_rent_payment_late(profile, payment.paid_at, payment.payment_month or "")
     payment.payment_status = "late" if is_late else "verified"
@@ -3334,8 +3464,201 @@ def _send_renewal_result_email(tenant_name: str, tenant_email: str, unit_code: s
         return
     
     from ...email_helper import send_renewal_result_email
-    
+
     send_renewal_result_email(tenant_name, tenant_email, unit_code, status, old_end_date, new_end_date)
+
+
+@bp.post("/move-out-notices/<int:notice_id>/respond")
+@login_required
+def respond_move_out_notice(notice_id: int):
+    """Admin acknowledges a move-out notice, optionally replies with a
+    message and/or corrects the planned date if the tenant's plan changed
+    (e.g. they said half-month notice but are actually leaving full-month).
+    Every edit is appended to admin_response so there's a visible trail."""
+    _ensure_admin()
+    notice = db.session.get(MoveOutNotice, notice_id)
+    if not notice:
+        abort(404)
+
+    message = (request.form.get("message") or "").strip()
+    new_date_str = (request.form.get("planned_move_out_date") or "").strip()
+
+    log_lines = []
+    if new_date_str:
+        try:
+            new_date = date.fromisoformat(new_date_str)
+        except ValueError:
+            flash("Invalid date format.", "warning")
+            return redirect(url_for("admin.tenant_monitoring"))
+        if new_date != notice.planned_move_out_date:
+            log_lines.append(
+                f"[{datetime.utcnow().strftime('%b %d, %Y')}] Date updated from "
+                f"{notice.planned_move_out_date.strftime('%b %d, %Y')} to {new_date.strftime('%b %d, %Y')} by admin."
+            )
+            notice.planned_move_out_date = new_date
+
+    if message:
+        log_lines.append(message)
+
+    if log_lines:
+        notice.admin_response = ((notice.admin_response + "\n\n") if notice.admin_response else "") + "\n".join(log_lines)
+    notice.admin_response_at = datetime.utcnow()
+    notice.admin_response_by = current_user.id  # type: ignore[attr-defined]
+    if notice.status == MoveOutNoticeStatus.PENDING:
+        notice.status = MoveOutNoticeStatus.ACKNOWLEDGED
+
+    db.session.commit()
+    flash("Move-out notice updated.", "success")
+    return redirect(url_for("admin.tenant_monitoring"))
+
+
+@bp.post("/move-out-notices/<int:notice_id>/cancel")
+@login_required
+def cancel_move_out_notice_admin(notice_id: int):
+    """Admin cancels a notice on the tenant's behalf (e.g. tenant called to
+    say they're staying after all)."""
+    _ensure_admin()
+    notice = db.session.get(MoveOutNotice, notice_id)
+    if not notice:
+        abort(404)
+
+    notice.status = MoveOutNoticeStatus.CANCELLED
+    notice.admin_response = (
+        (notice.admin_response + "\n\n") if notice.admin_response else ""
+    ) + f"[{datetime.utcnow().strftime('%b %d, %Y')}] Cancelled by admin — tenant is staying."
+    notice.admin_response_at = datetime.utcnow()
+    notice.admin_response_by = current_user.id  # type: ignore[attr-defined]
+    db.session.commit()
+
+    flash("Move-out notice cancelled.", "success")
+    return redirect(url_for("admin.tenant_monitoring"))
+
+
+@bp.post("/tenants/<int:profile_id>/process-move-out")
+@login_required
+def process_move_out(profile_id: int):
+    """Finalize a tenant's move-out: frees the unit, deactivates the
+    profile, and — based on the actual move-out date — either applies a
+    half/full month deduction to the security deposit (informed after the
+    final cycle's due date already passed unpaid) or leaves it as a
+    recommendation for a normal reduced final payment (informed in
+    advance). See _compute_final_month_charge for the exact rule."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+
+    move_out_date_str = (request.form.get("actual_move_out_date") or "").strip()
+    if not move_out_date_str:
+        flash("Please provide the actual move-out date.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+    try:
+        actual_move_out_date = date.fromisoformat(move_out_date_str)
+    except ValueError:
+        flash("Invalid date format.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+
+    charge = _compute_final_month_charge(profile, actual_move_out_date)
+
+    unit = db.session.get(Unit, profile.unit_id)
+    user = db.session.get(User, profile.user_id)
+
+    # Apply the deposit deduction only when the charge is late (unpaid,
+    # due date already passed) — early-notice amounts are just shown to
+    # admin as a heads-up; they're collected as a normal payment instead.
+    deduction_applied = None
+    if charge["needs_charge"] and charge["is_late"]:
+        reservation = (
+            db.session.query(Reservation)
+            .filter(
+                Reservation.user_id == profile.user_id,
+                Reservation.unit_id == profile.unit_id,
+                Reservation.status == ReservationStatus.APPROVED,
+            )
+            .order_by(Reservation.created_at.desc())
+            .first()
+        )
+        if reservation:
+            import json as _json
+            deductions = []
+            if reservation.deposit_deductions:
+                try:
+                    deductions = _json.loads(reservation.deposit_deductions)
+                except Exception:
+                    deductions = []
+            reason = (
+                f"Final month charge ({charge['half_or_full']} month, notified after due date) "
+                f"— moved out {actual_move_out_date.strftime('%b %d, %Y')}"
+            )
+            deductions.append({
+                "amount": charge["amount"],
+                "reason": reason,
+                "date": date.today().isoformat(),
+            })
+            deduction_lines = []
+            total_deductions = 0.0
+            for d in deductions:
+                total_deductions += d["amount"]
+                deduction_lines.append(f"• ₱{d['amount']:.2f} - {d['reason']} ({d['date']})")
+            reservation.deposit_deductions = "\n".join(deduction_lines)
+            return_amount = float(reservation.deposit_amount) - total_deductions
+            reservation.deposit_return_amount = max(0, return_amount)
+            reservation.deposit_status = "full_return" if total_deductions >= float(reservation.deposit_amount) else "partial_return"
+            deduction_applied = charge["amount"]
+
+    # Close out any active move-out notice for this tenant.
+    active_notice = (
+        db.session.query(MoveOutNotice)
+        .filter(
+            MoveOutNotice.tenant_profile_id == profile.id,
+            MoveOutNotice.status.in_([MoveOutNoticeStatus.PENDING, MoveOutNoticeStatus.ACKNOWLEDGED]),
+        )
+        .first()
+    )
+    if active_notice:
+        active_notice.status = MoveOutNoticeStatus.COMPLETED
+        active_notice.planned_move_out_date = actual_move_out_date
+
+    profile.is_active = False
+    profile.contract_end = actual_move_out_date
+    if unit and unit.status in (UnitStatus.OCCUPIED, UnitStatus.UNPAID):
+        unit.status = UnitStatus.AVAILABLE
+
+    # Archive the user account — same convention used when a tenant with an
+    # expired commercial contract is archived from the Users page. Keeps
+    # them out of active tenant lists everywhere, but their full record
+    # (profile, payments, deductions) stays intact and is findable via
+    # Users > Archived, instead of piling up in a brand-new list.
+    if user:
+        user.is_archived = True
+        user.archived_at = datetime.utcnow()
+        user.role = Role.USER
+
+    db.session.add(ActivityLog(
+        actor_user_id=current_user.id,  # type: ignore[attr-defined]
+        action=f"tenant_moved_out:{profile.id}",
+    ))
+    db.session.commit()
+
+    if deduction_applied:
+        flash(
+            f"{user.full_name if user else 'Tenant'} marked as moved out on {actual_move_out_date.strftime('%b %d, %Y')}. "
+            f"₱{deduction_applied:.2f} ({charge['half_or_full']} month) deducted from security deposit.",
+            "success",
+        )
+    elif charge["needs_charge"]:
+        flash(
+            f"{user.full_name if user else 'Tenant'} marked as moved out on {actual_move_out_date.strftime('%b %d, %Y')}. "
+            f"Recommended final payment: ₱{charge['amount']:.2f} ({charge['half_or_full']} month) — record it via Payments when collected.",
+            "info",
+        )
+    else:
+        flash(
+            f"{user.full_name if user else 'Tenant'} marked as moved out on {actual_move_out_date.strftime('%b %d, %Y')}. "
+            f"Final billing cycle was already paid in full — no additional charge.",
+            "success",
+        )
+    return redirect(url_for("admin.tenant_monitoring"))
 
 
 @bp.get("/feedbacks")

@@ -287,6 +287,60 @@
 </div>
 </div>
 
+  <!-- Move-Out Notices Awaiting Review -->
+  {% set notice_items = monitoring_data|selectattr('move_out_notice')|list %}
+  {% if notice_items %}
+    <div class="card" style="margin-bottom: 24px; border: 2px solid rgba(215, 179, 91, 0.35);">
+      <div class="section__header">
+        <h3>Move-Out Notices ({{ notice_items|length }})</h3>
+        <p class="muted">Residential tenants who've given notice — review, message, or correct the date before processing.</p>
+      </div>
+      <div class="mt-16" style="display: grid; gap: 16px;">
+        {% for item in notice_items %}
+          {% set notice = item.move_out_notice %}
+          <div style="background: rgba(215, 179, 91, 0.06); border: 1px solid rgba(215, 179, 91, 0.25); border-radius: 12px; padding: 18px;">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+              <div>
+                <strong style="font-size: 15px;">{{ item.profile.user.full_name }}</strong>
+                <span class="muted" style="font-size: 13px; margin-left: 8px;">{{ item.profile.unit.building.code }}-{{ item.profile.unit.unit_code }}</span>
+              </div>
+              <span class="badge" style="background: {{ 'rgba(59,130,246,0.15)' if notice.status.value == 'acknowledged' else 'rgba(245,158,11,0.15)' }}; color: {{ '#1e40af' if notice.status.value == 'acknowledged' else '#92400e' }};">
+                {{ notice.status.value|title }}
+              </span>
+            </div>
+            <div style="font-size: 13px; color: var(--muted); margin-bottom: 10px;">
+              Planned move-out: <strong style="color: var(--text);">{{ notice.planned_move_out_date.strftime('%b %d, %Y') }}</strong>
+              {% if notice.planned_move_out_date != notice.original_move_out_date %}
+                <span class="muted">(originally {{ notice.original_move_out_date.strftime('%b %d, %Y') }})</span>
+              {% endif %}
+              &middot; Submitted {{ notice.created_at.strftime('%b %d, %Y') }}
+            </div>
+            {% if notice.notes %}
+              <div style="font-size: 13px; margin-bottom: 10px;">"{{ notice.notes }}"</div>
+            {% endif %}
+            {% if notice.admin_response %}
+              <div style="background: white; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 12px; white-space: pre-wrap;">{{ notice.admin_response }}</div>
+            {% endif %}
+            <form method="post" action="{{ url_for('admin.respond_move_out_notice', notice_id=notice.id) }}" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+              <div>
+                <label class="filter-label">Correct Date (if changed)</label>
+                <input type="date" name="planned_move_out_date" class="input" value="{{ notice.planned_move_out_date.isoformat() }}" style="min-width: 160px;" />
+              </div>
+              <div style="flex: 1; min-width: 200px;">
+                <label class="filter-label">Message to Tenant (optional)</label>
+                <input type="text" name="message" class="input" placeholder="e.g. Noted, please settle final bill before move-out." />
+              </div>
+              <button type="submit" class="btn btn--primary btn--sm">Acknowledge / Update</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.cancel_move_out_notice_admin', notice_id=notice.id) }}" style="margin-top: 8px;" onsubmit="return confirm('Cancel this move-out notice? The tenant will remain active with no changes.');">
+              <button type="submit" class="btn btn--ghost btn--sm" style="color: #ef4444;">Cancel Notice (Tenant is Staying)</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
   <!-- Tenants Table -->
   <div class="card">
     <div class="section__header">
@@ -336,30 +390,39 @@
 </span>
 </td>
               <td>
-                <span class="muted" style="font-size: 13px;">
-                  {{ item.profile.contract_end.strftime('%b %d, %Y') }}
+                {% if item.profile.contract_end %}
+                  <span class="muted" style="font-size: 13px;">
+                    {{ item.profile.contract_end.strftime('%b %d, %Y') }}
 </span>
-                <div style="font-size: 11px; margin-top: 4px;">
-                  {% if item.days_remaining != none %}
-                    {% if item.days_remaining < 0 %}
-                      <span style="color: #9ca3af; font-weight: 700;">
-                        Expired {{ item.days_remaining|abs }} days ago
+                  <div style="font-size: 11px; margin-top: 4px;">
+                    {% if item.days_remaining != none %}
+                      {% if item.days_remaining < 0 %}
+                        <span style="color: #9ca3af; font-weight: 700;">
+                          Expired {{ item.days_remaining|abs }} days ago
 </span>
-                    {% elif item.days_remaining <= 7 %}
-                      <span style="color: #ef4444; font-weight: 700;">
-                        {{ item.days_remaining }} days remaining
+                      {% elif item.days_remaining <= 7 %}
+                        <span style="color: #ef4444; font-weight: 700;">
+                          {{ item.days_remaining }} days remaining
 </span>
-                    {% elif item.days_remaining <= 30 %}
-                      <span style="color: #eab308; font-weight: 700;">
-                        {{ item.days_remaining }} days remaining
+                      {% elif item.days_remaining <= 30 %}
+                        <span style="color: #eab308; font-weight: 700;">
+                          {{ item.days_remaining }} days remaining
 </span>
-                    {% else %}
-                      <span class="muted">
-                        {{ item.days_remaining }} days remaining
+                      {% else %}
+                        <span class="muted">
+                          {{ item.days_remaining }} days remaining
 </span>
+                      {% endif %}
                     {% endif %}
-                  {% endif %}
 </div>
+                {% elif item.move_out_notice %}
+                  <span style="color: #b8922f; font-weight: 700; font-size: 13px;">
+                    {{ item.move_out_notice.planned_move_out_date.strftime('%b %d, %Y') }}
+</span>
+                  <div style="font-size: 11px; margin-top: 4px; color: #b8922f;">Notice given — pending processing</div>
+                {% else %}
+                  <span class="muted" style="font-size: 13px;">Month-to-month</span>
+                {% endif %}
 </td>
               <td>
                 {% if item.status == 'Urgent' %}
@@ -373,6 +436,10 @@
                 {% elif item.status == 'Expired' %}
                   <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3);">
                      Expired
+</span>
+                {% elif item.status == 'Moving Out' %}
+                  <span class="badge" style="background: rgba(215, 179, 91, 0.18); color: #b8922f; border: 1px solid rgba(215, 179, 91, 0.4);">
+                     Moving Out
 </span>
                 {% else %}
                   <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3);">
@@ -402,6 +469,16 @@
 </button>
                     </form>
                   {% endif %}
+                  {% if not item.is_commercial %}
+                    <button
+                      type="button"
+                      class="btn btn--ghost btn--sm"
+                      style="color: #b8922f; border-color: rgba(215,179,91,0.4);"
+                      onclick="openProcessMoveOutModal({{ item.profile.id }}, '{{ item.profile.user.full_name|e }}', '{{ (item.move_out_notice.planned_move_out_date.isoformat() if item.move_out_notice else '') }}')"
+                    >
+                      Process Move-Out
+</button>
+                  {% endif %}
 </div>
 </td>
             </tr>
@@ -417,6 +494,42 @@
     {% endif %}
 </div>
 </section>
+
+<!-- Process Move-Out Modal -->
+<div class="modal" id="processMoveOutModal" hidden>
+  <div class="modal__backdrop" onclick="closeProcessMoveOutModal()"></div>
+  <div class="modal__card">
+    <button type="button" class="modal__x" onclick="closeProcessMoveOutModal()">×</button>
+    <h3 class="modal__title">Process Move-Out</h3>
+    <p class="muted" id="processMoveOutTenantName" style="margin-top: -8px; margin-bottom: 16px; font-size: 13px;"></p>
+    <form method="post" id="processMoveOutForm" onsubmit="return confirm('This will deactivate the tenant, free the unit, and — if applicable — deduct the final month charge from their security deposit. Continue?');">
+      <label class="label">Actual Move-Out Date</label>
+      <input class="input" type="date" name="actual_move_out_date" id="processMoveOutDate" required />
+      <p class="muted" style="font-size: 12px; margin-top: 8px;">
+        The system will compute the final billing cycle: if it's still unpaid past its due date, half/full month will be deducted from the security deposit automatically. If not yet due, it'll be shown as a recommended final payment to collect normally.
+      </p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" onclick="closeProcessMoveOutModal()">Cancel</button>
+        <button type="submit" class="btn btn--primary">Confirm Move-Out</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openProcessMoveOutModal(profileId, tenantName, plannedDate) {
+    document.getElementById('processMoveOutModal').hidden = false;
+    document.getElementById('processMoveOutForm').action = '/admin/tenants/' + profileId + '/process-move-out';
+    document.getElementById('processMoveOutTenantName').textContent = tenantName;
+    document.getElementById('processMoveOutDate').value = plannedDate || '';
+  }
+  function closeProcessMoveOutModal() {
+    document.getElementById('processMoveOutModal').hidden = true;
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeProcessMoveOutModal();
+  });
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

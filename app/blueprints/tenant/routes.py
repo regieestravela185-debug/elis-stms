@@ -8,6 +8,7 @@ from ...security import hash_password
 from ...extensions import db
 from ...models import (
     Announcement, AnnouncementRead, Concern, ConcernFollowUp, ConcernStatus, Document, Feedback, FeedbackStatus,
+    MoveOutNotice, MoveOutNoticeStatus,
     Payment, RenewalRequest, RenewalRequestStatus, Reservation, ReservationStatus,
     Role, TenantProfile, Unit, UnitStatus, User,
 )
@@ -17,13 +18,20 @@ bp = Blueprint("tenant", __name__, url_prefix="/tenant")
 
 @bp.context_processor
 def _inject_tenant_context():
-    """Make is_expired available in all tenant templates for sidebar/banner."""
+    """Make is_expired / is_commercial_tenant available in all tenant
+    templates for the sidebar and contract-related banners. Commercial
+    units are contract-term based (Renewal Request applies); residential
+    units are month-to-month with no fixed end (Move-Out Notice applies
+    instead)."""
+    empty = {"is_expired": False, "is_commercial_tenant": False}
     if not current_user.is_authenticated or current_user.role != Role.TENANT:
-        return {"is_expired": False}
+        return empty
     profile = db.session.query(TenantProfile).filter_by(user_id=current_user.id).first()
-    if profile and profile.contract_end and profile.contract_end < date.today():
-        return {"is_expired": True}
-    return {"is_expired": False}
+    if not profile:
+        return empty
+    is_expired = bool(profile.contract_end and profile.contract_end < date.today())
+    is_commercial = bool(profile.unit and "commercial" in (profile.unit.type or "").lower())
+    return {"is_expired": is_expired, "is_commercial_tenant": is_commercial}
 
 
 def _ensure_tenant():
@@ -224,9 +232,11 @@ def dashboard():
             contract_progress = max(0, min(100, contract_progress))
 
     # Get contract end date from profile
-    contract_end_date = "N/A"
+    is_commercial = bool(unit and "commercial" in (unit.type or "").lower())
     if profile.contract_end:
         contract_end_date = profile.contract_end.strftime("%B %d, %Y")
+    else:
+        contract_end_date = "N/A" if is_commercial else "Month-to-month"
 
     # --- Smart Insights: rule-based highlights computed from this tenant's
     # own real history (no external AI/LLM — same approach as the rest of
@@ -1260,6 +1270,10 @@ def renewal():
     _ensure_tenant()
     profile, is_expired = _get_tenant_profile()
 
+    if profile.unit and "commercial" not in (profile.unit.type or "").lower():
+        flash("Residential units are month-to-month — use Move-Out Notice instead.", "info")
+        return redirect(url_for("tenant.move_out_notice"))
+
     # Get filter parameters
     search = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '').strip()
@@ -1393,6 +1407,113 @@ def cancel_renewal_request(renewal_id: int):
     
     flash("Renewal request cancelled successfully.", "success")
     return redirect(url_for("tenant.renewal"))
+
+
+@bp.get("/move-out-notice")
+@login_required
+def move_out_notice():
+    """Residential-only page — no fixed contract end, so instead of
+    renewing, tenants give advance notice of their intended move-out date."""
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    if profile.unit and "commercial" in (profile.unit.type or "").lower():
+        flash("Commercial units are contract-based — use Renewal Request instead.", "info")
+        return redirect(url_for("tenant.renewal"))
+
+    notices = (
+        db.session.query(MoveOutNotice)
+        .filter(MoveOutNotice.tenant_profile_id == profile.id)
+        .order_by(MoveOutNotice.created_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "tenant/move_out_notice.html",
+        profile=profile,
+        notices=notices,
+        today=date.today().isoformat(),
+    )
+
+
+@bp.post("/move-out-notice")
+@login_required
+def create_move_out_notice():
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    move_out_date_str = request.form.get("move_out_date")
+    notes = (request.form.get("notes") or "").strip()
+
+    if not move_out_date_str:
+        flash("Please select your intended move-out date.", "warning")
+        return redirect(url_for("tenant.move_out_notice"))
+
+    try:
+        move_out_date = date.fromisoformat(move_out_date_str)
+    except ValueError:
+        flash("Invalid date format.", "warning")
+        return redirect(url_for("tenant.move_out_notice"))
+
+    if move_out_date < date.today():
+        flash("Move-out date can't be in the past.", "warning")
+        return redirect(url_for("tenant.move_out_notice"))
+
+    # Only one active (pending/acknowledged) notice at a time — resubmitting
+    # should update the existing one, not create a stray duplicate.
+    existing = (
+        db.session.query(MoveOutNotice)
+        .filter(
+            MoveOutNotice.tenant_profile_id == profile.id,
+            MoveOutNotice.status.in_([MoveOutNoticeStatus.PENDING, MoveOutNoticeStatus.ACKNOWLEDGED]),
+        )
+        .first()
+    )
+    if existing:
+        flash("You already have an active move-out notice. Cancel it first if you'd like to submit a different date.", "warning")
+        return redirect(url_for("tenant.move_out_notice"))
+
+    notice = MoveOutNotice(
+        tenant_profile_id=profile.id,
+        original_move_out_date=move_out_date,
+        planned_move_out_date=move_out_date,
+        notes=notes or None,
+        status=MoveOutNoticeStatus.PENDING,
+    )
+    db.session.add(notice)
+    db.session.commit()
+
+    from ...socket_events import emit_move_out_notice_notification
+    emit_move_out_notice_notification({
+        "id": notice.id,
+        "tenant_name": profile.user.full_name if profile.user else None,
+        "unit_code": profile.unit.unit_code if profile.unit else None,
+        "move_out_date": move_out_date.isoformat(),
+    })
+
+    flash("Move-out notice submitted. Admin will review it shortly.", "success")
+    return redirect(url_for("tenant.move_out_notice"))
+
+
+@bp.post("/move-out-notice/<int:notice_id>/cancel")
+@login_required
+def cancel_move_out_notice(notice_id: int):
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    notice = db.session.get(MoveOutNotice, notice_id)
+    if not notice or notice.tenant_profile_id != profile.id:
+        abort(404)
+
+    if notice.status not in (MoveOutNoticeStatus.PENDING, MoveOutNoticeStatus.ACKNOWLEDGED):
+        flash("This notice can no longer be cancelled.", "warning")
+        return redirect(url_for("tenant.move_out_notice"))
+
+    notice.status = MoveOutNoticeStatus.CANCELLED
+    db.session.commit()
+
+    flash("Move-out notice cancelled. You're staying — no changes to your account.", "success")
+    return redirect(url_for("tenant.move_out_notice"))
 
 
 @bp.get("/feedback")
