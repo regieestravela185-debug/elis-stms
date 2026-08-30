@@ -80,49 +80,69 @@ def _block_admin_on_phone():
 @bp.get("/api/search")
 @login_required
 def global_search():
-    """Global admin search across customers, units, reservations, payments."""
+    """Topbar search — scoped to whichever admin module the request came
+    from (see admin_search_scope in app/__init__.py's nav context
+    processor). Only queries the one relevant category instead of
+    searching everything regardless of the current page."""
     _ensure_admin()
     from flask import jsonify
     from sqlalchemy import or_
 
     q = (request.args.get("q") or "").strip()
-    results = {"customers": [], "units": [], "reservations": [], "payments": []}
+    scope = (request.args.get("scope") or "").strip()
+    results = {"customers": [], "units": [], "reservations": [], "payments": [], "documents": []}
     if len(q) < 2:
         return jsonify(results)
     like = f"%{q}%"
+    limit = 8  # only one category is ever queried per request, so room for more results
 
-    for u in (db.session.query(User)
-              .filter(User.role != Role.ADMIN,
-                      or_(User.full_name.ilike(like), User.email.ilike(like)))
-              .limit(5).all()):
-        results["customers"].append({
-            "label": u.full_name, "sub": u.email,
-            "url": url_for("admin.user_details", user_id=u.id),
-        })
+    if scope == "customers":
+        for u in (db.session.query(User)
+                  .filter(User.role != Role.ADMIN,
+                          or_(User.full_name.ilike(like), User.email.ilike(like)))
+                  .limit(limit).all()):
+            results["customers"].append({
+                "label": u.full_name, "sub": u.email,
+                "url": url_for("admin.user_details", user_id=u.id),
+            })
 
-    for un in (db.session.query(Unit).filter(Unit.unit_code.ilike(like))
-               .order_by(Unit.unit_code.asc()).limit(5).all()):
-        results["units"].append({
-            "label": un.unit_code, "sub": (un.type or "Unit"),
-            "url": url_for("admin.edit_unit", unit_id=un.id),
-        })
+    elif scope == "units":
+        for un in (db.session.query(Unit).filter(Unit.is_archived == False, Unit.unit_code.ilike(like))  # noqa: E712
+                   .order_by(Unit.unit_code.asc()).limit(limit).all()):
+            results["units"].append({
+                "label": un.unit_code, "sub": (un.type or "Unit"),
+                "url": url_for("admin.edit_unit", unit_id=un.id),
+            })
 
-    for r in (db.session.query(Reservation)
-              .filter(or_(Reservation.full_name.ilike(like), Reservation.email.ilike(like)))
-              .order_by(Reservation.created_at.desc()).limit(5).all()):
-        results["reservations"].append({
-            "label": r.full_name, "sub": r.email,
-            "url": url_for("admin.reservations"),
-        })
+    elif scope == "reservations":
+        for r in (db.session.query(Reservation)
+                  .filter(or_(Reservation.full_name.ilike(like), Reservation.email.ilike(like)))
+                  .order_by(Reservation.created_at.desc()).limit(limit).all()):
+            results["reservations"].append({
+                "label": r.full_name, "sub": r.email,
+                "url": url_for("admin.reservations"),
+            })
 
-    for p in (db.session.query(Payment)
-              .filter(or_(Payment.reference.ilike(like), Payment.receipt_number.ilike(like)))
-              .order_by(Payment.paid_at.desc()).limit(5).all()):
-        results["payments"].append({
-            "label": (p.reference or p.receipt_number or ("Payment #%s" % p.id)),
-            "sub": "₱{:,.2f}".format(float(p.amount)),
-            "url": url_for("admin.payments"),
-        })
+    elif scope == "payments":
+        for p in (db.session.query(Payment)
+                  .filter(or_(Payment.reference.ilike(like), Payment.receipt_number.ilike(like)))
+                  .order_by(Payment.paid_at.desc()).limit(limit).all()):
+            results["payments"].append({
+                "label": (p.reference or p.receipt_number or ("Payment #%s" % p.id)),
+                "sub": "₱{:,.2f}".format(float(p.amount)),
+                "url": url_for("admin.payments"),
+            })
+
+    elif scope == "documents":
+        for d in (db.session.query(Document).join(TenantProfile, Document.tenant_profile_id == TenantProfile.id)
+                  .join(User, TenantProfile.user_id == User.id)
+                  .filter(or_(Document.title.ilike(like), User.full_name.ilike(like)))
+                  .order_by(Document.uploaded_at.desc()).limit(limit).all()):
+            tenant_name = d.tenant_profile.user.full_name if d.tenant_profile and d.tenant_profile.user else "Unknown tenant"
+            results["documents"].append({
+                "label": d.title, "sub": tenant_name,
+                "url": url_for("admin.documents"),
+            })
 
     return jsonify(results)
 
@@ -1093,7 +1113,21 @@ def floorplan():
         for unit in db.session.query(Unit).filter(Unit.is_archived == False).order_by(Unit.building_id.asc(), Unit.unit_number.asc()).all()
         if (unit.floor or 0) <= building_floor_limits.get(unit.building_id, 4)
     ]
-    return render_template("admin/floorplan.html", buildings=buildings, units=units)
+
+    # Current tenant per unit, batch-fetched so the floor plan can show
+    # who's staying where at a glance instead of admin clicking every tile.
+    tenant_by_unit = {}
+    unit_ids = [u.id for u in units]
+    if unit_ids:
+        for profile in (
+            db.session.query(TenantProfile)
+            .filter(TenantProfile.unit_id.in_(unit_ids), TenantProfile.is_active == True)  # noqa: E712
+            .all()
+        ):
+            if profile.user:
+                tenant_by_unit[profile.unit_id] = profile.user.full_name
+
+    return render_template("admin/floorplan.html", buildings=buildings, units=units, tenant_by_unit=tenant_by_unit)
 
 
 @bp.get("/units")
@@ -1841,9 +1875,38 @@ def get_unit_quick_info(unit_id: int):
         .first()
     )
     if profile and profile.user:
+        import calendar
+        from ...jobs import shift_month
+
+        is_commercial = bool(unit.type and "commercial" in unit.type.lower())
+
+        # Has this billing cycle been paid yet? Same check used on the
+        # Payments page's "Outstanding This Month" list.
+        paid_this_month = None
+        if profile.contract_start:
+            today = date.today()
+            due_day = min(profile.contract_start.day, calendar.monthrange(today.year, today.month)[1])
+            next_due = date(today.year, today.month, due_day)
+            if next_due < today:
+                next_due = shift_month(next_due, 1)
+            cycle_start = datetime.combine(shift_month(next_due, -1), datetime.min.time())
+            paid_this_month = (
+                db.session.query(Payment)
+                .filter(Payment.tenant_profile_id == profile.id)
+                .filter(Payment.is_deposit == False)  # noqa: E712
+                .filter(Payment.payment_status.notin_(["pending", "rejected"]))
+                .filter(Payment.paid_at >= cycle_start)
+                .first()
+                is not None
+            )
+
         result["tenant"] = {
             "name": profile.user.full_name,
+            "email": profile.user.email,
+            "move_in": profile.contract_start.strftime("%b %d, %Y") if profile.contract_start else None,
             "contract_end": profile.contract_end.strftime("%b %d, %Y") if profile.contract_end else None,
+            "is_commercial": is_commercial,
+            "paid_this_month": paid_this_month,
             "user_details_url": url_for("admin.user_details", user_id=profile.user.id),
         }
 
@@ -2926,15 +2989,11 @@ def documents():
     tenants = db.session.query(TenantProfile).order_by(TenantProfile.created_at.desc()).all()
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     
-    # Document types for filter
+    # Document types for filter — admin now only ever sends one of these two
+    # (receipts/bills are handled in person, not as uploaded documents).
     doc_types = [
         ('lease_agreement', 'Lease Agreement'),
-        ('receipt', 'Receipt'),
-        ('certificate', 'Certificate'),
-        ('rules', 'Rules & Regulations'),
-        ('electricity_bill', 'Electricity Bill'),
-        ('water_bill', 'Water Bill'),
-        ('internet_bill', 'Internet Bill'),
+        ('rental_agreement', 'Kasunduan sa Pagpaupa'),
     ]
     
     return render_template(

@@ -1,5 +1,6 @@
 from flask import Flask
 from flask import flash
+from flask import request
 from flask import session
 from flask import url_for
 from flask_login import current_user, logout_user
@@ -85,12 +86,39 @@ def create_app(config_object: type[Config] = Config) -> Flask:
         Powers sidebar badges and the topbar notification bell. Runs only for
         authenticated admins; any DB hiccup degrades to empty (never breaks a page).
         """
-        empty = {"nav_counts": {}, "nav_notifications": [], "nav_notif_total": 0}
+        empty = {
+            "nav_counts": {}, "nav_notifications": [], "nav_notif_total": 0,
+            "admin_search_scope": None, "admin_search_placeholder": "",
+        }
         try:
             from flask_login import current_user
             from .models import Role
             if not (current_user.is_authenticated and current_user.role == Role.ADMIN):
                 return empty
+
+            # Topbar search is scoped to whatever module the admin is
+            # currently on — it used to search customers+units+reservations+
+            # payments all at once no matter what page you were viewing,
+            # which didn't match any of the page's own (already-scoped)
+            # local search boxes. Pages with no natural search category
+            # (dashboard, concerns, renewals, etc.) get no search box at all
+            # rather than a misleading catch-all.
+            _search_scopes = [
+                ("/admin/units", "units", "Search units by code…"),
+                ("/admin/floorplan", "units", "Search units by code…"),
+                ("/admin/tenants/monitoring", "customers", "Search tenants by name or unit…"),
+                ("/admin/users", "customers", "Search customers by name or email…"),
+                ("/admin/reservations", "reservations", "Search reservations by name or email…"),
+                ("/admin/deposits", "payments", "Search payments by reference or receipt #…"),
+                ("/admin/payments", "payments", "Search payments by reference or receipt #…"),
+                ("/admin/documents", "documents", "Search documents by title or tenant…"),
+            ]
+            admin_search_scope = None
+            admin_search_placeholder = ""
+            for prefix, scope, placeholder in _search_scopes:
+                if request.path.startswith(prefix):
+                    admin_search_scope, admin_search_placeholder = scope, placeholder
+                    break
 
             from .extensions import db
             from .models import (
@@ -158,6 +186,8 @@ def create_app(config_object: type[Config] = Config) -> Flask:
                 "nav_counts": counts,
                 "nav_notifications": notifs,
                 "nav_notif_total": counts["reservations"] + counts["concerns"] + counts["inquiries"] + counts["payment_proofs"],
+                "admin_search_scope": admin_search_scope,
+                "admin_search_placeholder": admin_search_placeholder,
             }
         except Exception:
             return empty

@@ -167,9 +167,20 @@ function openUnitInfoModal(unitId) {
         : '';
       const tenantBlock = data.tenant
         ? `<div style="background:rgba(20,20,23,0.03); border-radius:10px; padding:14px; margin-top:14px;">
-             <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:6px;">Current Tenant</div>
+             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
+               <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b;">Current Tenant</div>
+               ${data.tenant.paid_this_month === true
+                 ? '<span style="background:#22c55e1a; color:#22c55e; border:1px solid #22c55e40; font-weight:700; font-size:11px; padding:2px 8px; border-radius:999px;">Paid this month</span>'
+                 : data.tenant.paid_this_month === false
+                   ? '<span style="background:#ef44441a; color:#ef4444; border:1px solid #ef444440; font-weight:700; font-size:11px; padding:2px 8px; border-radius:999px;">Unpaid this month</span>'
+                   : ''}
+             </div>
              <div style="font-weight:700;">${data.tenant.name}</div>
-             ${data.tenant.contract_end ? `<div class="muted" style="font-size:13px; margin-top:2px;">Contract ends ${data.tenant.contract_end}</div>` : ''}
+             ${data.tenant.email ? `<div class="muted" style="font-size:13px; margin-top:2px;">${data.tenant.email}</div>` : ''}
+             ${data.tenant.move_in ? `<div class="muted" style="font-size:13px; margin-top:6px;">Move-in: ${data.tenant.move_in}</div>` : ''}
+             ${data.tenant.contract_end
+               ? `<div class="muted" style="font-size:13px; margin-top:2px;">Contract ends ${data.tenant.contract_end}</div>`
+               : (data.tenant.is_commercial ? '' : '<div class="muted" style="font-size:13px; margin-top:2px;">Month-to-month — no fixed end date</div>')}
              <a href="${data.tenant.user_details_url}" class="btn btn--ghost btn--sm" style="margin-top:10px;">View Tenant Profile</a>
            </div>`
         : '';

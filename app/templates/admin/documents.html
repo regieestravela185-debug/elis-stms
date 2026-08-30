@@ -44,9 +44,11 @@
           <select class="input" name="tenant_profile_id" required id="tenantSelect" style="font-size: 14px;">
             <option value="">Search tenant or unit...</option>
             {% for tenant in tenants %}
-              <option value="{{ tenant.id }}" 
-                      data-unit="{{ tenant.unit.unit_code }}" 
+              {% set tenant_is_commercial = 'commercial' in (tenant.unit.type or '')|lower %}
+              <option value="{{ tenant.id }}"
+                      data-unit="{{ tenant.unit.unit_code }}"
                       data-building="{{ tenant.unit.building.code }}"
+                      data-type="{{ 'commercial' if tenant_is_commercial else 'residential' }}"
                       data-search="{{ tenant.user.full_name|lower }} {{ tenant.unit.unit_code|lower }} {{ tenant.unit.building.code|lower }}">
                 {{ tenant.unit.building.code }}-{{ tenant.unit.unit_number }} | {{ tenant.user.full_name }}
 </option>
@@ -58,15 +60,11 @@
         <div>
           <label class="label">Document Type *</label>
           <select class="input" name="document_type" required id="docTypeSelect">
-            <option value="">Select type...</option>
+            <option value="">Select tenant first...</option>
             <option value="lease_agreement">Lease Agreement</option>
-            <option value="receipt">Receipt</option>
-            <option value="certificate">Certificate</option>
-            <option value="rules">Rules & Regulations</option>
-            <option value="electricity_bill">Electricity Bill</option>
-            <option value="water_bill">Water Bill</option>
-            <option value="internet_bill">Internet Bill</option>
+            <option value="rental_agreement">Kasunduan sa Pagpaupa (Rental Agreement)</option>
           </select>
+          <small class="muted" style="display: block; margin-top: 4px;">Auto-selected based on unit type — commercial gets a Lease Agreement, residential gets a Kasunduan sa Pagpaupa</small>
 </div>
 
         <div>
@@ -193,6 +191,8 @@
           {% set doc_icon_class = 'doc-icon-bg-default' %}
           {% if doc.document_type == 'lease_agreement' %}
             {% set doc_icon_class = 'doc-icon-bg-lease' %}
+          {% elif doc.document_type == 'rental_agreement' %}
+            {% set doc_icon_class = 'doc-icon-bg-lease' %}
           {% elif doc.document_type == 'receipt' %}
             {% set doc_icon_class = 'doc-icon-bg-receipt' %}
           {% elif doc.document_type == 'certificate' %}
@@ -208,6 +208,7 @@
           {% endif %}
             <div class="{{ doc_icon_class }}" style="width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">
               {% if doc.document_type == 'lease_agreement' %}
+              {% elif doc.document_type == 'rental_agreement' %}
               {% elif doc.document_type == 'receipt' %}
               {% elif doc.document_type == 'certificate' %}
               {% elif doc.document_type == 'rules' %}
@@ -224,6 +225,8 @@
             <div style="margin-bottom: 12px;">
           {% set doc_chip_class = 'doc-chip-default' %}
           {% if doc.document_type == 'lease_agreement' %}
+            {% set doc_chip_class = 'doc-chip-lease' %}
+          {% elif doc.document_type == 'rental_agreement' %}
             {% set doc_chip_class = 'doc-chip-lease' %}
           {% elif doc.document_type == 'receipt' %}
             {% set doc_chip_class = 'doc-chip-receipt' %}
@@ -434,6 +437,13 @@
     const tenantUnit = document.getElementById('tenantUnit');
     const tenantBuilding = document.getElementById('tenantBuilding');
 
+    const docTypeSelect = document.getElementById('docTypeSelect');
+    const docTitle = document.getElementById('docTitle');
+    const titleSuggestions = {
+      'lease_agreement': 'Lease Agreement',
+      'rental_agreement': 'Kasunduan sa Pagpaupa',
+    };
+
     tenantSelect.addEventListener('change', function() {
       const selectedOption = this.options[this.selectedIndex];
       if (this.value) {
@@ -443,29 +453,22 @@
         tenantUnit.textContent = selectedOption.dataset.unit;
         tenantBuilding.textContent = selectedOption.dataset.building;
         tenantInfo.style.display = 'block';
+
+        // Auto-select the right document type for this tenant's unit —
+        // commercial gets a Lease Agreement, residential gets a Kasunduan
+        // sa Pagpaupa. Admin can still switch it manually if needed.
+        const docType = selectedOption.dataset.type === 'commercial' ? 'lease_agreement' : 'rental_agreement';
+        docTypeSelect.value = docType;
+        if (!docTitle.value && titleSuggestions[docType]) {
+          docTitle.value = titleSuggestions[docType];
+        }
       } else {
         tenantInfo.style.display = 'none';
       }
     });
 
     // Auto-fill document title based on type
-    const docTypeSelect = document.getElementById('docTypeSelect');
-    const docTitle = document.getElementById('docTitle');
-
     docTypeSelect.addEventListener('change', function() {
-      const today = new Date();
-      const monthYear = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      
-      const titleSuggestions = {
-        'electricity_bill': `${monthYear} Electricity Bill`,
-        'water_bill': `${monthYear} Water Bill`,
-        'internet_bill': `${monthYear} Internet Bill`,
-        'receipt': `${monthYear} Payment Receipt`,
-        'lease_agreement': 'Lease Agreement',
-        'certificate': 'Certificate',
-        'rules': 'Rules and Regulations'
-      };
-      
       if (titleSuggestions[this.value] && !docTitle.value) {
         docTitle.value = titleSuggestions[this.value];
       }

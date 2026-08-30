@@ -326,10 +326,10 @@
               <span></span>
 </button>
             {% block topbar_left %}{% endblock %}
-            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
-            <div class="topbar-search js-search" data-url="{{ url_for('admin.global_search') }}">
+            {% if current_user.is_authenticated and current_user.role.value == 'admin' and admin_search_scope %}
+            <div class="topbar-search js-search" data-url="{{ url_for('admin.global_search') }}" data-scope="{{ admin_search_scope }}">
               <svg class="topbar-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input type="text" class="topbar-search__input js-search-input" placeholder="Search customers, units, payments…" autocomplete="off" aria-label="Global search" />
+              <input type="text" class="topbar-search__input js-search-input" placeholder="{{ admin_search_placeholder }}" autocomplete="off" aria-label="Search this page" />
               <div class="topbar-search__results js-search-results" hidden></div>
             </div>
             {% endif %}
@@ -495,8 +495,9 @@
           var input = wrap.querySelector('.js-search-input');
           var box = wrap.querySelector('.js-search-results');
           var endpoint = wrap.getAttribute('data-url');
+          var scope = wrap.getAttribute('data-scope');
           var timer;
-          var GROUPS = [['customers','Customers'],['units','Units'],['reservations','Reservations'],['payments','Payments']];
+          var GROUPS = [['customers','Customers'],['units','Units'],['reservations','Reservations'],['payments','Payments'],['documents','Documents']];
           function esc(s){ var d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
           function render(data){
             var html = '', total = 0;
@@ -515,7 +516,7 @@
             box.removeAttribute('hidden');
           }
           function run(q){
-            fetch(endpoint + '?q=' + encodeURIComponent(q))
+            fetch(endpoint + '?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(scope))
               .then(function(r){ return r.ok ? r.json() : null; })
               .then(function(d){ if (d) render(d); })
               .catch(function(){});

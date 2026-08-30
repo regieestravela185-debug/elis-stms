@@ -369,6 +369,18 @@
       opacity: 0.85;
     }
 
+    .unit-tile__tenant {
+      font-size: 0.7rem;
+      font-weight: 700;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
     /* Floor filter pills */
     .floor-pill {
       padding: 6px 14px;
@@ -479,16 +491,20 @@
 </div>
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
                 {% for u in floors_grouped[floor_num] %}
+                  {% set tenant_name = tenant_by_unit.get(u.id) %}
                   <button
                     class="unit-tile status-{{ u.status.value }}"
                     data-building="{{ u.building_id }}"
                     data-unit-id="{{ u.id }}"
                     data-status="{{ u.status.value }}"
                     data-floor="{{ u.floor or 0 }}"
-                    title="{{ u.unit_code }} • Floor {{ u.floor or '—' }} • ₱{{ '{:,.2f}'.format(u.price_monthly|float) }} • {{ u.status.value|title }}"
+                    title="{{ u.unit_code }} • Floor {{ u.floor or '—' }} • ₱{{ '{:,.2f}'.format(u.price_monthly|float) }} • {{ u.status.value|title }}{% if tenant_name %} • {{ tenant_name }}{% endif %}"
                   >
                     <div class="unit-tile__code">{{ u.unit_number }}</div>
                     <div class="unit-tile__meta mono">{{ u.unit_code }}</div>
+                    {% if tenant_name %}
+                      <div class="unit-tile__tenant">{{ tenant_name }}</div>
+                    {% endif %}
 </button>
                 {% endfor %}
 </div>
