@@ -11,7 +11,7 @@
   }
 
   function closeModals() {
-    ["#modalLogin", "#modalRegister", "#modalVerifyOtp", "#modalReserve", "#modalUnitDetails", "#modalForgotPassword", "#modalResetPassword", "#modalTerms", "#modalPrivacy"].forEach((id) => {
+    ["#modalLogin", "#modalRegister", "#modalVerifyOtp", "#modalReserve", "#modalUnitDetails", "#modalUnitInquiry", "#modalForgotPassword", "#modalResetPassword", "#modalTerms", "#modalPrivacy"].forEach((id) => {
       const el = $(id);
       if (el) el.hidden = true;
     });
