@@ -500,45 +500,48 @@
         <h4 style="margin: 0; font-size: 16px; font-weight: 700;">Real-time Search & Filters</h4>
         <div style="display: flex; gap: 10px; align-items: center;">
           <button type="button" id="clearFiltersBtn" class="btn btn--ghost btn--sm">Clear Filters</button>
-          <a href="{{ url_for('admin.units', archived='1' if not show_archived else '0') }}" class="toggle-archived {% if show_archived %}active{% endif %}">
+          {% set archived_args = request.args.to_dict() %}
+          {% set _ = archived_args.update({'archived': ('1' if not show_archived else '0')}) %}
+          {% set _ = archived_args.pop('page', None) %}
+          <a href="{{ url_for('admin.units', **archived_args) }}" class="toggle-archived {% if show_archived %}active{% endif %}">
              {% if show_archived %}Showing Archived{% else %}Show Archived{% endif %}
 </a>
 </div>
 </div>
-      
+
       <div class="filters-grid" style="margin-top: 12px;">
         <div class="filter-group">
           <label class="filter-label">Search</label>
-          <input class="input" id="searchInput" placeholder="Unit code, number..." autocomplete="off" />
+          <input class="input" id="searchInput" placeholder="Unit code, number..." autocomplete="off" value="{{ request.args.get('search', '') }}" />
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Building</label>
           <select class="input" id="buildingSelect">
             <option value="">All Buildings</option>
             {% for building in buildings %}
-              <option value="{{ building.code }}">{{ building.code }}</option>
+              <option value="{{ building.id }}" {% if request.args.get('building') == building.id|string %}selected{% endif %}>{{ building.code }}</option>
             {% endfor %}
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Status</label>
           <select class="input" id="statusSelect">
             <option value="">All Statuses</option>
-            <option value="available">Available</option>
-            <option value="occupied">Occupied</option>
-            <option value="reserved">Reserved</option>
-            <option value="unpaid">Unpaid</option>
+            <option value="available" {% if request.args.get('status') == 'available' %}selected{% endif %}>Available</option>
+            <option value="occupied" {% if request.args.get('status') == 'occupied' %}selected{% endif %}>Occupied</option>
+            <option value="reserved" {% if request.args.get('status') == 'reserved' %}selected{% endif %}>Reserved</option>
+            <option value="unpaid" {% if request.args.get('status') == 'unpaid' %}selected{% endif %}>Unpaid</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Type</label>
           <select class="input" id="typeSelect">
             <option value="">All Types</option>
-            <option value="residential">Residential</option>
-            <option value="commercial">Commercial</option>
+            <option value="residential" {% if request.args.get('type') == 'residential' %}selected{% endif %}>Residential</option>
+            <option value="commercial" {% if request.args.get('type') == 'commercial' %}selected{% endif %}>Commercial</option>
           </select>
 </div>
 </div>
@@ -548,7 +551,7 @@
     <div class="card mt-16">
       <div class="section__header">
         <h3>{% if show_archived %} Archived Units{% else %} All Units{% endif %}</h3>
-        <p class="muted" id="results-count">{{ units|length }} unit(s) found</p>
+        <p class="muted" id="results-count">{{ pagination.total }} unit(s) found{% if pagination.pages > 1 %} &middot; page {{ pagination.page }} of {{ pagination.pages }}{% endif %}</p>
 </div>
 
       {% if units %}
@@ -615,6 +618,28 @@
             </tbody>
           </table>
 </div>
+
+        {% if pagination.pages > 1 %}
+          <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+            {% set args = request.args.to_dict() %}
+            {% if pagination.has_prev %}
+              {% set _ = args.update({'page': pagination.prev_num}) %}
+              <a href="{{ url_for('admin.units', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                {% set _ = args.update({'page': p}) %}
+                <a href="{{ url_for('admin.units', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+              {% else %}
+                <span class="muted" style="padding: 0 6px;">&hellip;</span>
+              {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+              {% set _ = args.update({'page': pagination.next_num}) %}
+              <a href="{{ url_for('admin.units', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <div class="empty-state">
           <div class="empty-state__icon">{% if show_archived %}{% else %}{% endif %}</div>
@@ -660,77 +685,35 @@
       unitFormBuildingSelect.addEventListener('change', syncFloorOptions);
       syncFloorOptions();
     }
-    
-    if (!unitsTable) return; // Exit if no table (empty state)
-    
-    const allRows = Array.from(unitsTable.querySelectorAll('tbody tr'));
-    
-    function filterTable() {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const buildingCode = buildingSelect.value.toLowerCase();
-      const statusValue = statusSelect.value.toLowerCase();
-      const typeValue = typeSelect.value.toLowerCase();
-      
-      let visibleCount = 0;
-      
-      allRows.forEach(row => {
-        const unitCode = row.cells[1].textContent.toLowerCase();
-        const unitNumber = row.cells[3].textContent.toLowerCase();
-        const rowBuilding = row.getAttribute('data-building').toLowerCase();
-        const rowStatus = row.getAttribute('data-status').toLowerCase();
-        const rowType = row.getAttribute('data-type').toLowerCase();
-        
-        const matchesSearch = !searchTerm || 
-          unitCode.includes(searchTerm) || 
-          unitNumber.includes(searchTerm);
-        
-        const matchesBuilding = !buildingCode || rowBuilding === buildingCode;
-        const matchesStatus = !statusValue || rowStatus === statusValue;
-        const matchesType = !typeValue || rowType === typeValue;
-        
-        if (matchesSearch && matchesBuilding && matchesStatus && matchesType) {
-          row.style.display = '';
-          visibleCount++;
-        } else {
-          row.style.display = 'none';
-        }
-      });
-      
-      resultsCount.textContent = `${visibleCount} unit(s) found`;
-      
-      let noResultsRow = document.getElementById('noResultsRow');
-      
-      if (visibleCount === 0 && allRows.length > 0) {
-        if (!noResultsRow) {
-          noResultsRow = document.createElement('tr');
-          noResultsRow.id = 'noResultsRow';
-          noResultsRow.innerHTML = `
-            <td colspan="9" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Units Found</div>
-              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-</td>
-          `;
-          unitsTable.querySelector('tbody').appendChild(noResultsRow);
-        }
-      } else if (noResultsRow) {
-        noResultsRow.remove();
-      }
+
+    if (!searchInput) return;
+
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (buildingSelect.value) params.set('building', buildingSelect.value);
+      if (statusSelect.value) params.set('status', statusSelect.value);
+      if (typeSelect.value) params.set('type', typeSelect.value);
+      {% if show_archived %}params.set('archived', '1');{% endif %}
+      window.location.href = '{{ url_for("admin.units") }}?' + params.toString();
     }
-    
+
     clearFiltersBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      buildingSelect.value = '';
-      statusSelect.value = '';
-      typeSelect.value = '';
-      filterTable();
+      {% if show_archived %}
+      window.location.href = '{{ url_for("admin.units", archived="1") }}';
+      {% else %}
+      window.location.href = '{{ url_for("admin.units") }}';
+      {% endif %}
     });
-    
-    searchInput.addEventListener('input', debounce(filterTable, 400));
-    buildingSelect.addEventListener('change', filterTable);
-    statusSelect.addEventListener('change', filterTable);
-    typeSelect.addEventListener('change', filterTable);
-    
-    filterTable();
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    buildingSelect.addEventListener('change', applyFilters);
+    statusSelect.addEventListener('change', applyFilters);
+    typeSelect.addEventListener('change', applyFilters);
   });
   </script>
 {% endblock %}

@@ -1022,11 +1022,19 @@ def tenant_monitoring():
             TenantProfile.contract_end <= threshold_urgent,
             TenantProfile.contract_end >= today
         )
-    
-    tenants = query.order_by(TenantProfile.contract_end.asc()).all()
-    
+
+    # Apply floor filter
+    floor_filter = request.args.get('floor', '')
+    if floor_filter:
+        query = query.filter(Unit.floor == int(floor_filter))
+
+    query = query.order_by(TenantProfile.contract_end.asc())
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=20, error_out=False)
+    tenants = pagination.items
+
     threshold_warning = today + timedelta(days=30) # 1 month
-    
+
     # Active (pending/acknowledged) move-out notices, keyed by tenant_profile_id
     active_notices = (
         db.session.query(MoveOutNotice)
@@ -1034,6 +1042,50 @@ def tenant_monitoring():
         .all()
     )
     notices_by_profile = {n.tenant_profile_id: n for n in active_notices}
+
+    # Stat cards reflect ALL active tenants, not just the current page —
+    # a lightweight pass (no per-tenant renewal/payment/concern subqueries,
+    # those are only needed for the detailed table rows below).
+    stat_counts = {"Normal": 0, "Urgent": 0, "Near Expiry": 0, "Expired": 0}
+    all_active_tenants = (
+        db.session.query(TenantProfile)
+        .join(Unit, TenantProfile.unit_id == Unit.id)
+        .filter(TenantProfile.is_active == True)  # noqa: E712
+        .all()
+    )
+    for t in all_active_tenants:
+        is_commercial = bool(t.unit and "commercial" in (t.unit.type or "").lower())
+        days_remaining = (t.contract_end - today).days if t.contract_end else None
+        s = "Normal"
+        if days_remaining is not None:
+            if days_remaining < 0:
+                s = "Expired"
+            elif days_remaining <= 7:
+                s = "Urgent"
+            elif days_remaining <= 30:
+                s = "Near Expiry"
+        if not is_commercial and notices_by_profile.get(t.id):
+            s = "Moving Out"
+        if s in stat_counts:
+            stat_counts[s] += 1
+    stat_total = len(all_active_tenants)
+
+    # "Move-Out Notices Awaiting Review" is a review queue, not part of the
+    # searchable/paginated tenant list below — it must always show every
+    # pending notice regardless of which page/filter is currently active,
+    # so it's built from the full active_notices set, not from `tenants`.
+    notice_items = []
+    if active_notices:
+        notice_tenant_ids = [n.tenant_profile_id for n in active_notices]
+        notice_profiles = (
+            db.session.query(TenantProfile)
+            .join(User, TenantProfile.user_id == User.id)
+            .join(Unit, TenantProfile.unit_id == Unit.id)
+            .filter(TenantProfile.id.in_(notice_tenant_ids), TenantProfile.is_active == True)  # noqa: E712
+            .all()
+        )
+        for p in notice_profiles:
+            notice_items.append({"profile": p, "move_out_notice": notices_by_profile.get(p.id)})
 
     monitoring_data = []
     for t in tenants:
@@ -1095,8 +1147,12 @@ def tenant_monitoring():
     return render_template(
         "admin/tenant_monitoring.html",
         monitoring_data=monitoring_data,
+        notice_items=notice_items,
+        pagination=pagination,
         buildings=buildings,
-        today=today
+        today=today,
+        stat_total=stat_total,
+        stat_counts=stat_counts,
     )
 
 
@@ -1346,7 +1402,10 @@ def units():
     if type_filter:
         query = query.filter(Unit.type == type_filter)
     
-    units = query.order_by(Unit.building_id.asc(), Unit.unit_number.asc()).all()
+    query = query.order_by(Unit.building_id.asc(), Unit.unit_number.asc())
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=30, error_out=False)
+    units = pagination.items
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     
     # Statistics
@@ -1368,7 +1427,7 @@ def units():
 
     building_floor_limits = {building.id: _get_building_floor_limit(building.id) for building in buildings}
 
-    return render_template("admin/units.html", buildings=buildings, units=units, stats=stats, show_archived=show_archived, building_floor_limits=building_floor_limits)
+    return render_template("admin/units.html", buildings=buildings, units=units, pagination=pagination, stats=stats, show_archived=show_archived, building_floor_limits=building_floor_limits)
 
 
 @bp.post("/units/create")
@@ -1759,22 +1818,54 @@ def reservations():
     from datetime import date
     q = (request.args.get("q") or "").strip().lower()
     status = (request.args.get("status") or "").strip().lower()
+    building_filter = (request.args.get("building") or "").strip()
+    floor_filter = (request.args.get("floor") or "").strip()
+    sort_by = (request.args.get("sort") or "newest").strip()
 
-    query = db.session.query(Reservation).order_by(Reservation.created_at.desc())
+    query = db.session.query(Reservation)
     if q:
         query = query.filter(
             (Reservation.full_name.ilike(f"%{q}%")) | (Reservation.email.ilike(f"%{q}%"))
         )
     if status in {"pending", "approved", "rejected", "cancelled"}:
         query = query.filter(Reservation.status == ReservationStatus(status))
+    if building_filter or floor_filter:
+        query = query.join(Unit, Reservation.unit_id == Unit.id)
+        if building_filter:
+            query = query.join(Building, Unit.building_id == Building.id).filter(Building.code == building_filter)
+        if floor_filter:
+            query = query.filter(Unit.floor == int(floor_filter))
 
-    rows = query.limit(200).all()
+    if sort_by == "oldest":
+        query = query.order_by(Reservation.created_at.asc())
+    elif sort_by == "move-in":
+        query = query.order_by(Reservation.move_in_date.asc())
+    elif sort_by == "name":
+        query = query.order_by(Reservation.full_name.asc())
+    else:  # newest (default)
+        query = query.order_by(Reservation.created_at.desc())
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=25, error_out=False)
+    rows = pagination.items
     today = date.today()
-    
+
     # Get all buildings for filter dropdown
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
-    
-    return render_template("admin/reservations.html", rows=rows, q=q, status=status, today=today, buildings=buildings)
+
+    # Stat cards reflect ALL reservations, not just the current page/filter.
+    reservation_stats = {
+        "total": db.session.query(Reservation).count(),
+        "pending": db.session.query(Reservation).filter(Reservation.status == ReservationStatus.PENDING).count(),
+        "approved": db.session.query(Reservation).filter(Reservation.status == ReservationStatus.APPROVED).count(),
+        "rejected": db.session.query(Reservation).filter(Reservation.status == ReservationStatus.REJECTED).count(),
+        "cancelled": db.session.query(Reservation).filter(Reservation.status == ReservationStatus.CANCELLED).count(),
+    }
+
+    return render_template(
+        "admin/reservations.html", rows=rows, pagination=pagination, q=q, status=status,
+        today=today, buildings=buildings, reservation_stats=reservation_stats,
+    )
 
 
 @bp.get("/reservations/export")
@@ -2096,16 +2187,84 @@ def payments():
     from ...jobs import shift_month
 
     tenants = db.session.query(TenantProfile).order_by(TenantProfile.created_at.desc()).limit(200).all()
+
     # Confirmed payments only — tenant-submitted proofs awaiting review live
     # in their own "Pending Payment Proofs" section below, and rejected ones
     # aren't real recorded payments, so neither belongs in this list/stats.
-    payments = (
-        db.session.query(Payment)
-        .filter(Payment.payment_status.notin_(['pending', 'rejected']))
-        .order_by(Payment.paid_at.desc())
-        .limit(100)
-        .all()
-    )
+    search_query = (request.args.get('search') or '').strip()
+    type_filter = (request.args.get('type') or '').strip()
+    method_filter = (request.args.get('method') or '').strip()
+    building_filter = (request.args.get('building') or '').strip()
+    floor_filter = (request.args.get('floor') or '').strip()
+    sort_by = (request.args.get('sort') or 'newest').strip()
+
+    payments_query = db.session.query(Payment).filter(Payment.payment_status.notin_(['pending', 'rejected']))
+
+    needs_join = bool(search_query or building_filter or floor_filter or sort_by == 'tenant')
+    if needs_join:
+        payments_query = (
+            payments_query
+            .join(TenantProfile, Payment.tenant_profile_id == TenantProfile.id)
+            .join(User, TenantProfile.user_id == User.id)
+            .join(Unit, TenantProfile.unit_id == Unit.id)
+        )
+    if search_query:
+        payments_query = payments_query.filter(
+            db.or_(User.full_name.ilike(f"%{search_query}%"), Unit.unit_code.ilike(f"%{search_query}%"))
+        )
+    if building_filter:
+        payments_query = payments_query.join(Building, Unit.building_id == Building.id).filter(Building.code == building_filter)
+    if floor_filter:
+        payments_query = payments_query.filter(Unit.floor == int(floor_filter))
+
+    if type_filter == 'monthly':
+        payments_query = payments_query.filter(Payment.is_deposit == False)  # noqa: E712
+    elif type_filter == 'deposit':
+        payments_query = payments_query.filter(Payment.is_deposit == True)  # noqa: E712
+
+    if method_filter == 'cash':
+        payments_query = payments_query.filter(db.or_(Payment.payment_method == 'cash', Payment.payment_method.is_(None)))
+    elif method_filter:
+        payments_query = payments_query.filter(Payment.payment_method == method_filter)
+
+    if sort_by == 'oldest':
+        payments_query = payments_query.order_by(Payment.paid_at.asc())
+    elif sort_by == 'amount-high':
+        payments_query = payments_query.order_by(Payment.amount.desc())
+    elif sort_by == 'amount-low':
+        payments_query = payments_query.order_by(Payment.amount.asc())
+    elif sort_by == 'tenant':
+        payments_query = payments_query.order_by(User.full_name.asc())
+    else:  # newest (default)
+        payments_query = payments_query.order_by(Payment.paid_at.desc())
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(payments_query, page=page, per_page=25, error_out=False)
+    payments = pagination.items
+
+    # Stat cards (Total/This Month/Last Month Revenue, Tenants Paid) reflect
+    # ALL confirmed payments via real SQL SUM/COUNT — they used to be
+    # computed by summing just the `payments` list here, which was capped
+    # at 100 (now paginated to 25), so "Total Revenue" was quietly only
+    # ever the most recent 100 payments, never the true total.
+    from sqlalchemy import func as _func
+    _confirmed = db.session.query(Payment).filter(Payment.payment_status.notin_(['pending', 'rejected']))
+    this_month_start_dt = dt.combine(today.replace(day=1), dt.min.time())
+    last_month_end_dt = this_month_start_dt
+    last_month_start_dt = dt.combine((today.replace(day=1) - timedelta(days=1)).replace(day=1), dt.min.time())
+
+    total_revenue = _confirmed.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
+    this_month_revenue = _confirmed.filter(Payment.paid_at >= this_month_start_dt).with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
+    last_month_revenue = _confirmed.filter(Payment.paid_at >= last_month_start_dt, Payment.paid_at < last_month_end_dt).with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
+    tenants_paid_count = _confirmed.with_entities(_func.count(_func.distinct(Payment.tenant_profile_id))).scalar()
+
+    payment_stats = {
+        'total_revenue': float(total_revenue or 0),
+        'this_month_revenue': float(this_month_revenue or 0),
+        'last_month_revenue': float(last_month_revenue or 0),
+        'tenants_paid': tenants_paid_count or 0,
+    }
+
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     today = date.today()
     today_dt = dt.combine(today, dt.min.time())  # Convert to datetime for comparison
@@ -2160,6 +2319,8 @@ def payments():
         "admin/payments.html",
         tenants=tenants,
         payments=payments,
+        pagination=pagination,
+        payment_stats=payment_stats,
         buildings=buildings,
         today=today,
         today_dt=today_dt,
@@ -2203,18 +2364,88 @@ def dismiss_outstanding(profile_id: int):
 def deposits():
     _ensure_admin()
     from datetime import date, timedelta
-    
-    reservations = (
-        db.session.query(Reservation)
-        .filter(Reservation.status == ReservationStatus.APPROVED)
-        .order_by(Reservation.created_at.desc())
-        .all()
-    )
-    
-    buildings = db.session.query(Building).order_by(Building.code.asc()).all()
+    from sqlalchemy import func as _func
+
     today = date.today()
-    
-    return render_template("admin/deposits.html", reservations=reservations, buildings=buildings, today=today)
+
+    base_query = db.session.query(Reservation).filter(Reservation.status == ReservationStatus.APPROVED)
+
+    # Filters (for the table only — stat cards below always use base_query,
+    # i.e. every approved reservation, regardless of these filters).
+    search_query = (request.args.get('search') or '').strip()
+    status_filter = (request.args.get('status') or '').strip()
+    building_filter = (request.args.get('building') or '').strip()
+    floor_filter = (request.args.get('floor') or '').strip()
+    sort_by = (request.args.get('sort') or 'newest').strip()
+
+    filtered_query = base_query
+    if search_query:
+        filtered_query = filtered_query.filter(
+            db.or_(Reservation.full_name.ilike(f"%{search_query}%"), Reservation.email.ilike(f"%{search_query}%"))
+        )
+    if status_filter:
+        filtered_query = filtered_query.filter(Reservation.deposit_status == status_filter)
+    if building_filter or floor_filter:
+        filtered_query = filtered_query.join(Unit, Reservation.unit_id == Unit.id)
+        if building_filter:
+            filtered_query = filtered_query.join(Building, Unit.building_id == Building.id).filter(Building.code == building_filter)
+        if floor_filter:
+            filtered_query = filtered_query.filter(Unit.floor == int(floor_filter))
+
+    if sort_by == 'oldest':
+        filtered_query = filtered_query.order_by(Reservation.created_at.asc())
+    elif sort_by == 'amount-high':
+        filtered_query = filtered_query.order_by(Reservation.deposit_amount.desc())
+    elif sort_by == 'amount-low':
+        filtered_query = filtered_query.order_by(Reservation.deposit_amount.asc())
+    elif sort_by == 'expiring':
+        filtered_query = filtered_query.order_by(Reservation.move_out_date.asc().nullslast())
+    else:  # newest (default)
+        filtered_query = filtered_query.order_by(Reservation.created_at.desc())
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(filtered_query, page=page, per_page=25, error_out=False)
+    reservations = pagination.items
+
+    # Stat cards reflect ALL approved reservations' deposits, not just the
+    # current page — they used to be summed from the `reservations` list
+    # here directly, which is exactly the kind of "only counts what's on
+    # this page" bug pagination would otherwise introduce.
+    total_held = base_query.filter(Reservation.deposit_status == 'held').with_entities(
+        _func.coalesce(_func.sum(Reservation.deposit_amount), 0)
+    ).scalar()
+    total_returned = base_query.filter(
+        Reservation.deposit_status.in_(['full_return', 'partial_return']),
+        Reservation.deposit_return_amount.isnot(None),
+    ).with_entities(_func.coalesce(_func.sum(Reservation.deposit_return_amount), 0)).scalar()
+    active_deposits = base_query.filter(Reservation.deposit_status == 'held').count()
+    pending_soon = base_query.filter(
+        Reservation.deposit_status == 'held',
+        Reservation.move_out_date.isnot(None),
+        Reservation.move_out_date <= today + timedelta(days=30),
+    ).count()
+    # Deductions = deposit_amount - deposit_return_amount, summed only over
+    # rows that actually have a return amount recorded — computed in
+    # Python since it's a per-row difference, not a plain column sum.
+    deduction_pairs = base_query.filter(Reservation.deposit_return_amount.isnot(None)).with_entities(
+        Reservation.deposit_amount, Reservation.deposit_return_amount
+    ).all()
+    total_deductions = sum(float(amt) - float(ret) for amt, ret in deduction_pairs)
+
+    deposit_stats = {
+        'total_held': float(total_held or 0),
+        'total_returned': float(total_returned or 0),
+        'total_deductions': total_deductions,
+        'active_deposits': active_deposits,
+        'pending_soon': pending_soon,
+    }
+
+    buildings = db.session.query(Building).order_by(Building.code.asc()).all()
+
+    return render_template(
+        "admin/deposits.html", reservations=reservations, pagination=pagination,
+        deposit_stats=deposit_stats, buildings=buildings, today=today,
+    )
 
 
 @bp.get("/deposits/export")
@@ -2928,16 +3159,52 @@ def view_ledger(payment_id: int):
 def announcements():
     _ensure_admin()
     from datetime import date
-    
-    announcements = (
-        db.session.query(Announcement)
-        .order_by(Announcement.is_pinned.desc(), Announcement.created_at.desc())
-        .all()
-    )
-    
+
     today = date.today()
-    
-    return render_template("admin/announcements.html", announcements=announcements, today=today)
+
+    search_query = (request.args.get('search') or '').strip()
+    category_filter = (request.args.get('category') or '').strip()
+    status_filter = (request.args.get('status') or '').strip()
+    sort_by = (request.args.get('sort') or 'newest').strip()
+
+    query = db.session.query(Announcement)
+    if search_query:
+        query = query.filter(
+            db.or_(Announcement.title.ilike(f"%{search_query}%"), Announcement.content.ilike(f"%{search_query}%"))
+        )
+    if category_filter:
+        query = query.filter(Announcement.category == category_filter)
+    if status_filter == 'active':
+        query = query.filter(Announcement.is_active == True)  # noqa: E712
+    elif status_filter == 'inactive':
+        query = query.filter(Announcement.is_active == False)  # noqa: E712
+    elif status_filter == 'pinned':
+        query = query.filter(Announcement.is_pinned == True)  # noqa: E712
+
+    if sort_by == 'oldest':
+        query = query.order_by(Announcement.created_at.asc())
+    elif sort_by == 'pinned':
+        query = query.order_by(Announcement.is_pinned.desc(), Announcement.created_at.desc())
+    else:  # newest (default)
+        query = query.order_by(Announcement.created_at.desc())
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=20, error_out=False)
+    announcements = pagination.items
+
+    # Stat cards reflect ALL announcements, not just the current page/filter.
+    this_month_start = today.replace(day=1)
+    announcement_stats = {
+        'total': db.session.query(Announcement).count(),
+        'active': db.session.query(Announcement).filter(Announcement.is_active == True).count(),  # noqa: E712
+        'this_month': db.session.query(Announcement).filter(Announcement.created_at >= this_month_start).count(),
+        'pinned': db.session.query(Announcement).filter(Announcement.is_pinned == True).count(),  # noqa: E712
+    }
+
+    return render_template(
+        "admin/announcements.html", announcements=announcements, pagination=pagination,
+        announcement_stats=announcement_stats, today=today,
+    )
 
 
 @bp.post("/announcements/create")
@@ -4436,8 +4703,11 @@ def inquiries():
             )
         )
     
-    inquiries = query.order_by(Inquiry.created_at.desc()).all()
-    
+    query = query.order_by(Inquiry.created_at.desc())
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=25, error_out=False)
+    inquiries = pagination.items
+
     # Statistics
     total_inquiries = db.session.query(Inquiry).count()
     pending_count = db.session.query(Inquiry).filter(Inquiry.status == InquiryStatus.PENDING).count()
@@ -4451,7 +4721,7 @@ def inquiries():
         'contacted': contacted_count
     }
     
-    return render_template("admin/inquiries.html", inquiries=inquiries, stats=stats)
+    return render_template("admin/inquiries.html", inquiries=inquiries, pagination=pagination, stats=stats)
 
 
 @bp.get("/inquiries/<int:inquiry_id>")

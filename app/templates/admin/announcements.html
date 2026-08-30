@@ -263,34 +263,22 @@
     <div class="announcements-stats">
       <div class="stat-card stat-card--total">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-total">{{ announcements|length }}</div>
+        <div class="stat-card__number">{{ announcement_stats.total }}</div>
         <div class="stat-card__label">Total Announcements</div>
 </div>
       <div class="stat-card stat-card--active">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-active">
-          {{ announcements|selectattr('is_active', 'equalto', true)|list|length }}
-</div>
+        <div class="stat-card__number">{{ announcement_stats.active }}</div>
         <div class="stat-card__label">Active</div>
 </div>
       <div class="stat-card stat-card--month">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-month">
-          {% set this_month_count = namespace(value=0) %}
-          {% for a in announcements %}
-            {% if a.created_at.date() >= today.replace(day=1) %}
-              {% set this_month_count.value = this_month_count.value + 1 %}
-            {% endif %}
-          {% endfor %}
-          {{ this_month_count.value }}
-</div>
+        <div class="stat-card__number">{{ announcement_stats.this_month }}</div>
         <div class="stat-card__label">This Month</div>
 </div>
       <div class="stat-card stat-card--pinned">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-pinned">
-          {{ announcements|selectattr('is_pinned', 'equalto', true)|list|length }}
-</div>
+        <div class="stat-card__number">{{ announcement_stats.pinned }}</div>
         <div class="stat-card__label">Pinned</div>
 </div>
 </div>
@@ -371,37 +359,37 @@
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
-          <input class="input" id="searchInput" placeholder="Title or content..." autocomplete="off" />
+          <input class="input" id="searchInput" placeholder="Title or content..." autocomplete="off" value="{{ request.args.get('search', '') }}" />
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Category</label>
           <select class="input" id="categorySelect">
             <option value="">All Categories</option>
-            <option value="">General</option>
-            <option value="rule_update">Rule Update</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="emergency">Emergency</option>
-            <option value="event">Event</option>
+            <option value="general" {% if request.args.get('category') == 'general' %}selected{% endif %}>General</option>
+            <option value="rule_update" {% if request.args.get('category') == 'rule_update' %}selected{% endif %}>Rule Update</option>
+            <option value="maintenance" {% if request.args.get('category') == 'maintenance' %}selected{% endif %}>Maintenance</option>
+            <option value="emergency" {% if request.args.get('category') == 'emergency' %}selected{% endif %}>Emergency</option>
+            <option value="event" {% if request.args.get('category') == 'event' %}selected{% endif %}>Event</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Status</label>
           <select class="input" id="statusSelect">
             <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="pinned">Pinned</option>
+            <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>Inactive</option>
+            <option value="pinned" {% if request.args.get('status') == 'pinned' %}selected{% endif %}>Pinned</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
           <select class="input" id="sortSelect">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="pinned">Pinned First</option>
+            <option value="newest" {% if request.args.get('sort', 'newest') == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+            <option value="pinned" {% if request.args.get('sort') == 'pinned' %}selected{% endif %}>Pinned First</option>
           </select>
 </div>
 </div>
@@ -412,7 +400,7 @@
       <div class="section__header">
         <div>
           <h3>All Announcements</h3>
-          <p class="muted" id="results-count">{{ announcements|length }} announcement(s) found</p>
+          <p class="muted" id="results-count">{{ pagination.total }} announcement(s) found{% if pagination.pages > 1 %} &middot; page {{ pagination.page }} of {{ pagination.pages }}{% endif %}</p>
 </div>
 </div>
 
@@ -504,6 +492,28 @@
 </div>
           {% endfor %}
 </div>
+
+        {% if pagination.pages > 1 %}
+          <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+            {% set args = request.args.to_dict() %}
+            {% if pagination.has_prev %}
+              {% set _ = args.update({'page': pagination.prev_num}) %}
+              <a href="{{ url_for('admin.announcements', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                {% set _ = args.update({'page': p}) %}
+                <a href="{{ url_for('admin.announcements', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+              {% else %}
+                <span class="muted" style="padding: 0 6px;">&hellip;</span>
+              {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+              {% set _ = args.update({'page': pagination.next_num}) %}
+              <a href="{{ url_for('admin.announcements', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <div style="text-align: center; padding: 80px 20px; color: var(--muted);">
           <div style="font-size: 20px; font-weight: 700; margin-bottom: 10px;">No Announcements Yet</div>
@@ -520,129 +530,30 @@
     const statusSelect = document.getElementById('statusSelect');
     const sortSelect = document.getElementById('sortSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-    const announcementsList = document.getElementById('announcementsList');
-    const resultsCount = document.getElementById('results-count');
-    
-    if (!announcementsList) return;
-    
-    const allCards = Array.from(announcementsList.querySelectorAll('.announcement-card'));
-    
-    // Statistics elements
-    const statTotal = document.querySelector('.stat-card--total .stat-card__number');
-    const statActive = document.querySelector('.stat-card--active .stat-card__number');
-    const statMonth = document.querySelector('.stat-card--month .stat-card__number');
-    const statPinned = document.querySelector('.stat-card--pinned .stat-card__number');
-    
-    function updateStatistics(visibleCards) {
-      const total = visibleCards.length;
-      let active = 0, pinned = 0;
-      const today = new Date();
-      const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      let thisMonth = 0;
-      
-      visibleCards.forEach(card => {
-        const status = card.getAttribute('data-status');
-        const created = new Date(parseFloat(card.getAttribute('data-created')) * 1000);
-        
-        if (status === 'active' || status === 'pinned') active++;
-        if (status === 'pinned') pinned++;
-        if (created >= thisMonthStart) thisMonth++;
-      });
-      
-      statTotal.textContent = total;
-      statActive.textContent = active;
-      statMonth.textContent = thisMonth;
-      statPinned.textContent = pinned;
+
+    if (!searchInput) return;
+
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (categorySelect.value) params.set('category', categorySelect.value);
+      if (statusSelect.value) params.set('status', statusSelect.value);
+      if (sortSelect.value && sortSelect.value !== 'newest') params.set('sort', sortSelect.value);
+      window.location.href = '{{ url_for("admin.announcements") }}?' + params.toString();
     }
-    
-    function sortCards(cards, sortBy) {
-      return cards.sort((a, b) => {
-        if (sortBy === 'newest') {
-          return parseFloat(b.getAttribute('data-created')) - parseFloat(a.getAttribute('data-created'));
-        } else if (sortBy === 'oldest') {
-          return parseFloat(a.getAttribute('data-created')) - parseFloat(b.getAttribute('data-created'));
-        } else if (sortBy === 'pinned') {
-          const aStatus = a.getAttribute('data-status');
-          const bStatus = b.getAttribute('data-status');
-          if (aStatus === 'pinned' && bStatus !== 'pinned') return -1;
-          if (aStatus !== 'pinned' && bStatus === 'pinned') return 1;
-          return parseFloat(b.getAttribute('data-created')) - parseFloat(a.getAttribute('data-created'));
-        }
-        return 0;
-      });
-    }
-    
-    function filterAnnouncements() {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const categoryValue = categorySelect.value.toLowerCase();
-      const statusValue = statusSelect.value.toLowerCase();
-      const sortBy = sortSelect.value;
-      
-      let visibleCards = [];
-      
-      allCards.forEach(card => {
-        const title = card.getAttribute('data-title');
-        const content = card.getAttribute('data-content');
-        const category = card.getAttribute('data-category');
-        const status = card.getAttribute('data-status');
-        
-        const matchesSearch = !searchTerm || 
-          title.includes(searchTerm) || 
-          content.includes(searchTerm);
-        
-        const matchesCategory = !categoryValue || category === categoryValue;
-        const matchesStatus = !statusValue || status === statusValue;
-        
-        if (matchesSearch && matchesCategory && matchesStatus) {
-          visibleCards.push(card);
-        }
-      });
-      
-      visibleCards = sortCards(visibleCards, sortBy);
-      
-      allCards.forEach(card => card.style.display = 'none');
-      
-      visibleCards.forEach(card => {
-        card.style.display = '';
-        announcementsList.appendChild(card);
-      });
-      
-      resultsCount.textContent = `${visibleCards.length} announcement(s) found`;
-      updateStatistics(visibleCards);
-      
-      if (visibleCards.length === 0 && allCards.length > 0) {
-        let noResults = document.getElementById('noResults');
-        if (!noResults) {
-          noResults = document.createElement('div');
-          noResults.id = 'noResults';
-          noResults.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
-              <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">No Announcements Found</div>
-              <div style="font-size: 14px;">Try adjusting your search or filters</div>
-</div>
-          `;
-          announcementsList.appendChild(noResults);
-        }
-      } else {
-        const noResults = document.getElementById('noResults');
-        if (noResults) noResults.remove();
-      }
-    }
-    
+
     clearFiltersBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      categorySelect.value = '';
-      statusSelect.value = '';
-      sortSelect.value = 'newest';
-      filterAnnouncements();
+      window.location.href = '{{ url_for("admin.announcements") }}';
     });
-    
-    searchInput.addEventListener('input', debounce(filterAnnouncements, 400));
-    categorySelect.addEventListener('change', filterAnnouncements);
-    statusSelect.addEventListener('change', filterAnnouncements);
-    sortSelect.addEventListener('change', filterAnnouncements);
-    
-    filterAnnouncements();
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    categorySelect.addEventListener('change', applyFilters);
+    statusSelect.addEventListener('change', applyFilters);
+    sortSelect.addEventListener('change', applyFilters);
   });
   
   function toggleContent(id) {

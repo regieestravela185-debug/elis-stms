@@ -337,44 +337,22 @@
     <div class="payments-stats">
       <div class="stat-card stat-card--total">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-total">
-          ₱{{ '{:,.0f}'.format(payments|sum(attribute='amount')|float) if payments else '0' }}
-</div>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.total_revenue) }}</div>
         <div class="stat-card__label">Total Revenue</div>
 </div>
       <div class="stat-card stat-card--month">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-month">
-          {% set this_month_total = namespace(value=0) %}
-          {% for p in payments %}
-            {% if p.paid_at.date() >= today.replace(day=1) %}
-              {% set this_month_total.value = this_month_total.value + p.amount %}
-            {% endif %}
-          {% endfor %}
-          ₱{{ '{:,.0f}'.format(this_month_total.value|float) }}
-</div>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.this_month_revenue) }}</div>
         <div class="stat-card__label">This Month</div>
 </div>
       <div class="stat-card stat-card--last">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-last">
-          {% set last_month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1) %}
-          {% set last_month_end = today.replace(day=1) %}
-          {% set last_month_total = namespace(value=0) %}
-          {% for p in payments %}
-            {% if p.paid_at.date() >= last_month_start and p.paid_at.date() < last_month_end %}
-              {% set last_month_total.value = last_month_total.value + p.amount %}
-            {% endif %}
-          {% endfor %}
-          ₱{{ '{:,.0f}'.format(last_month_total.value|float) }}
-</div>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.last_month_revenue) }}</div>
         <div class="stat-card__label">Last Month</div>
 </div>
       <div class="stat-card stat-card--tenants">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-tenants">
-          {{ payments|map(attribute='tenant_profile_id')|unique|list|length if payments else 0 }}
-</div>
+        <div class="stat-card__number">{{ payment_stats.tenants_paid }}</div>
         <div class="stat-card__label">Tenants Paid</div>
 </div>
 </div>
@@ -463,15 +441,15 @@
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
-          <input class="input" id="searchInput" placeholder="Tenant name or unit..." autocomplete="off" />
+          <input class="input" id="searchInput" placeholder="Tenant name or unit..." autocomplete="off" value="{{ request.args.get('search', '') }}" />
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Payment Type</label>
           <select class="input" id="typeSelect">
             <option value="">All Types</option>
-            <option value="monthly">Monthly Payment</option>
-            <option value="deposit">Deposit</option>
+            <option value="monthly" {% if request.args.get('type') == 'monthly' %}selected{% endif %}>Monthly Payment</option>
+            <option value="deposit" {% if request.args.get('type') == 'deposit' %}selected{% endif %}>Deposit</option>
           </select>
 </div>
 
@@ -479,9 +457,9 @@
           <label class="filter-label">Payment Method</label>
           <select class="input" id="methodSelect">
             <option value="">All Methods</option>
-            <option value="cash">Cash</option>
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="other">Other</option>
+            <option value="cash" {% if request.args.get('method') == 'cash' %}selected{% endif %}>Cash</option>
+            <option value="bank_transfer" {% if request.args.get('method') == 'bank_transfer' %}selected{% endif %}>Bank Transfer</option>
+            <option value="other" {% if request.args.get('method') == 'other' %}selected{% endif %}>Other</option>
           </select>
 </div>
 
@@ -490,7 +468,7 @@
           <select class="input" id="buildingSelect">
             <option value="">All Buildings</option>
             {% for building in buildings %}
-              <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
+              <option value="{{ building.code|upper }}" {% if request.args.get('building') == building.code|upper %}selected{% endif %}>{{ building.code|upper }} - {{ building.name }}</option>
             {% endfor %}
           </select>
 </div>
@@ -499,21 +477,21 @@
           <label class="filter-label">Floor</label>
           <select class="input" id="floorSelect">
             <option value="">All Floors</option>
-            <option value="1">Floor 1</option>
-            <option value="2">Floor 2</option>
-            <option value="3">Floor 3</option>
-            <option value="4">Floor 4</option>
+            <option value="1" {% if request.args.get('floor') == '1' %}selected{% endif %}>Floor 1</option>
+            <option value="2" {% if request.args.get('floor') == '2' %}selected{% endif %}>Floor 2</option>
+            <option value="3" {% if request.args.get('floor') == '3' %}selected{% endif %}>Floor 3</option>
+            <option value="4" {% if request.args.get('floor') == '4' %}selected{% endif %}>Floor 4</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
           <select class="input" id="sortSelect">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="amount-high">Amount (High-Low)</option>
-            <option value="amount-low">Amount (Low-High)</option>
-            <option value="tenant">Tenant Name (A-Z)</option>
+            <option value="newest" {% if request.args.get('sort', 'newest') == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+            <option value="amount-high" {% if request.args.get('sort') == 'amount-high' %}selected{% endif %}>Amount (High-Low)</option>
+            <option value="amount-low" {% if request.args.get('sort') == 'amount-low' %}selected{% endif %}>Amount (Low-High)</option>
+            <option value="tenant" {% if request.args.get('sort') == 'tenant' %}selected{% endif %}>Tenant Name (A-Z)</option>
           </select>
 </div>
 </div>
@@ -524,7 +502,7 @@
       <div class="section__header">
         <div>
           <h3>Payment History & Blockchain Ledger</h3>
-          <p class="muted" id="results-count">{{ payments|length }} payment(s) found</p>
+          <p class="muted" id="results-count">{{ pagination.total }} payment(s) found{% if pagination.pages > 1 %} &middot; page {{ pagination.page }} of {{ pagination.pages }}{% endif %}</p>
 </div>
 </div>
 
@@ -623,6 +601,28 @@
             </tbody>
           </table>
 </div>
+
+        {% if pagination.pages > 1 %}
+          <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+            {% set args = request.args.to_dict() %}
+            {% if pagination.has_prev %}
+              {% set _ = args.update({'page': pagination.prev_num}) %}
+              <a href="{{ url_for('admin.payments', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                {% set _ = args.update({'page': p}) %}
+                <a href="{{ url_for('admin.payments', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+              {% else %}
+                <span class="muted" style="padding: 0 6px;">&hellip;</span>
+              {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+              {% set _ = args.update({'page': pagination.next_num}) %}
+              <a href="{{ url_for('admin.payments', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <div class="empty-state">
           <div class="empty-state__title">No Payments Yet</div>
@@ -734,145 +734,35 @@
     const typeSelect = document.getElementById('typeSelect');
     const methodSelect = document.getElementById('methodSelect');
     const buildingSelect = document.getElementById('buildingSelect');
+    const floorSelect = document.getElementById('floorSelect');
     const sortSelect = document.getElementById('sortSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-    const paymentsTable = document.getElementById('paymentsTable');
-    const resultsCount = document.getElementById('results-count');
-    
-    // Statistics elements
-    const statTotal = document.querySelector('.stat-card--total .stat-card__number');
-    const statMonth = document.querySelector('.stat-card--month .stat-card__number');
-    const statLast = document.querySelector('.stat-card--last .stat-card__number');
-    const statTenants = document.querySelector('.stat-card--tenants .stat-card__number');
-    
-    if (!paymentsTable) return;
-    
-    const allRows = Array.from(paymentsTable.querySelectorAll('tbody tr'));
-    
-    function updateStatistics(visibleRows) {
-      let total = 0, thisMonth = 0, lastMonth = 0;
-      const tenantIds = new Set();
-      const now = new Date();
-      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastMonthEnd = thisMonthStart;
-      
-      visibleRows.forEach(row => {
-        const amount = parseFloat(row.getAttribute('data-amount'));
-        const date = new Date(parseFloat(row.getAttribute('data-date')) * 1000);
-        const tenantName = row.cells[1].textContent.trim();
-        
-        total += amount;
-        if (date >= thisMonthStart) thisMonth += amount;
-        if (date >= lastMonthStart && date < lastMonthEnd) lastMonth += amount;
-        tenantIds.add(tenantName);
-      });
-      
-      statTotal.textContent = '₱' + Math.round(total).toLocaleString();
-      statMonth.textContent = '₱' + Math.round(thisMonth).toLocaleString();
-      statLast.textContent = '₱' + Math.round(lastMonth).toLocaleString();
-      statTenants.textContent = tenantIds.size;
+
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (typeSelect.value) params.set('type', typeSelect.value);
+      if (methodSelect.value) params.set('method', methodSelect.value);
+      if (buildingSelect.value) params.set('building', buildingSelect.value);
+      if (floorSelect && floorSelect.value) params.set('floor', floorSelect.value);
+      if (sortSelect.value && sortSelect.value !== 'newest') params.set('sort', sortSelect.value);
+      window.location.href = '{{ url_for("admin.payments") }}?' + params.toString();
     }
-    
-    function sortRows(rows, sortBy) {
-      return rows.sort((a, b) => {
-        if (sortBy === 'newest') {
-          return parseFloat(b.getAttribute('data-date')) - parseFloat(a.getAttribute('data-date'));
-        } else if (sortBy === 'oldest') {
-          return parseFloat(a.getAttribute('data-date')) - parseFloat(b.getAttribute('data-date'));
-        } else if (sortBy === 'amount-high') {
-          return parseFloat(b.getAttribute('data-amount')) - parseFloat(a.getAttribute('data-amount'));
-        } else if (sortBy === 'amount-low') {
-          return parseFloat(a.getAttribute('data-amount')) - parseFloat(b.getAttribute('data-amount'));
-        } else if (sortBy === 'tenant') {
-          return a.getAttribute('data-tenant').localeCompare(b.getAttribute('data-tenant'));
-        }
-        return 0;
-      });
-    }
-    
-    function filterTable() {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const typeValue = typeSelect.value.toLowerCase();
-      const methodValue = methodSelect.value.toLowerCase();
-      const buildingCode = buildingSelect.value.toUpperCase();
-      const sortBy = sortSelect.value;
 
-      let visibleRows = [];
-
-      allRows.forEach(row => {
-        const tenant = row.getAttribute('data-tenant');
-        const unit = row.getAttribute('data-unit');
-        const type = row.getAttribute('data-type');
-        const method = row.getAttribute('data-method');
-        const building = row.getAttribute('data-building');
-        const floor = row.getAttribute('data-floor');
-        const floorFilter = (document.getElementById('floorSelect') || {value: ''}).value;
-
-        const matchesSearch = !searchTerm ||
-          tenant.includes(searchTerm) ||
-          unit.includes(searchTerm);
-
-        const matchesType = !typeValue || type === typeValue;
-        const matchesMethod = !methodValue || method === methodValue;
-        const matchesBuilding = !buildingCode || building === buildingCode;
-        const matchesFloor = !floorFilter || floor === floorFilter;
-
-        if (matchesSearch && matchesType && matchesMethod && matchesBuilding && matchesFloor) {
-          visibleRows.push(row);
-        }
-      });
-      
-      visibleRows = sortRows(visibleRows, sortBy);
-      
-      allRows.forEach(row => row.style.display = 'none');
-      
-      const tbody = paymentsTable.querySelector('tbody');
-      visibleRows.forEach(row => {
-        row.style.display = '';
-        tbody.appendChild(row);
-      });
-      
-      resultsCount.textContent = `${visibleRows.length} payment(s) found`;
-      updateStatistics(visibleRows);
-      
-      let noResultsRow = document.getElementById('noResultsRow');
-      
-      if (visibleRows.length === 0 && allRows.length > 0) {
-        if (!noResultsRow) {
-          noResultsRow = document.createElement('tr');
-          noResultsRow.id = 'noResultsRow';
-          noResultsRow.innerHTML = `
-            <td colspan="11" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Payments Found</div>
-              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-</td>
-          `;
-          tbody.appendChild(noResultsRow);
-        }
-      } else if (noResultsRow) {
-        noResultsRow.remove();
-      }
-    }
-    
     clearFiltersBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      typeSelect.value = '';
-      methodSelect.value = '';
-      buildingSelect.value = '';
-      sortSelect.value = 'newest';
-      filterTable();
+      window.location.href = '{{ url_for("admin.payments") }}';
     });
 
-    searchInput.addEventListener('input', debounce(filterTable, 400));
-    typeSelect.addEventListener('change', filterTable);
-    methodSelect.addEventListener('change', filterTable);
-    buildingSelect.addEventListener('change', filterTable);
-    const floorSelect = document.getElementById('floorSelect');
-    if (floorSelect) floorSelect.addEventListener('change', filterTable);
-    sortSelect.addEventListener('change', filterTable);
-    
-    filterTable();
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    typeSelect.addEventListener('change', applyFilters);
+    methodSelect.addEventListener('change', applyFilters);
+    buildingSelect.addEventListener('change', applyFilters);
+    if (floorSelect) floorSelect.addEventListener('change', applyFilters);
+    sortSelect.addEventListener('change', applyFilters);
   });
   </script>
 {% endblock %}

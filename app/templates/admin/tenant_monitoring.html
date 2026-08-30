@@ -202,35 +202,27 @@
   <div class="monitoring-stats">
     <div class="stat-card stat-card--total">
       <span class="stat-card__icon"></span>
-      <div class="stat-card__number" id="stat-total">{{ monitoring_data|length }}</div>
+      <div class="stat-card__number">{{ stat_total }}</div>
       <div class="stat-card__label">Total Tenants</div>
 </div>
     <div class="stat-card stat-card--active">
       <span class="stat-card__icon"></span>
-      <div class="stat-card__number" id="stat-active">
-        {{ monitoring_data|selectattr('status', 'equalto', 'Normal')|list|length }}
-</div>
+      <div class="stat-card__number">{{ stat_counts.Normal }}</div>
       <div class="stat-card__label">Active</div>
 </div>
     <div class="stat-card stat-card--urgent">
       <span class="stat-card__icon"></span>
-      <div class="stat-card__number" id="stat-urgent">
-        {{ monitoring_data|selectattr('status', 'equalto', 'Urgent')|list|length }}
-</div>
+      <div class="stat-card__number">{{ stat_counts.Urgent }}</div>
       <div class="stat-card__label">Urgent (≤7 days)</div>
 </div>
     <div class="stat-card stat-card--expiring">
       <span class="stat-card__icon"></span>
-      <div class="stat-card__number" id="stat-expiring">
-        {{ monitoring_data|selectattr('status', 'equalto', 'Near Expiry')|list|length }}
-</div>
+      <div class="stat-card__number">{{ stat_counts['Near Expiry'] }}</div>
       <div class="stat-card__label">Near Expiry (≤30 days)</div>
 </div>
     <div class="stat-card stat-card--expired">
       <span class="stat-card__icon"></span>
-      <div class="stat-card__number" id="stat-expired">
-        {{ monitoring_data|selectattr('status', 'equalto', 'Expired')|list|length }}
-</div>
+      <div class="stat-card__number">{{ stat_counts.Expired }}</div>
       <div class="stat-card__label">Expired</div>
 </div>
 </div>
@@ -247,21 +239,22 @@
     <div class="filters-grid">
       <div class="filter-group">
         <label class="filter-label">Search</label>
-        <input 
-          type="text" 
-          id="searchInput" 
-          class="input" 
-          placeholder="Tenant name or unit code..." 
+        <input
+          type="text"
+          id="searchInput"
+          class="input"
+          placeholder="Tenant name or unit code..."
           autocomplete="off"
+          value="{{ request.args.get('search', '') }}"
         />
 </div>
-      
+
       <div class="filter-group">
         <label class="filter-label">Building</label>
         <select id="buildingSelect" class="input">
           <option value="">All Buildings</option>
           {% for b in buildings %}
-            <option value="{{ b.code }}">{{ b.code }} - {{ b.name }}</option>
+            <option value="{{ b.id }}" {% if request.args.get('building') == b.id|string %}selected{% endif %}>{{ b.code }} - {{ b.name }}</option>
           {% endfor %}
         </select>
 </div>
@@ -270,17 +263,17 @@
         <label class="filter-label">Floor</label>
         <select id="floorSelect" class="input">
           <option value="">All Floors</option>
-          <option value="1">Floor 1</option>
-          <option value="2">Floor 2</option>
-          <option value="3">Floor 3</option>
-          <option value="4">Floor 4</option>
+          <option value="1" {% if request.args.get('floor') == '1' %}selected{% endif %}>Floor 1</option>
+          <option value="2" {% if request.args.get('floor') == '2' %}selected{% endif %}>Floor 2</option>
+          <option value="3" {% if request.args.get('floor') == '3' %}selected{% endif %}>Floor 3</option>
+          <option value="4" {% if request.args.get('floor') == '4' %}selected{% endif %}>Floor 4</option>
         </select>
 </div>
-      
+
       <div class="filter-group">
         <label class="filter-label">Status Filter</label>
         <label class="filter-checkbox">
-          <input type="checkbox" id="urgentCheckbox" />
+          <input type="checkbox" id="urgentCheckbox" {% if request.args.get('urgent') == '1' %}checked{% endif %} />
           <span>Show Only Urgent (≤7 days)</span>
 </label>
 </div>
@@ -288,7 +281,6 @@
 </div>
 
   <!-- Move-Out Notices Awaiting Review -->
-  {% set notice_items = monitoring_data|selectattr('move_out_notice')|list %}
   {% if notice_items %}
     <div class="card" style="margin-bottom: 24px; border: 2px solid rgba(215, 179, 91, 0.35);">
       <div class="section__header">
@@ -346,7 +338,7 @@
     <div class="section__header">
       <div>
         <h3>Tenant Contracts</h3>
-        <p class="muted" id="results-count">{{ monitoring_data|length }} tenant(s) found</p>
+        <p class="muted" id="results-count">{{ pagination.total }} tenant(s) found{% if pagination.pages > 1 %} &middot; page {{ pagination.page }} of {{ pagination.pages }}{% endif %}</p>
 </div>
 </div>
 
@@ -493,6 +485,28 @@
           </tbody>
         </table>
 </div>
+
+      {% if pagination.pages > 1 %}
+        <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+          {% set args = request.args.to_dict() %}
+          {% if pagination.has_prev %}
+            {% set _ = args.update({'page': pagination.prev_num}) %}
+            <a href="{{ url_for('admin.tenant_monitoring', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+          {% endif %}
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              {% set _ = args.update({'page': p}) %}
+              <a href="{{ url_for('admin.tenant_monitoring', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+            {% else %}
+              <span class="muted" style="padding: 0 6px;">&hellip;</span>
+            {% endif %}
+          {% endfor %}
+          {% if pagination.has_next %}
+            {% set _ = args.update({'page': pagination.next_num}) %}
+            <a href="{{ url_for('admin.tenant_monitoring', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+          {% endif %}
+        </div>
+      {% endif %}
     {% else %}
       <div class="empty-state">
         <div class="empty-state__title">No Active Tenants</div>
@@ -542,123 +556,31 @@
 document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
   const buildingSelect = document.getElementById('buildingSelect');
+  const floorSelect = document.getElementById('floorSelect');
   const urgentCheckbox = document.getElementById('urgentCheckbox');
   const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-  const tenantTable = document.getElementById('tenantTable');
-  const resultsCount = document.getElementById('results-count');
-  
-  // Get all data rows (exclude any existing "no results" row)
-  const allRows = Array.from(tenantTable.querySelectorAll('tbody tr')).filter(row => 
-    row.cells.length >= 6
-  );
-  
-  // Statistics elements
-  const statTotal = document.getElementById('stat-total');
-  const statActive = document.getElementById('stat-active');
-  const statUrgent = document.getElementById('stat-urgent');
-  const statExpiring = document.getElementById('stat-expiring');
-  const statExpired = document.getElementById('stat-expired');
-  
-  function updateStatistics(visibleRows) {
-    const total = visibleRows.length;
-    let active = 0, urgent = 0, expiring = 0, expired = 0;
-    
-    visibleRows.forEach(row => {
-      const status = row.getAttribute('data-status');
-      if (status === 'Normal') active++;
-      else if (status === 'Urgent') urgent++;
-      else if (status === 'Near Expiry') expiring++;
-      else if (status === 'Expired') expired++;
-    });
-    
-    statTotal.textContent = total;
-    statActive.textContent = active;
-    statUrgent.textContent = urgent;
-    statExpiring.textContent = expiring;
-    statExpired.textContent = expired;
+
+  function applyFilters() {
+    const params = new URLSearchParams();
+    if (searchInput.value) params.set('search', searchInput.value);
+    if (buildingSelect.value) params.set('building', buildingSelect.value);
+    if (floorSelect && floorSelect.value) params.set('floor', floorSelect.value);
+    if (urgentCheckbox.checked) params.set('urgent', '1');
+    window.location.href = '{{ url_for("admin.tenant_monitoring") }}?' + params.toString();
   }
-  
-  function filterTable() {
-    const searchTerm = searchInput.value.toLowerCase().trim();
-    const buildingCode = buildingSelect.value.toLowerCase();
-    const urgentOnly = urgentCheckbox.checked;
-    
-    let visibleCount = 0;
-    const visibleRows = [];
-    
-    allRows.forEach(row => {
-      const tenantName = row.cells[0].textContent.toLowerCase();
-      const buildingUnit = row.cells[1].textContent.toLowerCase();
-      const status = row.getAttribute('data-status');
-      const rowBuilding = row.getAttribute('data-building').toLowerCase();
-      const rowFloor = row.getAttribute('data-floor');
-      const floorFilter = (document.getElementById('floorSelect') || {value: ''}).value;
-      
-      // Check search match
-      const matchesSearch = !searchTerm || 
-        tenantName.includes(searchTerm) || 
-        buildingUnit.includes(searchTerm);
-      
-      // Check building match
-      const matchesBuilding = !buildingCode || rowBuilding === buildingCode;
-      
-      // Check urgent filter
-      const matchesUrgent = !urgentOnly || status === 'Urgent';
-      const matchesFloor = !floorFilter || rowFloor === floorFilter;
-      
-      // Show or hide row
-      if (matchesSearch && matchesBuilding && matchesUrgent && matchesFloor) {
-        row.style.display = '';
-        visibleCount++;
-        visibleRows.push(row);
-      } else {
-        row.style.display = 'none';
-      }
-    });
-    
-    // Update results count
-    resultsCount.textContent = `${visibleCount} tenant(s) found`;
-    
-    // Update statistics
-    updateStatistics(visibleRows);
-    
-    // Handle "no results" message
-    let noResultsRow = document.getElementById('noResultsRow');
-    
-    if (visibleCount === 0 && allRows.length > 0) {
-      if (!noResultsRow) {
-        noResultsRow = document.createElement('tr');
-        noResultsRow.id = 'noResultsRow';
-        noResultsRow.innerHTML = `
-          <td colspan="7" style="text-align: center; padding: 60px 20px;">
-            <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Tenants Found</div>
-            <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-</td>
-        `;
-        tenantTable.querySelector('tbody').appendChild(noResultsRow);
-      }
-    } else if (noResultsRow) {
-      noResultsRow.remove();
-    }
-  }
-  
-  // Clear filters function
+
   clearFiltersBtn.addEventListener('click', function() {
-    searchInput.value = '';
-    buildingSelect.value = '';
-    urgentCheckbox.checked = false;
-    filterTable();
+    window.location.href = '{{ url_for("admin.tenant_monitoring") }}';
   });
-  
-  // Real-time filtering
-  searchInput.addEventListener('input', debounce(filterTable, 400));
-  buildingSelect.addEventListener('change', filterTable);
-  const floorSelect = document.getElementById('floorSelect');
-  if (floorSelect) floorSelect.addEventListener('change', filterTable);
-  urgentCheckbox.addEventListener('change', filterTable);
-  
-  // Initial filter (in case there are URL parameters)
-  filterTable();
+
+  let searchTimeout;
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFilters, 500);
+  });
+  buildingSelect.addEventListener('change', applyFilters);
+  if (floorSelect) floorSelect.addEventListener('change', applyFilters);
+  urgentCheckbox.addEventListener('change', applyFilters);
 });
 </script>
 {% endblock %}

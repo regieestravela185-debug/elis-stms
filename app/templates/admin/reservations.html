@@ -256,35 +256,27 @@
     <div class="reservations-stats">
       <div class="stat-card stat-card--total">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-total">{{ rows|length }}</div>
+        <div class="stat-card__number">{{ reservation_stats.total }}</div>
         <div class="stat-card__label">Total Reservations</div>
 </div>
       <div class="stat-card stat-card--pending">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-pending">
-          {{ rows|selectattr('status.value', 'equalto', 'pending')|list|length }}
-</div>
+        <div class="stat-card__number">{{ reservation_stats.pending }}</div>
         <div class="stat-card__label">Pending</div>
 </div>
       <div class="stat-card stat-card--approved">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-approved">
-          {{ rows|selectattr('status.value', 'equalto', 'approved')|list|length }}
-</div>
+        <div class="stat-card__number">{{ reservation_stats.approved }}</div>
         <div class="stat-card__label">Approved</div>
 </div>
       <div class="stat-card stat-card--rejected">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-rejected">
-          {{ rows|selectattr('status.value', 'equalto', 'rejected')|list|length }}
-</div>
+        <div class="stat-card__number">{{ reservation_stats.rejected }}</div>
         <div class="stat-card__label">Rejected</div>
 </div>
       <div class="stat-card stat-card--cancelled">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-cancelled">
-          {{ rows|selectattr('status.value', 'equalto', 'cancelled')|list|length }}
-</div>
+        <div class="stat-card__number">{{ reservation_stats.cancelled }}</div>
         <div class="stat-card__label">Cancelled</div>
 </div>
 </div>
@@ -304,26 +296,26 @@
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
-          <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" />
+          <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" value="{{ q }}" />
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Status</label>
           <select class="input" id="statusSelect">
             <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="approved" {% if status == 'approved' %}selected{% endif %}>Approved</option>
+            <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>Rejected</option>
+            <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Building</label>
           <select class="input" id="buildingSelect">
             <option value="">All Buildings</option>
             {% for building in buildings %}
-              <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
+              <option value="{{ building.code|upper }}" {% if request.args.get('building') == building.code|upper %}selected{% endif %}>{{ building.code|upper }} - {{ building.name }}</option>
             {% endfor %}
           </select>
 </div>
@@ -332,20 +324,20 @@
           <label class="filter-label">Floor</label>
           <select class="input" id="floorSelect">
             <option value="">All Floors</option>
-            <option value="1">Floor 1</option>
-            <option value="2">Floor 2</option>
-            <option value="3">Floor 3</option>
-            <option value="4">Floor 4</option>
+            <option value="1" {% if request.args.get('floor') == '1' %}selected{% endif %}>Floor 1</option>
+            <option value="2" {% if request.args.get('floor') == '2' %}selected{% endif %}>Floor 2</option>
+            <option value="3" {% if request.args.get('floor') == '3' %}selected{% endif %}>Floor 3</option>
+            <option value="4" {% if request.args.get('floor') == '4' %}selected{% endif %}>Floor 4</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
           <select class="input" id="sortSelect">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="move-in">Move-in Date</option>
-            <option value="name">Name (A-Z)</option>
+            <option value="newest" {% if request.args.get('sort', 'newest') == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+            <option value="move-in" {% if request.args.get('sort') == 'move-in' %}selected{% endif %}>Move-in Date</option>
+            <option value="name" {% if request.args.get('sort') == 'name' %}selected{% endif %}>Name (A-Z)</option>
           </select>
 </div>
 </div>
@@ -356,7 +348,7 @@
       <div class="section__header">
         <div>
           <h3>All Reservations</h3>
-          <p class="muted" id="results-count">{{ rows|length }} reservation(s) found</p>
+          <p class="muted" id="results-count">{{ pagination.total }} reservation(s) found{% if pagination.pages > 1 %} &middot; page {{ pagination.page }} of {{ pagination.pages }}{% endif %}</p>
 </div>
 </div>
 
@@ -502,6 +494,28 @@
             </tbody>
           </table>
 </div>
+
+        {% if pagination.pages > 1 %}
+          <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+            {% set args = request.args.to_dict() %}
+            {% if pagination.has_prev %}
+              {% set _ = args.update({'page': pagination.prev_num}) %}
+              <a href="{{ url_for('admin.reservations', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                {% set _ = args.update({'page': p}) %}
+                <a href="{{ url_for('admin.reservations', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+              {% else %}
+                <span class="muted" style="padding: 0 6px;">&hellip;</span>
+              {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+              {% set _ = args.update({'page': pagination.next_num}) %}
+              <a href="{{ url_for('admin.reservations', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <div class="empty-state">
           <div class="empty-state__title">No Reservations</div>
@@ -516,137 +530,34 @@
     const searchInput = document.getElementById('searchInput');
     const statusSelect = document.getElementById('statusSelect');
     const buildingSelect = document.getElementById('buildingSelect');
+    const floorSelect = document.getElementById('floorSelect');
     const sortSelect = document.getElementById('sortSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-    const reservationsTable = document.getElementById('reservationsTable');
-    const resultsCount = document.getElementById('results-count');
-    
-    // Statistics elements
-    const statTotal = document.getElementById('stat-total');
-    const statPending = document.getElementById('stat-pending');
-    const statApproved = document.getElementById('stat-approved');
-    const statRejected = document.getElementById('stat-rejected');
-    const statCancelled = document.getElementById('stat-cancelled');
-    
-    if (!reservationsTable) return;
-    
-    const allRows = Array.from(reservationsTable.querySelectorAll('tbody tr'));
-    
-    function updateStatistics(visibleRows) {
-      const total = visibleRows.length;
-      let pending = 0, approved = 0, rejected = 0, cancelled = 0;
-      
-      visibleRows.forEach(row => {
-        const status = row.getAttribute('data-status');
-        if (status === 'pending') pending++;
-        else if (status === 'approved') approved++;
-        else if (status === 'rejected') rejected++;
-        else if (status === 'cancelled') cancelled++;
-      });
-      
-      statTotal.textContent = total;
-      statPending.textContent = pending;
-      statApproved.textContent = approved;
-      statRejected.textContent = rejected;
-      statCancelled.textContent = cancelled;
+
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('q', searchInput.value);
+      if (statusSelect.value) params.set('status', statusSelect.value);
+      if (buildingSelect.value) params.set('building', buildingSelect.value);
+      if (floorSelect && floorSelect.value) params.set('floor', floorSelect.value);
+      if (sortSelect.value && sortSelect.value !== 'newest') params.set('sort', sortSelect.value);
+      window.location.href = '{{ url_for("admin.reservations") }}?' + params.toString();
     }
-    
-    function sortRows(rows, sortBy) {
-      return rows.sort((a, b) => {
-        if (sortBy === 'newest') {
-          return parseFloat(b.getAttribute('data-created')) - parseFloat(a.getAttribute('data-created'));
-        } else if (sortBy === 'oldest') {
-          return parseFloat(a.getAttribute('data-created')) - parseFloat(b.getAttribute('data-created'));
-        } else if (sortBy === 'move-in') {
-          return parseFloat(a.getAttribute('data-movein')) - parseFloat(b.getAttribute('data-movein'));
-        } else if (sortBy === 'name') {
-          return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
-        }
-        return 0;
-      });
-    }
-    
-    function filterTable() {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const statusValue = statusSelect.value.toLowerCase();
-      const buildingCode = buildingSelect.value.toLowerCase();
-      const sortBy = sortSelect.value;
-      
-      let visibleRows = [];
-      
-      allRows.forEach(row => {
-        const name = row.getAttribute('data-name');
-        const email = row.getAttribute('data-email');
-        const status = row.getAttribute('data-status');
-        const building = row.getAttribute('data-building').toUpperCase();
-        const floor = row.getAttribute('data-floor');
-        const floorFilter = (document.getElementById('floorSelect') || {value: ''}).value;
-        
-        const matchesSearch = !searchTerm || 
-          name.includes(searchTerm) || 
-          email.includes(searchTerm);
-        
-        const matchesStatus = !statusValue || status === statusValue;
-        const matchesBuilding = !buildingCode || building === buildingCode.toUpperCase();
-        const matchesFloor = !floorFilter || floor === floorFilter;
-        
-        if (matchesSearch && matchesStatus && matchesBuilding && matchesFloor) {
-          visibleRows.push(row);
-        }
-      });
-      
-      // Sort visible rows
-      visibleRows = sortRows(visibleRows, sortBy);
-      
-      // Hide all rows first
-      allRows.forEach(row => row.style.display = 'none');
-      
-      // Show and reorder visible rows
-      const tbody = reservationsTable.querySelector('tbody');
-      visibleRows.forEach(row => {
-        row.style.display = '';
-        tbody.appendChild(row);
-      });
-      
-      resultsCount.textContent = `${visibleRows.length} reservation(s) found`;
-      updateStatistics(visibleRows);
-      
-      let noResultsRow = document.getElementById('noResultsRow');
-      
-      if (visibleRows.length === 0 && allRows.length > 0) {
-        if (!noResultsRow) {
-          noResultsRow = document.createElement('tr');
-          noResultsRow.id = 'noResultsRow';
-          noResultsRow.innerHTML = `
-            <td colspan="11" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Reservations Found</div>
-              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-</td>
-          `;
-          tbody.appendChild(noResultsRow);
-        }
-      } else if (noResultsRow) {
-        noResultsRow.remove();
-      }
-    }
-    
+
     clearFiltersBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      statusSelect.value = '';
-      buildingSelect.value = '';
-      sortSelect.value = 'newest';
-      filterTable();
+      window.location.href = '{{ url_for("admin.reservations") }}';
     });
-    
-    searchInput.addEventListener('input', debounce(filterTable, 400));
-    statusSelect.addEventListener('change', filterTable);
-    buildingSelect.addEventListener('change', filterTable);
-    const floorSelect = document.getElementById('floorSelect');
-    if (floorSelect) floorSelect.addEventListener('change', filterTable);
-    sortSelect.addEventListener('change', filterTable);
-    
-    filterTable();
-    
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    statusSelect.addEventListener('change', applyFilters);
+    buildingSelect.addEventListener('change', applyFilters);
+    if (floorSelect) floorSelect.addEventListener('change', applyFilters);
+    sortSelect.addEventListener('change', applyFilters);
+
     // Verification Details Modal
     const verificationModal = document.getElementById('verificationModal');
     const verificationContent = document.getElementById('verificationContent');

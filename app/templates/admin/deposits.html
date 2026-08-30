@@ -304,64 +304,28 @@
     <div class="deposits-stats">
       <div class="stat-card stat-card--held">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-held">
-          {% set total_held = namespace(value=0) %}
-          {% for r in reservations %}
-            {% if r.deposit_status == 'held' %}
-              {% set total_held.value = total_held.value + r.deposit_amount %}
-            {% endif %}
-          {% endfor %}
-          ₱{{ '{:,.0f}'.format(total_held.value|float) }}
-</div>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(deposit_stats.total_held) }}</div>
         <div class="stat-card__label">Total Held</div>
 </div>
       <div class="stat-card stat-card--returned">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-returned">
-          {% set total_returned = namespace(value=0) %}
-          {% for r in reservations %}
-            {% if r.deposit_status in ['full_return', 'partial_return'] and r.deposit_return_amount %}
-              {% set total_returned.value = total_returned.value + r.deposit_return_amount %}
-            {% endif %}
-          {% endfor %}
-          ₱{{ '{:,.0f}'.format(total_returned.value|float) }}
-</div>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(deposit_stats.total_returned) }}</div>
         <div class="stat-card__label">Total Returned</div>
 </div>
       <div class="stat-card stat-card--deductions">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-deductions">
-          {% set total_deductions = namespace(value=0) %}
-          {% for r in reservations %}
-            {% if r.deposit_return_amount %}
-              {% set deducted = r.deposit_amount - r.deposit_return_amount %}
-              {% set total_deductions.value = total_deductions.value + deducted %}
-            {% endif %}
-          {% endfor %}
-          ₱{{ '{:,.0f}'.format(total_deductions.value|float) }}
-</div>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(deposit_stats.total_deductions) }}</div>
         <div class="stat-card__label">Total Deductions</div>
 </div>
       <div class="stat-card stat-card--active">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-active">
-          {{ reservations|selectattr('deposit_status', 'equalto', 'held')|list|length }}
-</div>
+        <div class="stat-card__number">{{ deposit_stats.active_deposits }}</div>
         <div class="stat-card__label">Active Deposits</div>
 </div>
       <div class="stat-card stat-card--pending">
         <span class="stat-card__icon"></span>
-        <div class="stat-card__number" id="stat-pending">
-          {% set pending_count = namespace(value=0) %}
-          {% for r in reservations %}
-            {% if r.deposit_status == 'held' and r.move_out_date %}
-              {% set days_until = (r.move_out_date - today).days %}
-              {% if days_until <= 30 %}
-                {% set pending_count.value = pending_count.value + 1 %}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-          {{ pending_count.value }}
+        <div class="stat-card__number">
+          {{ deposit_stats.pending_soon }}
 </div>
         <div class="stat-card__label">Expiring Soon</div>
 </div>
@@ -382,25 +346,25 @@
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
-          <input class="input" id="searchInput" placeholder="Tenant name or unit..." autocomplete="off" />
+          <input class="input" id="searchInput" placeholder="Tenant name or unit..." autocomplete="off" value="{{ request.args.get('search', '') }}" />
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Status</label>
           <select class="input" id="statusSelect">
             <option value="">All Statuses</option>
-            <option value="held">Held</option>
-            <option value="partial_return">Partial Return</option>
-            <option value="full_return">Full Return</option>
+            <option value="held" {% if request.args.get('status') == 'held' %}selected{% endif %}>Held</option>
+            <option value="partial_return" {% if request.args.get('status') == 'partial_return' %}selected{% endif %}>Partial Return</option>
+            <option value="full_return" {% if request.args.get('status') == 'full_return' %}selected{% endif %}>Full Return</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Building</label>
           <select class="input" id="buildingSelect">
             <option value="">All Buildings</option>
             {% for building in buildings %}
-              <option value="{{ building.code|upper }}">{{ building.code|upper }} - {{ building.name }}</option>
+              <option value="{{ building.code|upper }}" {% if request.args.get('building') == building.code|upper %}selected{% endif %}>{{ building.code|upper }} - {{ building.name }}</option>
             {% endfor %}
           </select>
 </div>
@@ -409,21 +373,21 @@
           <label class="filter-label">Floor</label>
           <select class="input" id="floorSelect">
             <option value="">All Floors</option>
-            <option value="1">Floor 1</option>
-            <option value="2">Floor 2</option>
-            <option value="3">Floor 3</option>
-            <option value="4">Floor 4</option>
+            <option value="1" {% if request.args.get('floor') == '1' %}selected{% endif %}>Floor 1</option>
+            <option value="2" {% if request.args.get('floor') == '2' %}selected{% endif %}>Floor 2</option>
+            <option value="3" {% if request.args.get('floor') == '3' %}selected{% endif %}>Floor 3</option>
+            <option value="4" {% if request.args.get('floor') == '4' %}selected{% endif %}>Floor 4</option>
           </select>
 </div>
 
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
           <select class="input" id="sortSelect">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="amount-high">Amount (High-Low)</option>
-            <option value="amount-low">Amount (Low-High)</option>
-            <option value="expiring">Expiring Soon</option>
+            <option value="newest" {% if request.args.get('sort', 'newest') == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+            <option value="amount-high" {% if request.args.get('sort') == 'amount-high' %}selected{% endif %}>Amount (High-Low)</option>
+            <option value="amount-low" {% if request.args.get('sort') == 'amount-low' %}selected{% endif %}>Amount (Low-High)</option>
+            <option value="expiring" {% if request.args.get('sort') == 'expiring' %}selected{% endif %}>Expiring Soon</option>
           </select>
 </div>
 </div>
@@ -434,7 +398,7 @@
       <div class="section__header">
         <div>
           <h3>All Deposits</h3>
-          <p class="muted" id="results-count">{{ reservations|length }} deposit(s) found</p>
+          <p class="muted" id="results-count">{{ pagination.total }} deposit(s) found{% if pagination.pages > 1 %} &middot; page {{ pagination.page }} of {{ pagination.pages }}{% endif %}</p>
 </div>
 </div>
 
@@ -556,6 +520,28 @@
             </tbody>
           </table>
 </div>
+
+        {% if pagination.pages > 1 %}
+          <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+            {% set args = request.args.to_dict() %}
+            {% if pagination.has_prev %}
+              {% set _ = args.update({'page': pagination.prev_num}) %}
+              <a href="{{ url_for('admin.deposits', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                {% set _ = args.update({'page': p}) %}
+                <a href="{{ url_for('admin.deposits', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+              {% else %}
+                <span class="muted" style="padding: 0 6px;">&hellip;</span>
+              {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+              {% set _ = args.update({'page': pagination.next_num}) %}
+              <a href="{{ url_for('admin.deposits', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <div class="empty-state">
           <div class="empty-state__title">No Deposits</div>
@@ -654,150 +640,32 @@
     const floorSelect = document.getElementById('floorSelect');
     const sortSelect = document.getElementById('sortSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-    const depositsTable = document.getElementById('depositsTable');
-    const resultsCount = document.getElementById('results-count');
-    
-    // Statistics elements
-    const statHeld = document.querySelector('.stat-card--held .stat-card__number');
-    const statReturned = document.querySelector('.stat-card--returned .stat-card__number');
-    const statDeductions = document.querySelector('.stat-card--deductions .stat-card__number');
-    const statActive = document.querySelector('.stat-card--active .stat-card__number');
-    const statPending = document.querySelector('.stat-card--pending .stat-card__number');
-    
-    if (!depositsTable) return;
-    
-    const allRows = Array.from(depositsTable.querySelectorAll('tbody tr'));
-    
-    function updateStatistics(visibleRows) {
-      let totalHeld = 0, totalReturned = 0, totalDeductions = 0, activeCount = 0, pendingCount = 0;
-      
-      visibleRows.forEach(row => {
-        const status = row.getAttribute('data-status');
-        const amount = parseFloat(row.getAttribute('data-amount'));
-        const expiring = parseInt(row.getAttribute('data-expiring'));
-        
-        // Get return amount from table cell
-        const returnCell = row.cells[7].textContent.trim();
-        const returnAmount = parseFloat(returnCell.replace(/[₱,]/g, ''));
-        
-        if (status === 'held') {
-          totalHeld += amount;
-          activeCount++;
-          if (expiring <= 30) pendingCount++;
-        }
-        
-        if (status === 'full_return' || status === 'partial_return') {
-          totalReturned += returnAmount;
-        }
-        
-        if (returnAmount < amount) {
-          totalDeductions += (amount - returnAmount);
-        }
-      });
-      
-      statHeld.textContent = '₱' + Math.round(totalHeld).toLocaleString();
-      statReturned.textContent = '₱' + Math.round(totalReturned).toLocaleString();
-      statDeductions.textContent = '₱' + Math.round(totalDeductions).toLocaleString();
-      statActive.textContent = activeCount;
-      statPending.textContent = pendingCount;
+
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (statusSelect.value) params.set('status', statusSelect.value);
+      if (buildingSelect.value) params.set('building', buildingSelect.value);
+      if (floorSelect && floorSelect.value) params.set('floor', floorSelect.value);
+      if (sortSelect.value && sortSelect.value !== 'newest') params.set('sort', sortSelect.value);
+      window.location.href = '{{ url_for("admin.deposits") }}?' + params.toString();
     }
-    
-    function sortRows(rows, sortBy) {
-      return rows.sort((a, b) => {
-        if (sortBy === 'newest') {
-          return parseFloat(b.getAttribute('data-created')) - parseFloat(a.getAttribute('data-created'));
-        } else if (sortBy === 'oldest') {
-          return parseFloat(a.getAttribute('data-created')) - parseFloat(b.getAttribute('data-created'));
-        } else if (sortBy === 'amount-high') {
-          return parseFloat(b.getAttribute('data-amount')) - parseFloat(a.getAttribute('data-amount'));
-        } else if (sortBy === 'amount-low') {
-          return parseFloat(a.getAttribute('data-amount')) - parseFloat(b.getAttribute('data-amount'));
-        } else if (sortBy === 'expiring') {
-          return parseInt(a.getAttribute('data-expiring')) - parseInt(b.getAttribute('data-expiring'));
-        }
-        return 0;
-      });
-    }
-    
-    function filterTable() {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const statusValue = statusSelect.value.toLowerCase();
-      const buildingCode = buildingSelect.value.toUpperCase();
-      const floorValue = floorSelect.value;
-      const sortBy = sortSelect.value;
-      
-      let visibleRows = [];
-      
-      allRows.forEach(row => {
-        const tenant = row.getAttribute('data-tenant');
-        const unit = row.getAttribute('data-unit');
-        const status = row.getAttribute('data-status');
-        const building = row.getAttribute('data-building');
-        
-        const matchesSearch = !searchTerm || 
-          tenant.includes(searchTerm) || 
-          unit.includes(searchTerm);
-        
-        const matchesStatus = !statusValue || status === statusValue;
-        const matchesBuilding = !buildingCode || building === buildingCode;
-        const floor = row.getAttribute('data-floor');
-        const matchesFloor = !floorValue || floor === floorValue;
-        
-        if (matchesSearch && matchesStatus && matchesBuilding && matchesFloor) {
-          visibleRows.push(row);
-        }
-      });
-      
-      visibleRows = sortRows(visibleRows, sortBy);
-      
-      allRows.forEach(row => row.style.display = 'none');
-      
-      const tbody = depositsTable.querySelector('tbody');
-      visibleRows.forEach(row => {
-        row.style.display = '';
-        tbody.appendChild(row);
-      });
-      
-      resultsCount.textContent = `${visibleRows.length} deposit(s) found`;
-      updateStatistics(visibleRows);
-      
-      let noResultsRow = document.getElementById('noResultsRow');
-      
-      if (visibleRows.length === 0 && allRows.length > 0) {
-        if (!noResultsRow) {
-          noResultsRow = document.createElement('tr');
-          noResultsRow.id = 'noResultsRow';
-          noResultsRow.innerHTML = `
-            <td colspan="10" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Deposits Found</div>
-              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-</td>
-          `;
-          tbody.appendChild(noResultsRow);
-        }
-      } else if (noResultsRow) {
-        noResultsRow.remove();
-      }
-    }
-    
+
     clearFiltersBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      statusSelect.value = '';
-      buildingSelect.value = '';
-      if (floorSelect) floorSelect.value = '';
-      sortSelect.value = 'newest';
-      filterTable();
+      window.location.href = '{{ url_for("admin.deposits") }}';
     });
-    
-    searchInput.addEventListener('input', debounce(filterTable, 400));
-    statusSelect.addEventListener('change', filterTable);
-    buildingSelect.addEventListener('change', filterTable);
-    if (floorSelect) floorSelect.addEventListener('change', filterTable);
-    sortSelect.addEventListener('change', filterTable);
-    
-    filterTable();
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    statusSelect.addEventListener('change', applyFilters);
+    buildingSelect.addEventListener('change', applyFilters);
+    if (floorSelect) floorSelect.addEventListener('change', applyFilters);
+    sortSelect.addEventListener('change', applyFilters);
   });
-  
+
   // Modal Functions
   function openDeductModal(reservationId, tenantName, depositAmount) {
     try {
