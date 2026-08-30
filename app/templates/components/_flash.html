@@ -1,3 +1,9 @@
+{# On the public homepage, ?auth=login/register or ?show_login=1 auto-opens a modal that
+   already renders these same flashed messages inside the modal card itself (home.html).
+   Skip the floating top toast in that case so the message isn't shown twice / lost behind
+   the modal — let it show once, in context, inside the modal. #}
+{% set _modal_has_own_flash = request.endpoint == 'public.home' and (request.args.get('auth') in ['login', 'register'] or request.args.get('show_login') == '1') %}
+{% if not _modal_has_own_flash %}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     <div class="flash-stack">
@@ -7,4 +13,5 @@
     </div>
   {% endif %}
 {% endwith %}
+{% endif %}
 
