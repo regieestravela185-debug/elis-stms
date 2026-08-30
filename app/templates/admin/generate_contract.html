@@ -11,7 +11,11 @@
 
 {% block content %}
   <section class="dash-panel">
-    <div class="card" style="max-width: 720px;">
+    <div style="margin-bottom: 16px;">
+      <a href="{{ url_for('admin.tenant_monitoring') }}" class="btn btn--ghost btn--sm">Back to Tenant Monitoring</a>
+    </div>
+
+    <div class="card">
       <div class="section__header">
         <h3>{{ profile.user.full_name }} — Unit {{ unit.unit_code }}</h3>
         <p class="muted">Fills in the property's standard commercial lease contract template. Review, print, and get it signed and notarized — this is a draft, not the final legal document.</p>
