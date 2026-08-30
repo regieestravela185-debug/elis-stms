@@ -70,7 +70,7 @@
     <!-- Filters and Search -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="section__header">
-        <h3>All Renewal Requests <span style="font-size: 14px; font-weight: normal; color: #666;">({{ renewal_requests|length }} shown)</span></h3>
+        <h3>All Renewal Requests <span style="font-size: 14px; font-weight: normal; color: #666;">({{ pagination.total }} total{% if pagination.pages > 1 %}, page {{ pagination.page }} of {{ pagination.pages }}{% endif %})</span></h3>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
           <a href="{{ url_for('admin.export_renewals') }}" class="btn btn--ghost btn--sm">Export CSV</a>
@@ -250,6 +250,28 @@
 </div>
         {% endfor %}
 </div>
+
+      {% if pagination.pages > 1 %}
+        <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+          {% set args = request.args.to_dict() %}
+          {% if pagination.has_prev %}
+            {% set _ = args.update({'page': pagination.prev_num}) %}
+            <a href="{{ url_for('admin.renewals', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+          {% endif %}
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              {% set _ = args.update({'page': p}) %}
+              <a href="{{ url_for('admin.renewals', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+            {% else %}
+              <span class="muted" style="padding: 0 6px;">&hellip;</span>
+            {% endif %}
+          {% endfor %}
+          {% if pagination.has_next %}
+            {% set _ = args.update({'page': pagination.next_num}) %}
+            <a href="{{ url_for('admin.renewals', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+          {% endif %}
+        </div>
+      {% endif %}
     {% else %}
       <div class="empty-state" style="text-align: center; padding: 80px 20px;">
         <div class="empty-state__title" style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">No Renewal Requests</div>

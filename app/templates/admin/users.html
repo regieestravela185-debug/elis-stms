@@ -238,15 +238,15 @@
       <div class="filters-grid">
         <div class="filter-group">
           <label class="filter-label">Search</label>
-          <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" />
+          <input class="input" id="searchInput" placeholder="Name or email..." autocomplete="off" value="{{ request.args.get('search', '') }}" />
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Role</label>
           <select class="input" id="roleSelect">
             <option value="">All Roles</option>
-            <option value="user">User</option>
-            <option value="tenant">Tenant</option>
+            <option value="user" {% if request.args.get('role') == 'user' %}selected{% endif %}>User</option>
+            <option value="tenant" {% if request.args.get('role') == 'tenant' %}selected{% endif %}>Tenant</option>
           </select>
 </div>
 
@@ -254,19 +254,19 @@
           <label class="filter-label">Status</label>
           <select class="input" id="archivedSelect">
             <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-            <option value="banned">Banned</option>
+            <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
+            <option value="archived" {% if request.args.get('status') == 'archived' %}selected{% endif %}>Archived</option>
+            <option value="banned" {% if request.args.get('status') == 'banned' %}selected{% endif %}>Banned</option>
           </select>
 </div>
-        
+
         <div class="filter-group">
           <label class="filter-label">Sort By</label>
           <select class="input" id="sortSelect">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="name">Name (A-Z)</option>
-            <option value="name-desc">Name (Z-A)</option>
+            <option value="newest" {% if request.args.get('sort', 'newest') == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>Oldest First</option>
+            <option value="name" {% if request.args.get('sort') == 'name' %}selected{% endif %}>Name (A-Z)</option>
+            <option value="name-desc" {% if request.args.get('sort') == 'name-desc' %}selected{% endif %}>Name (Z-A)</option>
           </select>
 </div>
 </div>
@@ -277,7 +277,7 @@
       <div class="section__header">
         <div>
           <h3>All Customers</h3>
-          <p class="muted" id="results-count">{{ all_users|length }} customer(s) found</p>
+          <p class="muted" id="results-count">{{ pagination.total }} customer(s) found{% if pagination.pages > 1 %} &middot; page {{ pagination.page }} of {{ pagination.pages }}{% endif %}</p>
 </div>
 </div>
 
@@ -363,6 +363,28 @@
             </tbody>
           </table>
 </div>
+
+        {% if pagination.pages > 1 %}
+          <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+            {% set args = request.args.to_dict() %}
+            {% if pagination.has_prev %}
+              {% set _ = args.update({'page': pagination.prev_num}) %}
+              <a href="{{ url_for('admin.users', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                {% set _ = args.update({'page': p}) %}
+                <a href="{{ url_for('admin.users', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+              {% else %}
+                <span class="muted" style="padding: 0 6px;">&hellip;</span>
+              {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+              {% set _ = args.update({'page': pagination.next_num}) %}
+              <a href="{{ url_for('admin.users', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <div class="empty-state">
           <div class="empty-state__title">No Customers Found</div>
@@ -379,133 +401,28 @@
     const archivedSelect = document.getElementById('archivedSelect');
     const sortSelect = document.getElementById('sortSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-    const customersTable = document.getElementById('customersTable');
-    const resultsCount = document.getElementById('results-count');
-    
-    // Statistics elements
-    const statTotal = document.querySelector('.stat-card--total .stat-card__number');
-    const statTenants = document.querySelector('.stat-card--tenants .stat-card__number');
-    const statUsers = document.querySelector('.stat-card--users .stat-card__number');
-    
-    if (!customersTable) return;
-    
-    const allRows = Array.from(customersTable.querySelectorAll('tbody tr'));
-    
-    function updateStatistics(visibleRows) {
-      const total = visibleRows.length;
-      let tenants = 0;
-      
-      visibleRows.forEach(row => {
-        const role = row.getAttribute('data-role');
-        if (role === 'tenant') tenants++;
-      });
-      
-      const users = total - tenants;
-      
-      statTotal.textContent = total;
-      statTenants.textContent = tenants;
-      statUsers.textContent = users;
+
+    function applyFilters() {
+      const params = new URLSearchParams();
+      if (searchInput.value) params.set('search', searchInput.value);
+      if (roleSelect.value) params.set('role', roleSelect.value);
+      if (archivedSelect.value) params.set('status', archivedSelect.value);
+      if (sortSelect.value && sortSelect.value !== 'newest') params.set('sort', sortSelect.value);
+      window.location.href = '{{ url_for("admin.users") }}?' + params.toString();
     }
-    
-    function sortRows(rows, sortBy) {
-      return rows.sort((a, b) => {
-        if (sortBy === 'newest') {
-          return parseFloat(b.getAttribute('data-joined')) - parseFloat(a.getAttribute('data-joined'));
-        } else if (sortBy === 'oldest') {
-          return parseFloat(a.getAttribute('data-joined')) - parseFloat(b.getAttribute('data-joined'));
-        } else if (sortBy === 'name') {
-          return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
-        } else if (sortBy === 'name-desc') {
-          return b.getAttribute('data-name').localeCompare(a.getAttribute('data-name'));
-        }
-        return 0;
-      });
-    }
-    
-    function filterTable() {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const roleValue = roleSelect.value.toLowerCase();
-      const statusValue = archivedSelect.value.toLowerCase();
-      const sortBy = sortSelect.value;
 
-      let visibleRows = [];
-
-      allRows.forEach(row => {
-        const name = row.getAttribute('data-name');
-        const email = row.getAttribute('data-email');
-        const role = row.getAttribute('data-role');
-        const isArchived = row.getAttribute('data-archived') === 'true';
-        const isBanned = row.getAttribute('data-banned') === 'true';
-
-        const matchesSearch = !searchTerm ||
-          name.includes(searchTerm) ||
-          email.includes(searchTerm);
-
-        const matchesRole = !roleValue || role === roleValue;
-
-        let matchesStatus = true;
-        if (statusValue === 'active') {
-          matchesStatus = !isArchived && !isBanned;
-        } else if (statusValue === 'archived') {
-          matchesStatus = isArchived;
-        } else if (statusValue === 'banned') {
-          matchesStatus = isBanned;
-        }
-
-        if (matchesSearch && matchesRole && matchesStatus) {
-          visibleRows.push(row);
-        }
-      });
-      
-      // Sort visible rows
-      visibleRows = sortRows(visibleRows, sortBy);
-      
-      // Hide all rows first
-      allRows.forEach(row => row.style.display = 'none');
-      
-      // Show and reorder visible rows
-      const tbody = customersTable.querySelector('tbody');
-      visibleRows.forEach(row => {
-        row.style.display = '';
-        tbody.appendChild(row);
-      });
-      
-      resultsCount.textContent = `${visibleRows.length} customer(s) found`;
-      updateStatistics(visibleRows);
-      
-      let noResultsRow = document.getElementById('noResultsRow');
-      
-      if (visibleRows.length === 0 && allRows.length > 0) {
-        if (!noResultsRow) {
-          noResultsRow = document.createElement('tr');
-          noResultsRow.id = 'noResultsRow';
-          noResultsRow.innerHTML = `
-            <td colspan="6" style="text-align: center; padding: 60px 20px;">
-              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No Customers Found</div>
-              <div style="font-size: 14px; color: var(--muted);">Try adjusting your search or filters</div>
-</td>
-          `;
-          tbody.appendChild(noResultsRow);
-        }
-      } else if (noResultsRow) {
-        noResultsRow.remove();
-      }
-    }
-    
     clearFiltersBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      roleSelect.value = '';
-      archivedSelect.value = '';
-      sortSelect.value = 'newest';
-      filterTable();
+      window.location.href = '{{ url_for("admin.users") }}';
     });
 
-    searchInput.addEventListener('input', debounce(filterTable, 400));
-    roleSelect.addEventListener('change', filterTable);
-    archivedSelect.addEventListener('change', filterTable);
-    sortSelect.addEventListener('change', filterTable);
-    
-    filterTable();
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilters, 500);
+    });
+    roleSelect.addEventListener('change', applyFilters);
+    archivedSelect.addEventListener('change', applyFilters);
+    sortSelect.addEventListener('change', applyFilters);
   });
 
   // Ban modal functions

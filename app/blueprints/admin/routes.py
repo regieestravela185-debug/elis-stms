@@ -2324,11 +2324,15 @@ def users():
         query = query.order_by(User.created_at.asc())
     elif sort_by == 'name':
         query = query.order_by(User.full_name.asc())
+    elif sort_by == 'name-desc':
+        query = query.order_by(User.full_name.desc())
     elif sort_by == 'last_login':
         query = query.order_by(User.last_login_at.desc().nullslast())
-    
-    all_users = query.all()
-    
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=30, error_out=False)
+    all_users = pagination.items
+
     # Calculate statistics
     total_customers = db.session.query(User).filter(User.role != Role.ADMIN).count()
     verified_users = db.session.query(User).filter(User.role != Role.ADMIN, User.is_email_verified == True).count()
@@ -2342,7 +2346,7 @@ def users():
         'pending': pending_verifications
     }
     
-    return render_template("admin/users.html", all_users=all_users, stats=stats)
+    return render_template("admin/users.html", all_users=all_users, pagination=pagination, stats=stats)
 
 
 @bp.get("/users/export")
@@ -3501,8 +3505,10 @@ def renewals():
     else:  # newest (default)
         query = query.order_by(RenewalRequest.created_at.desc())
     
-    renewal_requests = query.all()
-    
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    renewal_requests = pagination.items
+
     # Statistics
     today = date.today()
     this_month_start = today.replace(day=1)
@@ -3580,6 +3586,7 @@ def renewals():
     return render_template(
         "admin/renewals.html",
         renewal_requests=renewal_requests,
+        pagination=pagination,
         stats=stats,
         buildings=buildings,
         expiring_without_request=expiring_without_request,
@@ -3978,12 +3985,18 @@ def feedbacks():
     else:  # newest (default)
         query = query.order_by(Feedback.created_at.desc())
     
-    feedbacks = query.all()
-
-    # AI sentiment analysis (rule-based, bilingual) per feedback
+    # flagged_count needs to cover every feedback matching the current
+    # filters (not just the current page), so it's computed against the
+    # full filtered set before paginating the actual page of results.
     from ...ai_utils import analyze_sentiment
+    flagged_count = sum(1 for f in query.all() if analyze_sentiment(f.comments, f.rating)["flag"])
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    feedbacks = pagination.items
+
+    # AI sentiment analysis (rule-based, bilingual) per feedback on this page
     sentiments = {f.id: analyze_sentiment(f.comments, f.rating) for f in feedbacks}
-    flagged_count = sum(1 for s in sentiments.values() if s["flag"])
 
     # Statistics
     today = date.today()
@@ -4048,6 +4061,7 @@ def feedbacks():
     return render_template(
         "admin/feedbacks.html",
         feedbacks=feedbacks,
+        pagination=pagination,
         stats=stats,
         buildings=buildings,
         categories=categories,
@@ -4185,8 +4199,11 @@ def concerns():
         (Concern.priority == 'low', 4),
         else_=5
     )
-    concerns = query.order_by(priority_order, Concern.created_at.desc()).all()
-    
+    query = query.order_by(priority_order, Concern.created_at.desc())
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    concerns = pagination.items
+
     # Calculate statistics
     total = db.session.query(Concern).count()
     pending = db.session.query(Concern).filter(Concern.status == ConcernStatus.PENDING).count()
@@ -4226,6 +4243,7 @@ def concerns():
     return render_template(
         "admin/concerns.html",
         concerns=concerns,
+        pagination=pagination,
         stats=stats,
         category_stats=category_stats
     )
