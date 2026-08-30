@@ -202,6 +202,93 @@ def amount_to_words(amount) -> str:
     return result
 
 
+_FIL_ONES = ["", "isa", "dalawa", "tatlo", "apat", "lima", "anim", "pito", "walo", "siyam"]
+_FIL_TEENS = [
+    "sampu", "labing-isa", "labindalawa", "labintatlo", "labing-apat", "labinlima",
+    "labing-anim", "labimpito", "labingwalo", "labinsiyam",
+]
+_FIL_TENS = ["", "", "dalawampu", "tatlumpu", "apatnapu", "limampu", "animnapu", "pitumpu", "walumpu", "siyamnapu"]
+
+
+def _fil_tens_ones(n: int) -> str:
+    """1-99 -> Filipino words, e.g. 22 -> "dalawampu't dalawa"."""
+    if n <= 0:
+        return ""
+    if n < 10:
+        return _FIL_ONES[n]
+    if n < 20:
+        return _FIL_TEENS[n - 10]
+    tens, ones = divmod(n, 10)
+    return f"{_FIL_TENS[tens]}'t {_FIL_ONES[ones]}" if ones else _FIL_TENS[tens]
+
+
+def _fil_link(word: str, noun: str) -> str:
+    """Filipino linker between a numeral word and the noun it modifies:
+    "-ng" after a vowel, "-g" after "n", else a separate "na" — with the
+    d->r sandhi that follows "na" (e.g. "apat na raan", not "...daan").
+    Validated against the property's own Kasunduan template: anim -> "anim
+    na Libo", pito -> "Pitong Libo", limandaan -> "Limandaang Piso"."""
+    if not word:
+        return noun
+    if word[-1] in "aeiou":
+        return f"{word}ng {noun}"
+    if word[-1] == "n":
+        return f"{word}g {noun}"
+    if noun.startswith("daan"):
+        noun = "r" + noun[1:]
+    return f"{word} na {noun}"
+
+
+def _fil_hundreds_phrase(h: int) -> str:
+    """h is 1-9, the hundreds digit. 500 uses the fused "limandaan" form
+    exactly as written in the source template; the rest use the standard
+    two-word form (isang daan, dalawang daan, ... siyam na raan)."""
+    return "limandaan" if h == 5 else _fil_link(_FIL_ONES[h], "daan")
+
+
+def amount_to_words_filipino(amount) -> Optional[str]:
+    """Peso amount -> Filipino words (e.g. "Anim na Libo at Limandaang
+    Piso"), for the Kasunduan sa Pagpapaupa template. Only handles exact
+    multiples of ₱100 — real rent/deposit figures always are in practice,
+    and it keeps the (genuinely tricky) na/-ng linker and d->r sandhi
+    rules within the range that's actually validated against the
+    property's own document. Returns None for anything else (tens/ones/
+    centavos remainder) so the caller can fall back to a numeral only
+    instead of risking unnatural-sounding grammar."""
+    if amount != int(amount):
+        return None
+    pesos = int(amount)
+    if pesos < 0 or pesos % 100 != 0:
+        return None
+    if pesos == 0:
+        return "Zero Pesos"
+
+    thousands, remainder = divmod(pesos, 1000)
+    hundreds_digit = remainder // 100
+    hundreds_phrase = _fil_hundreds_phrase(hundreds_digit) if hundreds_digit else None
+
+    if thousands:
+        # thousands itself needs a 1-999-range cardinal (tens/ones allowed
+        # here since it's the multiplier, not the final remainder) —
+        # covers up to ₱999,900, far beyond any realistic rent/deposit.
+        th, tr = divmod(thousands, 100)
+        parts = []
+        if th:
+            parts.append(_fil_hundreds_phrase(th))
+        if tr:
+            parts.append(_fil_tens_ones(tr))
+        thousands_word = " at ".join(parts) if parts else ""
+        if hundreds_phrase:
+            phrase = f"{_fil_link(thousands_word, 'libo')} at {_fil_link(hundreds_phrase, 'piso')}"
+        else:
+            phrase = _fil_link(thousands_word, "libong piso")
+    else:
+        phrase = _fil_link(hundreds_phrase, "piso")
+
+    words = phrase.split(" ")
+    return " ".join(w if w in ("na", "at") else w.capitalize() for w in words)
+
+
 def compute_water_bill(pax_range: Optional[str]) -> Optional[float]:
     """Fixed monthly water bill for a residential unit, by occupant-count
     bracket. Commercial units pay their own water bill directly and don't

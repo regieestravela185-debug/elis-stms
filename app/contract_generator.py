@@ -11,7 +11,7 @@ final scanned copy via the existing Documents feature (Lease Agreement).
 """
 from io import BytesIO
 
-from .ai_utils import amount_to_words
+from .ai_utils import amount_to_words, amount_to_words_filipino
 
 
 def _lease_term_phrase(start, end) -> str:
@@ -329,8 +329,18 @@ def generate_kasunduan_pdf(data: dict) -> BytesIO:
     monthly_rental = float(data["monthly_rental"])
     security_deposit = float(data["security_deposit"])
 
-    monthly_rental_str = f"Php {monthly_rental:,.2f}"
-    security_deposit_str = f"Php {security_deposit:,.2f}"
+    # Filipino spelled-out words alongside the numeral, matching the source
+    # template exactly (e.g. "Anim na Libo at Limandaang Piso (Php
+    # 6,500.00)") — only for amounts the words-generator is confident
+    # about (exact multiples of ₱100, which every real rent/deposit figure
+    # already is); falls back to the numeral alone otherwise.
+    def _peso_str(value: float) -> str:
+        numeral = f"Php {value:,.2f}"
+        words = amount_to_words_filipino(value)
+        return f"{words} ({numeral})" if words else numeral
+
+    monthly_rental_str = _peso_str(monthly_rental)
+    security_deposit_str = _peso_str(security_deposit)
     move_in_str = _filipino_date(move_in_date)
     due_day = move_in_date.day
 
