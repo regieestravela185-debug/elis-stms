@@ -343,9 +343,15 @@
       closeModals();
       openModal("#modalLogin");
     };
-    el.addEventListener("click", open);
+    el.addEventListener("click", (e) => {
+      // Details/Inquire (and any other button/link) inside the card have
+      // their own click handlers and don't require login — only the card
+      // background itself should prompt login.
+      if (e.target.closest("button, a")) return;
+      open();
+    });
     el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
+      if ((e.key === "Enter" || e.key === " ") && e.target === el) {
         e.preventDefault();
         open();
       }
