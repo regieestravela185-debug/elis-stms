@@ -181,6 +181,28 @@
         {% endfor %}
       </div>
 
+      {% if pagination.pages > 1 %}
+        <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap;">
+          {% set args = request.args.to_dict() %}
+          {% if pagination.has_prev %}
+            {% set _ = args.update({'page': pagination.prev_num}) %}
+            <a href="{{ url_for('tenant.documents', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+          {% endif %}
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              {% set _ = args.update({'page': p}) %}
+              <a href="{{ url_for('tenant.documents', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+            {% else %}
+              <span class="muted" style="padding: 0 6px;">&hellip;</span>
+            {% endif %}
+          {% endfor %}
+          {% if pagination.has_next %}
+            {% set _ = args.update({'page': pagination.next_num}) %}
+            <a href="{{ url_for('tenant.documents', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+          {% endif %}
+        </div>
+      {% endif %}
+
     {% else %}
       <div class="empty-state" style="text-align: center; padding: 80px 20px;">
         <div style="width: 96px; height: 96px; margin: 0 auto 24px; background: rgba(215, 179, 91, 0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(215, 179, 91, 0.3);">

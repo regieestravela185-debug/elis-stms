@@ -392,7 +392,10 @@ def concerns():
         except ValueError:
             pass
 
-    concerns = query.order_by(Concern.created_at.desc()).all()
+    query = query.order_by(Concern.created_at.desc())
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    concerns = pagination.items
 
     # Calculate statistics from ALL concerns (not filtered)
     all_concerns = db.session.query(Concern).filter(
@@ -425,14 +428,14 @@ def concerns():
     stats = {
         'total': total_concerns,
         'pending': pending_concerns,
-        'in_progress': sum(1 for c in concerns if c.status == ConcernStatus.IN_PROGRESS),
+        'in_progress': sum(1 for c in all_concerns if c.status == ConcernStatus.IN_PROGRESS),
         'resolved': resolved_concerns,
         'avg_response_hours': avg_response_time,
         'resolution_rate': resolution_rate,
         'most_common_category': most_common_category
     }
 
-    return render_template("tenant/concerns.html", concerns=concerns, stats=stats)
+    return render_template("tenant/concerns.html", concerns=concerns, pagination=pagination, stats=stats)
 
 
 @bp.post("/concerns")
@@ -760,18 +763,24 @@ def payments():
         except ValueError:
             pass
 
-    payments = query.order_by(Payment.paid_at.desc()).all()
-
     # Calculate statistics — pending/rejected proof submissions aren't
     # confirmed money received yet, so they're shown in the list (tenant
-    # needs to see their status) but excluded from the totals.
-    confirmed_payments = [p for p in payments if p.payment_status not in ('pending', 'rejected')]
-    total_amount = sum(float(p.amount) for p in confirmed_payments)
-    total_count = len(confirmed_payments)
+    # needs to see their status) but excluded from the totals. Computed
+    # against the full filtered set (not just the current page), so these
+    # stay correct no matter which page is open. Built off the unordered
+    # `query` — an aggregate SELECT with a leftover ORDER BY on a
+    # non-aggregated/non-grouped column is invalid in Postgres.
+    from sqlalchemy import func as _func
+    confirmed_query = query.filter(Payment.payment_status.notin_(['pending', 'rejected']))
+    total_amount = float(confirmed_query.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar() or 0)
+    total_count = confirmed_query.count()
+    last_payment = confirmed_query.order_by(Payment.paid_at.desc()).first()
 
-    # Last payment
-    last_payment = confirmed_payments[0] if confirmed_payments else None
-    
+    query = query.order_by(Payment.paid_at.desc())
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=20, error_out=False)
+    payments = pagination.items
+
     # Next payment due (assuming monthly on contract start day)
     next_payment_due = None
     if profile.contract_start:
@@ -811,7 +820,7 @@ def payments():
         for y, v in sorted(yearly_totals.items(), reverse=True)
     ]
 
-    pending_count = sum(1 for p in payments if p.payment_status == 'pending')
+    pending_count = query.filter(Payment.payment_status == 'pending').count()
 
     stats = {
         'total_amount': total_amount,
@@ -823,7 +832,7 @@ def payments():
         'pending_count': pending_count,
     }
 
-    return render_template("tenant/payments.html", payments=payments, stats=stats, profile=profile)
+    return render_template("tenant/payments.html", payments=payments, pagination=pagination, stats=stats, profile=profile)
 
 
 @bp.post("/payments/submit-proof")
@@ -1104,22 +1113,27 @@ def announcements():
     if category_filter:
         query = query.filter(Announcement.category == category_filter)
     
-    announcements = query.order_by(
-        Announcement.is_pinned.desc(), 
+    query = query.order_by(
+        Announcement.is_pinned.desc(),
         Announcement.created_at.desc()
-    ).all()
-    
+    )
+
     # Get read announcement IDs
     read_announcement_ids = db.session.query(AnnouncementRead.announcement_id).filter(
         AnnouncementRead.user_id == current_user.id  # type: ignore[attr-defined]
     ).all()
     read_ids = [r[0] for r in read_announcement_ids]
-    
-    # Calculate statistics
-    total_announcements = len(announcements)
-    unread_count = sum(1 for a in announcements if a.id not in read_ids)
-    latest_announcement = announcements[0] if announcements else None
-    
+
+    # Stats reflect the full filtered set, not just the current page.
+    all_matching_announcements = query.all()
+    total_announcements = len(all_matching_announcements)
+    unread_count = sum(1 for a in all_matching_announcements if a.id not in read_ids)
+    latest_announcement = all_matching_announcements[0] if all_matching_announcements else None
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=10, error_out=False)
+    announcements = pagination.items
+
     # Get available categories
     all_announcements = db.session.query(Announcement).filter(
         Announcement.is_active == True
@@ -1137,7 +1151,7 @@ def announcements():
         'available_categories': available_categories
     }
     
-    return render_template("tenant/announcements.html", announcements=announcements, read_ids=read_ids, stats=stats)
+    return render_template("tenant/announcements.html", announcements=announcements, pagination=pagination, read_ids=read_ids, stats=stats)
 
 
 @bp.post("/announcements/<int:announcement_id>/mark-read")
@@ -1191,14 +1205,42 @@ def documents():
     else:  # newest (default)
         query = query.order_by(Document.uploaded_at.desc())
 
-    documents = query.all()
-    
-    # Auto-mark all documents as viewed when opening this page
+    # Stat cards (per-type counts, latest upload, total size) reflect the
+    # full filtered set, not just the current page — computed here before
+    # pagination narrows `documents` down to one page's worth.
+    all_matching_docs = query.all()
+    docs_by_type = {}
+    for doc in all_matching_docs:
+        docs_by_type.setdefault(doc.document_type, []).append(doc)
+    latest_upload = all_matching_docs[0].uploaded_at if all_matching_docs else None
+
+    import os
+    total_size = 0
+    for doc in all_matching_docs:
+        try:
+            file_path = os.path.join('app', 'static', doc.file_path)
+            if os.path.exists(file_path):
+                total_size += os.path.getsize(file_path)
+        except:
+            pass
+    total_size_mb = total_size / (1024 * 1024)
+
+    stats = {
+        'total_size_mb': total_size_mb,
+        'latest_upload': latest_upload
+    }
+
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=12, error_out=False)
+    documents = pagination.items
+
+    # Auto-mark documents as viewed — only the ones actually shown on this
+    # page, not every document matching the filter.
     for doc in documents:
         if not doc.is_viewed:
             doc.is_viewed = True
             doc.viewed_at = datetime.utcnow()
-            
+
             # Track view in DocumentView table
             from ...models import DocumentView
             view_record = DocumentView(
@@ -1208,16 +1250,8 @@ def documents():
                 downloaded=False
             )
             db.session.add(view_record)
-    
+
     db.session.commit()
-    
-    # Group documents by type for better organization
-    docs_by_type = {}
-    for doc in documents:
-        doc_type = doc.document_type
-        if doc_type not in docs_by_type:
-            docs_by_type[doc_type] = []
-        docs_by_type[doc_type].append(doc)
 
     # Flag utility bills that are likely outdated (a newer billing cycle has
     # probably passed). No stored "expiry date" exists for documents, so this
@@ -1230,29 +1264,8 @@ def documents():
             doc.document_type in UTILITY_BILL_TYPES
             and (datetime.utcnow() - doc.uploaded_at).days > STALE_BILL_DAYS
         )
-    
-    # Calculate statistics
-    import os
-    total_size = 0
-    latest_upload = documents[0].uploaded_at if documents else None
-    
-    for doc in documents:
-        try:
-            file_path = os.path.join('app', 'static', doc.file_path)
-            if os.path.exists(file_path):
-                total_size += os.path.getsize(file_path)
-        except:
-            pass
-    
-    # Convert bytes to MB
-    total_size_mb = total_size / (1024 * 1024)
-    
-    stats = {
-        'total_size_mb': total_size_mb,
-        'latest_upload': latest_upload
-    }
-    
-    return render_template("tenant/documents.html", documents=documents, docs_by_type=docs_by_type, stats=stats)
+
+    return render_template("tenant/documents.html", documents=documents, pagination=pagination, docs_by_type=docs_by_type, stats=stats)
 
 
 @bp.get("/documents/<int:document_id>/download")
@@ -1623,20 +1636,23 @@ def feedback():
     if rating_filter:
         query = query.filter(Feedback.rating == int(rating_filter))
 
-    feedbacks = query.order_by(Feedback.created_at.desc()).all()
+    query = query.order_by(Feedback.created_at.desc())
 
-    # Calculate statistics
-    total_feedback = len(feedbacks)
-    submitted_count = sum(1 for f in feedbacks if f.status == FeedbackStatus.SUBMITTED)
-    reviewed_count = sum(1 for f in feedbacks if f.status == FeedbackStatus.REVIEWED)
-    
+    # Stats and the "Print all feedback" JSON payload reflect the full
+    # filtered set (not just the current page) — printing should include
+    # everything matching the current filter, not just what's visible.
+    all_matching_feedbacks = query.all()
+    total_feedback = len(all_matching_feedbacks)
+    submitted_count = sum(1 for f in all_matching_feedbacks if f.status == FeedbackStatus.SUBMITTED)
+    reviewed_count = sum(1 for f in all_matching_feedbacks if f.status == FeedbackStatus.REVIEWED)
+
     # Calculate average rating
-    ratings = [f.rating for f in feedbacks if f.rating is not None]
+    ratings = [f.rating for f in all_matching_feedbacks if f.rating is not None]
     avg_rating = sum(ratings) / len(ratings) if ratings else 0
-    
+
     # Most used category
     from collections import Counter
-    categories = [f.category for f in feedbacks]
+    categories = [f.category for f in all_matching_feedbacks]
     most_common_category = Counter(categories).most_common(1)[0][0] if categories else 'N/A'
 
     stats = {
@@ -1655,10 +1671,14 @@ def feedback():
             "status": {"value": f.status.value},
             "created_at": f.created_at.isoformat() if f.created_at else None,
         }
-        for f in feedbacks
+        for f in all_matching_feedbacks
     ]
 
-    return render_template("tenant/feedback.html", feedbacks=feedbacks, feedbacks_json=feedbacks_json, stats=stats, profile=profile)
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    feedbacks = pagination.items
+
+    return render_template("tenant/feedback.html", feedbacks=feedbacks, pagination=pagination, feedbacks_json=feedbacks_json, stats=stats, profile=profile)
 
 
 @bp.post("/feedback")
