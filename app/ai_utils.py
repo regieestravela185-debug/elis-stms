@@ -150,6 +150,58 @@ WATER_BILL_RATES = {
 }
 
 
+_ONES = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+    "Seventeen", "Eighteen", "Nineteen",
+]
+_TENS = [
+    "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety",
+]
+
+
+def _three_digits_to_words(n: int) -> str:
+    if n == 0:
+        return ""
+    words = []
+    if n >= 100:
+        words.append(_ONES[n // 100] + " Hundred")
+        n %= 100
+    if n >= 20:
+        words.append(_TENS[n // 10])
+        n %= 10
+        if n:
+            words.append(_ONES[n])
+    elif n > 0:
+        words.append(_ONES[n])
+    return " ".join(words)
+
+
+def amount_to_words(amount) -> str:
+    """Peso amount -> words, for legal document boilerplate (e.g. lease
+    contracts) that spell out amounts alongside the numeral — matches the
+    convention in the property's existing lease contract template."""
+    amount = float(amount)
+    pesos = int(amount)
+    centavos = round((amount - pesos) * 100)
+
+    if pesos == 0:
+        peso_words = "Zero"
+    else:
+        parts = []
+        for divisor, label in ((1_000_000_000, "Billion"), (1_000_000, "Million"), (1_000, "Thousand"), (1, "")):
+            chunk, pesos = divmod(pesos, divisor) if divisor > 1 else (pesos, 0)
+            if chunk:
+                chunk_words = _three_digits_to_words(chunk)
+                parts.append(f"{chunk_words} {label}".strip())
+        peso_words = " ".join(parts)
+
+    result = f"{peso_words} Pesos"
+    if centavos:
+        result += f" and {_three_digits_to_words(centavos)} Centavos"
+    return result
+
+
 def compute_water_bill(pax_range: Optional[str]) -> Optional[float]:
     """Fixed monthly water bill for a residential unit, by occupant-count
     bracket. Commercial units pay their own water bill directly and don't

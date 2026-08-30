@@ -478,6 +478,10 @@
                     >
                       Process Move-Out
 </button>
+                  {% else %}
+                    <a href="{{ url_for('admin.generate_contract_form', profile_id=item.profile.id) }}" class="btn btn--ghost btn--sm" style="color: #b8922f; border-color: rgba(215,179,91,0.4);">
+                      Generate Contract
+</a>
                   {% endif %}
 </div>
 </td>

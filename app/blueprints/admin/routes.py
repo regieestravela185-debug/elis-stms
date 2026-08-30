@@ -1100,6 +1100,97 @@ def tenant_monitoring():
     )
 
 
+@bp.get("/tenants/<int:profile_id>/generate-contract")
+@login_required
+def generate_contract_form(profile_id: int):
+    """Form to fill in the legal details a lease contract needs that
+    aren't otherwise tracked by the system (company name, representative,
+    civil status, nationality, business nature, address). Everything else
+    (unit, rent, deposit, lease term) is pre-filled from existing data."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    unit = db.session.get(Unit, profile.unit_id)
+    if not unit or "commercial" not in (unit.type or "").lower():
+        flash("Contract generation is only available for commercial units right now.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+
+    reservation = (
+        db.session.query(Reservation)
+        .filter(
+            Reservation.user_id == profile.user_id,
+            Reservation.unit_id == profile.unit_id,
+            Reservation.status == ReservationStatus.APPROVED,
+        )
+        .order_by(Reservation.created_at.desc())
+        .first()
+    )
+
+    return render_template(
+        "admin/generate_contract.html",
+        profile=profile,
+        unit=unit,
+        reservation=reservation,
+    )
+
+
+@bp.post("/tenants/<int:profile_id>/generate-contract")
+@login_required
+def generate_contract_pdf(profile_id: int):
+    _ensure_admin()
+    from flask import make_response
+
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    unit = db.session.get(Unit, profile.unit_id)
+    if not unit or "commercial" not in (unit.type or "").lower():
+        flash("Contract generation is only available for commercial units right now.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+
+    if not profile.contract_start or not profile.contract_end:
+        flash("This tenant's lease start/end dates aren't set — check the unit assignment before generating a contract.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+
+    lessee_company = (request.form.get("lessee_company") or "").strip()
+    lessee_position = (request.form.get("lessee_position") or "").strip()
+    if lessee_company and not lessee_position:
+        flash("Please provide the representative's position when a company name is given.", "warning")
+        return redirect(url_for("admin.generate_contract_form", profile_id=profile_id))
+
+    data = {
+        "lessor_name": (request.form.get("lessor_name") or "").strip(),
+        "lessor_business_name": (request.form.get("lessor_business_name") or "").strip(),
+        "lessor_address": (request.form.get("lessor_address") or "").strip(),
+        "lessee_name": (request.form.get("lessee_name") or "").strip(),
+        "lessee_company": lessee_company,
+        "lessee_position": lessee_position,
+        "lessee_civil_status": (request.form.get("lessee_civil_status") or "single").strip(),
+        "lessee_nationality": (request.form.get("lessee_nationality") or "Filipino").strip(),
+        "lessee_address": (request.form.get("lessee_address") or "").strip(),
+        "lessee_business_nature": (request.form.get("lessee_business_nature") or "").strip(),
+        "unit_code": unit.unit_code,
+        "monthly_rental": request.form.get("monthly_rental") or unit.price_monthly,
+        "security_deposit": request.form.get("security_deposit") or "0",
+        "lease_start": profile.contract_start,
+        "lease_end": profile.contract_end,
+    }
+
+    required = ["lessor_name", "lessor_business_name", "lessor_address", "lessee_name", "lessee_address"]
+    if any(not data[f] for f in required):
+        flash("Please fill in all required fields.", "warning")
+        return redirect(url_for("admin.generate_contract_form", profile_id=profile_id))
+
+    from ...contract_generator import generate_lease_contract_pdf
+    buffer = generate_lease_contract_pdf(data)
+
+    response = make_response(buffer.getvalue())
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f"inline; filename=Lease_Contract_{unit.unit_code}.pdf"
+    return response
+
+
 @bp.get("/floorplan")
 @login_required
 def floorplan():

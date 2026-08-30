@@ -1,0 +1,109 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Generate Lease Contract | STMS Admin{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Generate Lease Contract</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <div class="card" style="max-width: 720px;">
+      <div class="section__header">
+        <h3>{{ profile.user.full_name }} — Unit {{ unit.unit_code }}</h3>
+        <p class="muted">Fills in the property's standard commercial lease contract template. Review, print, and get it signed and notarized — this is a draft, not the final legal document.</p>
+      </div>
+
+      <form method="post" action="{{ url_for('admin.generate_contract_pdf', profile_id=profile.id) }}" class="form mt-16" target="_blank">
+        <h4 class="mt-16">Fixed Details (from system records)</h4>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Unit</label>
+            <input class="input" value="{{ unit.unit_code }}" disabled />
+          </div>
+          <div>
+            <label class="label">Monthly Rental (₱)</label>
+            <input class="input" type="number" step="0.01" name="monthly_rental" value="{{ unit.price_monthly }}" required />
+          </div>
+        </div>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Lease Start</label>
+            <input class="input" value="{{ profile.contract_start.strftime('%B %d, %Y') if profile.contract_start else 'Not set' }}" disabled />
+          </div>
+          <div>
+            <label class="label">Lease End</label>
+            <input class="input" value="{{ profile.contract_end.strftime('%B %d, %Y') if profile.contract_end else 'Not set' }}" disabled />
+          </div>
+        </div>
+        <div class="mt-8">
+          <label class="label">Security Deposit (₱)</label>
+          <input class="input" type="number" step="0.01" name="security_deposit" value="{{ reservation.deposit_amount if reservation else '' }}" required />
+        </div>
+
+        <h4 class="mt-24">Lessee (Tenant) Details</h4>
+        <p class="muted" style="margin-top: -8px;">Not all of this is tracked elsewhere in the system — fill it in from what the tenant provides at signing.</p>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Representative Full Name *</label>
+            <input class="input" name="lessee_name" value="{{ profile.user.full_name }}" required />
+          </div>
+          <div>
+            <label class="label">Company / Business Name (if applicable)</label>
+            <input class="input" name="lessee_company" placeholder="e.g. VIGOREUX Corporation" />
+          </div>
+        </div>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Representative's Position</label>
+            <input class="input" name="lessee_position" placeholder="e.g. Owner, Manager — required if a company name is given" />
+          </div>
+          <div>
+            <label class="label">Nature of Business</label>
+            <input class="input" name="lessee_business_nature" placeholder="e.g. retail, food service, government services" />
+          </div>
+        </div>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Civil Status</label>
+            <select class="input" name="lessee_civil_status">
+              <option value="single">Single</option>
+              <option value="married">Married</option>
+              <option value="widowed">Widowed</option>
+              <option value="separated">Separated</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Nationality</label>
+            <input class="input" name="lessee_nationality" value="Filipino" />
+          </div>
+        </div>
+        <div class="mt-8">
+          <label class="label">Postal Address *</label>
+          <input class="input" name="lessee_address" placeholder="e.g. Homebuilt, Milagrosa, Calamba City, Laguna" required />
+        </div>
+
+        <h4 class="mt-24">Lessor (Property) Details</h4>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Business Name *</label>
+            <input class="input" name="lessor_business_name" value="ELIS Business Center" required />
+          </div>
+          <div>
+            <label class="label">Represented By *</label>
+            <input class="input" name="lessor_name" value="Nestor J. Liquido" required />
+          </div>
+        </div>
+        <div class="mt-8">
+          <label class="label">Postal Address *</label>
+          <input class="input" name="lessor_address" value="#2 Milagrosa, Calamba City, Laguna" required />
+        </div>
+
+        <button class="btn btn--primary mt-24" type="submit">Generate Contract PDF</button>
+      </form>
+    </div>
+  </section>
+{% endblock %}
