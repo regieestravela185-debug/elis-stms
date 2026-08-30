@@ -2186,6 +2186,9 @@ def payments():
     import calendar
     from ...jobs import shift_month
 
+    today = date.today()
+    today_dt = dt.combine(today, dt.min.time())  # Convert to datetime for comparison
+
     tenants = db.session.query(TenantProfile).order_by(TenantProfile.created_at.desc()).limit(200).all()
 
     # Confirmed payments only — tenant-submitted proofs awaiting review live
@@ -2266,8 +2269,6 @@ def payments():
     }
 
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
-    today = date.today()
-    today_dt = dt.combine(today, dt.min.time())  # Convert to datetime for comparison
 
     # "Who hasn't paid this month" — cross-checks each active tenant's
     # current billing cycle against actual payment records, instead of
