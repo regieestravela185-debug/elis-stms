@@ -331,16 +331,17 @@ def generate_kasunduan_pdf(data: dict) -> BytesIO:
 
     # Filipino spelled-out words alongside the numeral, matching the source
     # template exactly (e.g. "Anim na Libo at Limandaang Piso (Php
-    # 6,500.00)") — only for amounts the words-generator is confident
-    # about (exact multiples of ₱100, which every real rent/deposit figure
-    # already is); falls back to the numeral alone otherwise.
-    def _peso_str(value: float) -> str:
+    # 6,500.00)"). Admin can type the words in manually (data[...]_words) —
+    # always wins if given, since admin knows best. Otherwise auto-generate
+    # for amounts the words-generator is confident about (exact multiples
+    # of ₱100); anything else falls back to the numeral alone.
+    def _peso_str(value: float, manual_words: str) -> str:
         numeral = f"Php {value:,.2f}"
-        words = amount_to_words_filipino(value)
+        words = (manual_words or "").strip() or amount_to_words_filipino(value)
         return f"{words} ({numeral})" if words else numeral
 
-    monthly_rental_str = _peso_str(monthly_rental)
-    security_deposit_str = _peso_str(security_deposit)
+    monthly_rental_str = _peso_str(monthly_rental, data.get("monthly_rental_words"))
+    security_deposit_str = _peso_str(security_deposit, data.get("security_deposit_words"))
     move_in_str = _filipino_date(move_in_date)
     due_day = move_in_date.day
 

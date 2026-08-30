@@ -1253,6 +1253,8 @@ def generate_kasunduan_pdf_route(profile_id: int):
         "unit_identifier": (request.form.get("unit_identifier") or unit.unit_code).strip(),
         "monthly_rental": request.form.get("monthly_rental") or unit.price_monthly,
         "security_deposit": request.form.get("security_deposit") or "0",
+        "monthly_rental_words": (request.form.get("monthly_rental_words") or "").strip(),
+        "security_deposit_words": (request.form.get("security_deposit_words") or "").strip(),
         "move_in_date": profile.contract_start,
     }
 
