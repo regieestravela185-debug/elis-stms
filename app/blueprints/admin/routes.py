@@ -94,9 +94,11 @@ def global_search():
     if len(q) < 2:
         return jsonify(results)
     like = f"%{q}%"
-    limit = 8  # only one category is ever queried per request, so room for more results
+    # "all" (Dashboard's overview search) queries every category, so keep
+    # each one short; a single-module scope gets the full budget.
+    limit = 5 if scope == "all" else 8
 
-    if scope == "customers":
+    if scope in ("customers", "all"):
         for u in (db.session.query(User)
                   .filter(User.role != Role.ADMIN,
                           or_(User.full_name.ilike(like), User.email.ilike(like)))
@@ -106,7 +108,7 @@ def global_search():
                 "url": url_for("admin.user_details", user_id=u.id),
             })
 
-    elif scope == "units":
+    if scope in ("units", "all"):
         for un in (db.session.query(Unit).filter(Unit.is_archived == False, Unit.unit_code.ilike(like))  # noqa: E712
                    .order_by(Unit.unit_code.asc()).limit(limit).all()):
             results["units"].append({
@@ -114,7 +116,7 @@ def global_search():
                 "url": url_for("admin.edit_unit", unit_id=un.id),
             })
 
-    elif scope == "reservations":
+    if scope in ("reservations", "all"):
         for r in (db.session.query(Reservation)
                   .filter(or_(Reservation.full_name.ilike(like), Reservation.email.ilike(like)))
                   .order_by(Reservation.created_at.desc()).limit(limit).all()):
@@ -123,7 +125,7 @@ def global_search():
                 "url": url_for("admin.reservations"),
             })
 
-    elif scope == "payments":
+    if scope in ("payments", "all"):
         for p in (db.session.query(Payment)
                   .filter(or_(Payment.reference.ilike(like), Payment.receipt_number.ilike(like)))
                   .order_by(Payment.paid_at.desc()).limit(limit).all()):
@@ -133,7 +135,7 @@ def global_search():
                 "url": url_for("admin.payments"),
             })
 
-    elif scope == "documents":
+    if scope in ("documents", "all"):
         for d in (db.session.query(Document).join(TenantProfile, Document.tenant_profile_id == TenantProfile.id)
                   .join(User, TenantProfile.user_id == User.id)
                   .filter(or_(Document.title.ilike(like), User.full_name.ilike(like)))

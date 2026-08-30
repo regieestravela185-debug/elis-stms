@@ -101,9 +101,12 @@ def create_app(config_object: type[Config] = Config) -> Flask:
             # payments all at once no matter what page you were viewing,
             # which didn't match any of the page's own (already-scoped)
             # local search boxes. Pages with no natural search category
-            # (dashboard, concerns, renewals, etc.) get no search box at all
-            # rather than a misleading catch-all.
+            # (concerns, renewals, etc.) get no search box at all rather
+            # than a misleading catch-all — except the Dashboard, which
+            # keeps the original everything-at-once search since it's an
+            # overview page with no single module of its own.
             _search_scopes = [
+                ("/admin/dashboard", "all", "Search customers, units, payments…"),
                 ("/admin/units", "units", "Search units by code…"),
                 ("/admin/floorplan", "units", "Search units by code…"),
                 ("/admin/tenants/monitoring", "customers", "Search tenants by name or unit…"),
