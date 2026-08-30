@@ -177,10 +177,8 @@ def _get_building_floor_limit(building_id: int) -> int:
     building = db.session.get(Building, building_id)
     if not building:
         return 4
-    if building.code == "B4":
+    if building.code in ("B3", "B4", "B5"):
         return 3
-    if building.code == "B5":
-        return 2
     return 4
 
 
@@ -1340,10 +1338,7 @@ def generate_kasunduan_pdf_route(profile_id: int):
 def floorplan():
     _ensure_admin()
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
-    building_floor_limits = {
-        building.id: 3 if building.code == "B4" else 2 if building.code == "B5" else 4
-        for building in buildings
-    }
+    building_floor_limits = {building.id: _get_building_floor_limit(building.id) for building in buildings}
     # Exclude archived units from floorplan
     units = [
         unit

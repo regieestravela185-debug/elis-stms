@@ -14,7 +14,7 @@ bp = Blueprint("public", __name__)
 def home():
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     building_floor_limits = {
-        building.id: 3 if building.code == "B4" else 2 if building.code == "B5" else 4
+        building.id: 3 if building.code in ("B3", "B4", "B5") else 4
         for building in buildings
     }
     # Exclude archived units from public view
