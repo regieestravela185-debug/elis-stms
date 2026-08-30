@@ -1,4 +1,5 @@
 {% extends "dashboard_base.html" %}
+{% import "components/_icons.html" as icons %}
 {% block title %}Documents | STMS Admin{% endblock %}
 
 {% block sidebar %}
@@ -181,42 +182,29 @@
 </div>
             {% endif %}
 
-            <!-- Document Preview: actual image thumbnail when the file is a photo, icon fallback for PDFs -->
-          {% set is_image_doc = doc.file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')) %}
+            <!-- Document Preview: actual image thumbnail for photos, a
+                 file-type icon (PDF/DOCX/generic) for everything else -->
+          {% set doc_filename = doc.file_path.split('?')[0].rsplit('/', 1)[-1] %}
+          {% set file_ext = doc_filename.rsplit('.', 1)[-1].lower() if '.' in doc_filename else '' %}
+          {% set is_image_doc = file_ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'] %}
           {% if is_image_doc %}
             <a href="{{ media_url(doc.file_path) }}" target="_blank" style="display: block; margin-bottom: 16px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(20,20,23,0.08);">
               <img src="{{ media_url(doc.file_path) }}" alt="{{ doc.title }}" style="width: 100%; height: 150px; object-fit: cover; display: block;" />
             </a>
           {% else %}
-          {% set doc_icon_class = 'doc-icon-bg-default' %}
-          {% if doc.document_type == 'lease_agreement' %}
-            {% set doc_icon_class = 'doc-icon-bg-lease' %}
-          {% elif doc.document_type == 'rental_agreement' %}
-            {% set doc_icon_class = 'doc-icon-bg-lease' %}
-          {% elif doc.document_type == 'receipt' %}
-            {% set doc_icon_class = 'doc-icon-bg-receipt' %}
-          {% elif doc.document_type == 'certificate' %}
-            {% set doc_icon_class = 'doc-icon-bg-certificate' %}
-          {% elif doc.document_type == 'rules' %}
-            {% set doc_icon_class = 'doc-icon-bg-rules' %}
-          {% elif doc.document_type == 'electricity_bill' %}
-            {% set doc_icon_class = 'doc-icon-bg-electricity' %}
-          {% elif doc.document_type == 'water_bill' %}
-            {% set doc_icon_class = 'doc-icon-bg-water' %}
-          {% elif doc.document_type == 'internet_bill' %}
-            {% set doc_icon_class = 'doc-icon-bg-internet' %}
-          {% endif %}
-            <div class="{{ doc_icon_class }}" style="width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 16px;">
-              {% if doc.document_type == 'lease_agreement' %}
-              {% elif doc.document_type == 'rental_agreement' %}
-              {% elif doc.document_type == 'receipt' %}
-              {% elif doc.document_type == 'certificate' %}
-              {% elif doc.document_type == 'rules' %}
-              {% elif doc.document_type == 'electricity_bill' %}
-              {% elif doc.document_type == 'water_bill' %}
-              {% elif doc.document_type == 'internet_bill' %}
-              {% else %}{% endif %}
-</div>
+            {% if file_ext == 'pdf' %}
+              {% set doc_icon_class = 'doc-icon-bg-pdf' %}
+            {% elif file_ext in ['doc', 'docx'] %}
+              {% set doc_icon_class = 'doc-icon-bg-doc' %}
+            {% else %}
+              {% set doc_icon_class = 'doc-icon-bg-default' %}
+            {% endif %}
+            <div style="position: relative; width: 60px; margin-bottom: 16px;">
+              <div class="{{ doc_icon_class }}" style="width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                {{ icons.icon('document', size=28) }}
+              </div>
+              <div class="doc-filetype-badge {{ doc_icon_class }}"><span>{{ file_ext.upper() if file_ext else 'FILE' }}</span></div>
+            </div>
           {% endif %}
 
             <!-- Document Info -->
@@ -353,7 +341,15 @@
     .doc-icon-bg-electricity { background: rgba(251, 191, 36, 0.1); }
     .doc-icon-bg-water { background: rgba(14, 165, 233, 0.1); }
     .doc-icon-bg-internet { background: rgba(168, 85, 247, 0.1); }
-    .doc-icon-bg-default { background: rgba(107, 114, 128, 0.1); }
+    .doc-icon-bg-default { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
+    .doc-icon-bg-pdf { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+    .doc-icon-bg-doc { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+    .doc-filetype-badge {
+      position: absolute; bottom: -4px; right: -4px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.02em;
+      padding: 2px 5px; border-radius: 5px; background: currentColor;
+    }
+    .doc-filetype-badge span { color: #fff; }
     .doc-chip-lease { background: rgba(59, 130, 246, 0.1); color: #1e40af; }
     .doc-chip-receipt { background: rgba(16, 185, 129, 0.1); color: #065f46; }
     .doc-chip-certificate { background: rgba(245, 158, 11, 0.1); color: #92400e; }
