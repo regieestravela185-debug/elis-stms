@@ -270,6 +270,7 @@
 
 {% block content %}
   <div id="buildingFloorLimitsData" data-floor-limits="{{ building_floor_limits|tojson }}" style="display: none;"></div>
+  <div id="buildingUnitTypesData" data-unit-types="{{ building_unit_types|tojson }}" style="display: none;"></div>
   <section class="dash-panel">
     <!-- Statistics Cards -->
     <div class="units-stats">
@@ -351,11 +352,13 @@
 </div>
           <div>
             <label class="label">Type</label>
-            <select class="input" name="type" id="unitTypeSelect" onchange="toggleUnitPaxField()">
+            {% set forced_type = building_unit_types.get(selected_building_id) %}
+            <select class="input" name="type" id="unitTypeSelect" onchange="toggleUnitPaxField()" {% if forced_type %}disabled{% endif %}>
               <option value="">Select type...</option>
-              <option value="residential" {% if edit_unit and edit_unit.type == 'residential' %}selected{% endif %}>Residential</option>
-              <option value="commercial" {% if edit_unit and edit_unit.type == 'commercial' %}selected{% endif %}>Commercial</option>
+              <option value="residential" {% if (edit_unit and edit_unit.type == 'residential') or forced_type == 'residential' %}selected{% endif %}>Residential</option>
+              <option value="commercial" {% if (edit_unit and edit_unit.type == 'commercial') or forced_type == 'commercial' %}selected{% endif %}>Commercial</option>
             </select>
+            <p class="muted" style="font-size: 0.8rem; margin-top: 4px;">Auto-set: Buildings 1-4 are residential-only, Building 5 is commercial-only.</p>
 </div>
 </div>
 
@@ -663,6 +666,9 @@
     const unitFormFloorSelect = document.querySelector('form select[name="floor"]');
     const buildingFloorLimitsData = document.getElementById('buildingFloorLimitsData');
     const buildingFloorLimits = buildingFloorLimitsData ? JSON.parse(buildingFloorLimitsData.dataset.floorLimits) : {};
+    const buildingUnitTypesData = document.getElementById('buildingUnitTypesData');
+    const buildingUnitTypes = buildingUnitTypesData ? JSON.parse(buildingUnitTypesData.dataset.unitTypes) : {};
+    const unitFormTypeSelect = document.getElementById('unitTypeSelect');
 
     function syncFloorOptions() {
       if (!unitFormBuildingSelect || !unitFormFloorSelect) return;
@@ -681,9 +687,27 @@
       }
     }
 
+    function syncUnitType() {
+      if (!unitFormBuildingSelect || !unitFormTypeSelect) return;
+
+      const forcedType = buildingUnitTypes[unitFormBuildingSelect.value];
+      if (forcedType) {
+        unitFormTypeSelect.value = forcedType;
+        unitFormTypeSelect.disabled = true;
+      } else {
+        unitFormTypeSelect.disabled = false;
+      }
+      if (typeof toggleUnitPaxField === 'function') toggleUnitPaxField();
+    }
+
     if (unitFormBuildingSelect && unitFormFloorSelect) {
       unitFormBuildingSelect.addEventListener('change', syncFloorOptions);
       syncFloorOptions();
+    }
+
+    if (unitFormBuildingSelect && unitFormTypeSelect) {
+      unitFormBuildingSelect.addEventListener('change', syncUnitType);
+      syncUnitType();
     }
 
     if (!searchInput) return;

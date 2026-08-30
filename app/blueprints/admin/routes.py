@@ -182,6 +182,18 @@ def _get_building_floor_limit(building_id: int) -> int:
     return 4
 
 
+def _get_building_unit_type(building_id: int) -> str | None:
+    """Buildings 1-4 are residential-only; Building 5 is commercial-only."""
+    building = db.session.get(Building, building_id)
+    if not building:
+        return None
+    if building.code == "B5":
+        return "commercial"
+    if building.code in ("B1", "B2", "B3", "B4"):
+        return "residential"
+    return None
+
+
 def _is_rent_payment_late(profile: TenantProfile, paid_at: datetime, payment_month: str = "") -> bool:
     """Whether a rent payment was made after its due date.
 
@@ -1428,8 +1440,9 @@ def units():
     }
 
     building_floor_limits = {building.id: _get_building_floor_limit(building.id) for building in buildings}
+    building_unit_types = {building.id: _get_building_unit_type(building.id) for building in buildings}
 
-    return render_template("admin/units.html", buildings=buildings, units=units, pagination=pagination, stats=stats, show_archived=show_archived, building_floor_limits=building_floor_limits)
+    return render_template("admin/units.html", buildings=buildings, units=units, pagination=pagination, stats=stats, show_archived=show_archived, building_floor_limits=building_floor_limits, building_unit_types=building_unit_types)
 
 
 @bp.post("/units/create")
@@ -1484,6 +1497,11 @@ def create_unit():
         if floor > max_floor:
             flash(f"Floor number cannot exceed {max_floor} for this building.", "warning")
             return redirect(url_for("admin.units"))
+
+    # Buildings 1-4 are residential-only, Building 5 is commercial-only.
+    forced_type = _get_building_unit_type(building_id)
+    if forced_type:
+        unit_type = forced_type
 
     # Handle image uploads (maximum 4 images)
     image_files = request.files.getlist("images")
@@ -1541,8 +1559,11 @@ def edit_unit(unit_id: int):
 
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     # Exclude archived units
-    units = db.session.query(Unit).filter(Unit.is_archived == False).order_by(Unit.building_id.asc(), Unit.unit_number.asc()).all()
-    
+    query = db.session.query(Unit).filter(Unit.is_archived == False).order_by(Unit.building_id.asc(), Unit.unit_number.asc())
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=30, error_out=False)
+    units = pagination.items
+
     # Statistics (same as units route)
     total_units = db.session.query(Unit).filter(Unit.is_archived == False).count()
     available_count = db.session.query(Unit).filter(Unit.is_archived == False, Unit.status == UnitStatus.AVAILABLE).count()
@@ -1550,7 +1571,7 @@ def edit_unit(unit_id: int):
     reserved_count = db.session.query(Unit).filter(Unit.is_archived == False, Unit.status == UnitStatus.RESERVED).count()
     unpaid_count = db.session.query(Unit).filter(Unit.is_archived == False, Unit.status == UnitStatus.UNPAID).count()
     archived_count = db.session.query(Unit).filter(Unit.is_archived == True).count()
-    
+
     stats = {
         'total': total_units,
         'available': available_count,
@@ -1561,8 +1582,9 @@ def edit_unit(unit_id: int):
     }
 
     building_floor_limits = {building.id: _get_building_floor_limit(building.id) for building in buildings}
+    building_unit_types = {building.id: _get_building_unit_type(building.id) for building in buildings}
 
-    return render_template("admin/units.html", buildings=buildings, units=units, stats=stats, edit_unit=unit, show_archived=False, building_floor_limits=building_floor_limits)
+    return render_template("admin/units.html", buildings=buildings, units=units, pagination=pagination, stats=stats, edit_unit=unit, show_archived=False, building_floor_limits=building_floor_limits, building_unit_types=building_unit_types)
 
 
 @bp.post("/units/<int:unit_id>/update")
@@ -1621,6 +1643,11 @@ def update_unit(unit_id: int):
         if floor > max_floor:
             flash(f"Floor number cannot exceed {max_floor} for this building.", "warning")
             return redirect(url_for("admin.edit_unit", unit_id=unit_id))
+
+    # Buildings 1-4 are residential-only, Building 5 is commercial-only.
+    forced_type = _get_building_unit_type(building_id)
+    if forced_type:
+        unit_type = forced_type
 
     # Handle image uploads (maximum 4 images)
     image_files = request.files.getlist("images")
