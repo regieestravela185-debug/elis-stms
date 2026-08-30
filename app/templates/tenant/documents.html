@@ -170,10 +170,10 @@
 
             <!-- Actions -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <button type="button" class="btn btn--ghost btn--sm" style="text-align: center;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" onclick="previewDocument(this.dataset.docUrl, this.dataset.docTitle)">
+              <button type="button" class="btn btn--ghost btn--sm" style="text-align: center;" data-doc-url="{{ media_url(doc.file_path) }}" data-doc-title="{{ doc.title }}" data-doc-download-url="{{ url_for('tenant.download_document', document_id=doc.id) }}" onclick="previewDocument(this.dataset.docUrl, this.dataset.docTitle, this.dataset.docDownloadUrl)">
                 {{ icons.icon('eye', size=14) }} Preview
               </button>
-              <a href="{{ media_url(doc.file_path) }}" download class="btn btn--primary btn--sm" style="text-align: center; font-weight: 600;" data-doc-id="{{ doc.id }}" onclick="trackDownload(this.dataset.docId)">
+              <a href="{{ url_for('tenant.download_document', document_id=doc.id) }}" class="btn btn--primary btn--sm" style="text-align: center; font-weight: 600;">
                 {{ icons.icon('download', size=14) }} Download
               </a>
             </div>
@@ -313,9 +313,9 @@
     }
 
     // Preview document
-    let currentPreviewUrl = '';
-    function previewDocument(url, title) {
-      currentPreviewUrl = url;
+    let currentPreviewDownloadUrl = '';
+    function previewDocument(url, title, downloadUrl) {
+      currentPreviewDownloadUrl = downloadUrl || '';
       document.getElementById('previewModal').hidden = false;
       document.getElementById('previewTitle').textContent = title;
       document.getElementById('previewFrame').src = url;
@@ -324,15 +324,15 @@
     function closePreview() {
       document.getElementById('previewModal').hidden = true;
       document.getElementById('previewFrame').src = '';
-      currentPreviewUrl = '';
+      currentPreviewDownloadUrl = '';
     }
 
     function downloadFromPreview() {
-      if (currentPreviewUrl) {
-        const link = document.createElement('a');
-        link.href = currentPreviewUrl;
-        link.download = '';
-        link.click();
+      // Routed through our own server (tenant.download_document) instead of
+      // the raw file URL — the browser's `download` attribute/trick doesn't
+      // reliably work for cross-origin URLs like Supabase Storage links.
+      if (currentPreviewDownloadUrl) {
+        window.location.href = currentPreviewDownloadUrl;
       }
     }
 
@@ -344,12 +344,6 @@
           printWindow.print();
         };
       }
-    }
-
-    // Track download (optional - for future analytics)
-    function trackDownload(docId) {
-      console.log('Document downloaded:', docId);
-      // You can add AJAX call here to track downloads in DocumentView table
     }
 
     // Close modal on Escape

@@ -64,6 +64,30 @@ def _ensure_active_contract(profile, is_expired):
         return redirect(url_for("tenant.dashboard"))
 
 
+def _fetch_file_bytes(file_path: str):
+    """Read a stored file's raw bytes regardless of where it lives —
+    Supabase Storage (absolute URL) or the local static folder (relative
+    path). Needed because the browser's `<a download>` attribute is
+    unreliable for cross-origin URLs (which Supabase Storage links are):
+    most browsers just navigate to/preview the file instead of saving it.
+    Returns None if the file can't be read."""
+    if not file_path:
+        return None
+    if file_path.startswith(("http://", "https://")):
+        import requests
+        try:
+            resp = requests.get(file_path, timeout=15)
+            return resp.content if resp.status_code == 200 else None
+        except Exception:
+            return None
+    import os
+    local_path = os.path.join("app", "static", file_path)
+    if os.path.exists(local_path):
+        with open(local_path, "rb") as f:
+            return f.read()
+    return None
+
+
 @bp.get("/dashboard")
 @login_required
 def dashboard():
@@ -990,20 +1014,23 @@ def payment_receipt(payment_id: int):
         except:
             pass
     
+    # reportlab's base PDF font has no glyph for ₱ (renders as a broken
+    # box) — spelled out as "Php" instead, same fix as the lease contract
+    # generator.
     if breakdown:
         receipt_data.append(['Payment Breakdown:', ''])
         if breakdown.get('rent'):
-            receipt_data.append(['  Monthly Rent:', f"₱{float(breakdown['rent']):,.2f}"])
+            receipt_data.append(['  Monthly Rent:', f"Php {float(breakdown['rent']):,.2f}"])
         if breakdown.get('utilities'):
-            receipt_data.append(['  Utilities:', f"₱{float(breakdown['utilities']):,.2f}"])
+            receipt_data.append(['  Utilities:', f"Php {float(breakdown['utilities']):,.2f}"])
         if breakdown.get('late_fee'):
-            receipt_data.append(['  Late Fee:', f"₱{float(breakdown['late_fee']):,.2f}"])
+            receipt_data.append(['  Late Fee:', f"Php {float(breakdown['late_fee']):,.2f}"])
         if breakdown.get('other'):
-            receipt_data.append(['  Other Charges:', f"₱{float(breakdown['other']):,.2f}"])
+            receipt_data.append(['  Other Charges:', f"Php {float(breakdown['other']):,.2f}"])
         receipt_data.append(['', ''])
-    
+
     receipt_data.extend([
-        ['Total Amount:', f"₱{float(payment.amount):,.2f}"],
+        ['Total Amount:', f"Php {float(payment.amount):,.2f}"],
         ['Payment Method:', 'Cash/Bank Transfer'],
         ['Reference:', payment.reference or 'N/A'],
         ['Status:', 'PAID' if payment.payment_status == 'verified' else payment.payment_status.upper()],
@@ -1228,6 +1255,47 @@ def documents():
     return render_template("tenant/documents.html", documents=documents, docs_by_type=docs_by_type, stats=stats)
 
 
+@bp.get("/documents/<int:document_id>/download")
+@login_required
+def download_document(document_id: int):
+    """Proxies the file through our own server so the browser actually
+    saves it, instead of just opening/previewing it — the HTML `download`
+    attribute doesn't reliably work for cross-origin URLs like Supabase
+    Storage links."""
+    _ensure_tenant()
+    profile, is_expired = _get_tenant_profile()
+
+    doc = db.session.get(Document, document_id)
+    if not doc or doc.tenant_profile_id != profile.id:
+        abort(404)
+
+    data = _fetch_file_bytes(doc.file_path)
+    if data is None:
+        flash("Couldn't retrieve this file. Please try again or contact admin.", "danger")
+        return redirect(url_for("tenant.documents"))
+
+    from ...models import DocumentView
+    view_record = (
+        db.session.query(DocumentView)
+        .filter(DocumentView.document_id == doc.id, DocumentView.user_id == current_user.id)  # type: ignore[attr-defined]
+        .order_by(DocumentView.viewed_at.desc())
+        .first()
+    )
+    if view_record:
+        view_record.downloaded = True
+    db.session.commit()
+
+    import os
+    from flask import Response
+    _, ext = os.path.splitext(doc.file_path.split("?")[0])
+    safe_filename = f"{doc.document_type}_{doc.title[:50]}{ext}".replace(" ", "_")
+    return Response(
+        data,
+        mimetype="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+    )
+
+
 @bp.get("/documents/download-all")
 @login_required
 def download_all_documents():
@@ -1235,7 +1303,7 @@ def download_all_documents():
     profile, is_expired = _get_tenant_profile()
 
     documents = db.session.query(Document).filter(Document.tenant_profile_id == profile.id).all()
-    
+
     if not documents:
         flash("No documents to download.", "warning")
         return redirect(url_for("tenant.documents"))
@@ -1244,19 +1312,18 @@ def download_all_documents():
     import zipfile
     from io import BytesIO
     import os
-    
+
     memory_file = BytesIO()
-    
+
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
         for doc in documents:
-            file_path = os.path.join('app', 'static', doc.file_path)
-            if os.path.exists(file_path):
-                # Get file extension
-                _, ext = os.path.splitext(doc.file_path)
+            data = _fetch_file_bytes(doc.file_path)
+            if data:
+                _, ext = os.path.splitext(doc.file_path.split("?")[0])
                 # Create safe filename
                 safe_filename = f"{doc.document_type}_{doc.title[:50]}{ext}".replace(' ', '_')
-                zf.write(file_path, safe_filename)
-    
+                zf.writestr(safe_filename, data)
+
     memory_file.seek(0)
     
     from flask import send_file
