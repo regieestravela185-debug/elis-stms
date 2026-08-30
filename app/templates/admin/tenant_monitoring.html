@@ -271,6 +271,15 @@
 </div>
 
       <div class="filter-group">
+        <label class="filter-label">Unit Type</label>
+        <select id="typeSelect" class="input">
+          <option value="">Residential & Commercial</option>
+          <option value="residential" {% if request.args.get('type') == 'residential' %}selected{% endif %}>Residential Only</option>
+          <option value="commercial" {% if request.args.get('type') == 'commercial' %}selected{% endif %}>Commercial Only</option>
+        </select>
+</div>
+
+      <div class="filter-group">
         <label class="filter-label">Status Filter</label>
         <label class="filter-checkbox">
           <input type="checkbox" id="urgentCheckbox" {% if request.args.get('urgent') == '1' %}checked{% endif %} />
@@ -557,6 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
   const buildingSelect = document.getElementById('buildingSelect');
   const floorSelect = document.getElementById('floorSelect');
+  const typeSelect = document.getElementById('typeSelect');
   const urgentCheckbox = document.getElementById('urgentCheckbox');
   const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
@@ -565,6 +575,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchInput.value) params.set('search', searchInput.value);
     if (buildingSelect.value) params.set('building', buildingSelect.value);
     if (floorSelect && floorSelect.value) params.set('floor', floorSelect.value);
+    if (typeSelect && typeSelect.value) params.set('type', typeSelect.value);
     if (urgentCheckbox.checked) params.set('urgent', '1');
     window.location.href = '{{ url_for("admin.tenant_monitoring") }}?' + params.toString();
   }
@@ -580,6 +591,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   buildingSelect.addEventListener('change', applyFilters);
   if (floorSelect) floorSelect.addEventListener('change', applyFilters);
+  if (typeSelect) typeSelect.addEventListener('change', applyFilters);
   urgentCheckbox.addEventListener('change', applyFilters);
 });
 </script>

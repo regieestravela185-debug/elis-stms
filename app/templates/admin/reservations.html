@@ -332,6 +332,15 @@
 </div>
 
         <div class="filter-group">
+          <label class="filter-label">Unit Type</label>
+          <select class="input" id="typeSelect">
+            <option value="">Residential & Commercial</option>
+            <option value="residential" {% if request.args.get('type') == 'residential' %}selected{% endif %}>Residential Only</option>
+            <option value="commercial" {% if request.args.get('type') == 'commercial' %}selected{% endif %}>Commercial Only</option>
+          </select>
+</div>
+
+        <div class="filter-group">
           <label class="filter-label">Sort By</label>
           <select class="input" id="sortSelect">
             <option value="newest" {% if request.args.get('sort', 'newest') == 'newest' %}selected{% endif %}>Newest First</option>
@@ -531,6 +540,7 @@
     const statusSelect = document.getElementById('statusSelect');
     const buildingSelect = document.getElementById('buildingSelect');
     const floorSelect = document.getElementById('floorSelect');
+    const typeSelect = document.getElementById('typeSelect');
     const sortSelect = document.getElementById('sortSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
@@ -540,6 +550,7 @@
       if (statusSelect.value) params.set('status', statusSelect.value);
       if (buildingSelect.value) params.set('building', buildingSelect.value);
       if (floorSelect && floorSelect.value) params.set('floor', floorSelect.value);
+      if (typeSelect && typeSelect.value) params.set('type', typeSelect.value);
       if (sortSelect.value && sortSelect.value !== 'newest') params.set('sort', sortSelect.value);
       window.location.href = '{{ url_for("admin.reservations") }}?' + params.toString();
     }
@@ -556,6 +567,7 @@
     statusSelect.addEventListener('change', applyFilters);
     buildingSelect.addEventListener('change', applyFilters);
     if (floorSelect) floorSelect.addEventListener('change', applyFilters);
+    if (typeSelect) typeSelect.addEventListener('change', applyFilters);
     sortSelect.addEventListener('change', applyFilters);
 
     // Verification Details Modal

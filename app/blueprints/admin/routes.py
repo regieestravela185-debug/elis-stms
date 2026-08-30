@@ -990,7 +990,8 @@ def tenant_monitoring():
     search_query = request.args.get('search', '').strip()
     building_filter = request.args.get('building', '')
     urgent_filter = request.args.get('urgent') == '1'
-    
+    type_filter = request.args.get('type', '').strip()
+
     # Base query
     query = (
         db.session.query(TenantProfile)
@@ -998,7 +999,7 @@ def tenant_monitoring():
         .join(Unit, TenantProfile.unit_id == Unit.id)
         .filter(TenantProfile.is_active == True)
     )
-    
+
     # Apply search filter (name or unit code)
     if search_query:
         query = query.filter(
@@ -1007,10 +1008,16 @@ def tenant_monitoring():
                 Unit.unit_code.ilike(f"%{search_query}%")
             )
         )
-        
+
     # Apply building filter
     if building_filter:
         query = query.filter(Unit.building_id == int(building_filter))
+
+    # Apply residential/commercial filter
+    if type_filter == 'residential':
+        query = query.filter(Unit.type.ilike('%residential%'))
+    elif type_filter == 'commercial':
+        query = query.filter(Unit.type.ilike('%commercial%'))
         
     today = date.today()
     threshold_urgent = today + timedelta(days=7)
@@ -1820,6 +1827,7 @@ def reservations():
     status = (request.args.get("status") or "").strip().lower()
     building_filter = (request.args.get("building") or "").strip()
     floor_filter = (request.args.get("floor") or "").strip()
+    type_filter = (request.args.get("type") or "").strip()
     sort_by = (request.args.get("sort") or "newest").strip()
 
     query = db.session.query(Reservation)
@@ -1829,12 +1837,16 @@ def reservations():
         )
     if status in {"pending", "approved", "rejected", "cancelled"}:
         query = query.filter(Reservation.status == ReservationStatus(status))
-    if building_filter or floor_filter:
+    if building_filter or floor_filter or type_filter:
         query = query.join(Unit, Reservation.unit_id == Unit.id)
         if building_filter:
             query = query.join(Building, Unit.building_id == Building.id).filter(Building.code == building_filter)
         if floor_filter:
             query = query.filter(Unit.floor == int(floor_filter))
+        if type_filter == 'residential':
+            query = query.filter(Unit.type.ilike('%residential%'))
+        elif type_filter == 'commercial':
+            query = query.filter(Unit.type.ilike('%commercial%'))
 
     if sort_by == "oldest":
         query = query.order_by(Reservation.created_at.asc())

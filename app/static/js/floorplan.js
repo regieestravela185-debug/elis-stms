@@ -1,14 +1,17 @@
 let currentBuilding = null;
 let currentFloor = "all";
+let currentType = "all";
 
 function applyFilters() {
   const tiles = document.querySelectorAll(".unit-tile");
   tiles.forEach((t) => {
     const b = t.getAttribute("data-building");
     const f = t.getAttribute("data-floor");
+    const ty = t.getAttribute("data-type");
     const buildingMatch = !currentBuilding || b === currentBuilding;
     const floorMatch = currentFloor === "all" || f === currentFloor;
-    t.style.display = buildingMatch && floorMatch ? "" : "none";
+    const typeMatch = currentType === "all" || ty === currentType;
+    t.style.display = buildingMatch && floorMatch && typeMatch ? "" : "none";
   });
 
   // Hide empty floor sections
@@ -280,7 +283,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (id) filterByBuilding(id);
     });
   });
-  
+
+  // Unit type filter (Residential / Commercial / All)
+  const typeButtons = document.querySelectorAll("#typeFilterBar .floor-pill");
+  typeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      typeButtons.forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      currentType = btn.getAttribute("data-type");
+      applyFilters();
+    });
+  });
+
   // Add click handler for unit tiles — opens a quick-info modal
   document.querySelectorAll('.unit-tile').forEach(tile => {
     tile.addEventListener('click', () => {

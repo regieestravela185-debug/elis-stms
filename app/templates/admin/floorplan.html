@@ -467,6 +467,14 @@
 </div>
 
       <div class="floorplan__main card">
+        <!-- Unit type filter -->
+        <div id="typeFilterBar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+          <strong style="font-size: 13px; align-self: center; margin-right: 4px;">Type:</strong>
+          <button class="floor-pill is-active" data-type="all" type="button">All Types</button>
+          <button class="floor-pill" data-type="residential" type="button">Residential</button>
+          <button class="floor-pill" data-type="commercial" type="button">Commercial</button>
+</div>
+
         <!-- Floor filter pills -->
         <div id="floorFilterBar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
           <strong style="font-size: 13px; align-self: center; margin-right: 4px;">Floor:</strong>
@@ -492,13 +500,15 @@
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
                 {% for u in floors_grouped[floor_num] %}
                   {% set tenant_name = tenant_by_unit.get(u.id) %}
+                  {% set unit_type = 'commercial' if 'commercial' in (u.type or '')|lower else 'residential' %}
                   <button
                     class="unit-tile status-{{ u.status.value }}"
                     data-building="{{ u.building_id }}"
                     data-unit-id="{{ u.id }}"
                     data-status="{{ u.status.value }}"
                     data-floor="{{ u.floor or 0 }}"
-                    title="{{ u.unit_code }} • Floor {{ u.floor or '—' }} • ₱{{ '{:,.2f}'.format(u.price_monthly|float) }} • {{ u.status.value|title }}{% if tenant_name %} • {{ tenant_name }}{% endif %}"
+                    data-type="{{ unit_type }}"
+                    title="{{ u.unit_code }} • Floor {{ u.floor or '—' }} • ₱{{ '{:,.2f}'.format(u.price_monthly|float) }} • {{ u.status.value|title }} • {{ unit_type|title }}{% if tenant_name %} • {{ tenant_name }}{% endif %}"
                   >
                     <div class="unit-tile__code">{{ u.unit_number }}</div>
                     <div class="unit-tile__meta mono">{{ u.unit_code }}</div>
