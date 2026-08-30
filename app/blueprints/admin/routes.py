@@ -3132,8 +3132,10 @@ def documents():
     else:  # newest (default)
         query = query.order_by(Document.uploaded_at.desc())
     
-    documents = query.all()
-    
+    page = request.args.get('page', 1, type=int)
+    pagination = db.paginate(query, page=page, per_page=24, error_out=False)
+    documents = pagination.items
+
     # Statistics
     today = date.today()
     this_month_start = today.replace(day=1)
@@ -3174,6 +3176,7 @@ def documents():
         "admin/documents.html",
         tenants=tenants,
         documents=documents,
+        pagination=pagination,
         buildings=buildings,
         doc_types=doc_types,
         stats=stats,

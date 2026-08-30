@@ -96,7 +96,7 @@
     <!-- Filters and Search -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="section__header">
-        <h3>All Documents <span style="font-size: 14px; font-weight: normal; color: #666;">({{ documents|length }} shown)</span></h3>
+        <h3>All Documents <span style="font-size: 14px; font-weight: normal; color: #666;">({{ pagination.total }} total{% if pagination.pages > 1 %}, page {{ pagination.page }} of {{ pagination.pages }}{% endif %})</span></h3>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
           <a href="{{ url_for('admin.export_documents') }}" class="btn btn--ghost btn--sm">Export CSV</a>
@@ -164,7 +164,7 @@
 
       <!-- Quick Stats -->
       <div style="margin-top: 16px; padding: 12px; background: rgba(215, 179, 91, 0.08); border-radius: 8px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px;">
-        <div><strong>Showing:</strong> {{ documents|length }} documents</div>
+        <div><strong>Showing:</strong> {{ documents|length }} of {{ pagination.total }} documents</div>
         <div><strong>Tenants:</strong> {{ stats.tenants_with_docs }} have documents</div>
         <div><strong>Unviewed:</strong> {{ stats.unviewed }} documents</div>
 </div>
@@ -273,6 +273,28 @@
 </div>
         {% endfor %}
 </div>
+
+      {% if pagination.pages > 1 %}
+        <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 28px; flex-wrap: wrap;">
+          {% set args = request.args.to_dict() %}
+          {% if pagination.has_prev %}
+            {% set _ = args.update({'page': pagination.prev_num}) %}
+            <a href="{{ url_for('admin.documents', **args) }}" class="btn btn--ghost btn--sm">&lsaquo; Previous</a>
+          {% endif %}
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              {% set _ = args.update({'page': p}) %}
+              <a href="{{ url_for('admin.documents', **args) }}" class="btn btn--sm {{ 'btn--primary' if p == pagination.page else 'btn--ghost' }}" style="min-width: 36px; text-align: center;">{{ p }}</a>
+            {% else %}
+              <span class="muted" style="padding: 0 6px;">&hellip;</span>
+            {% endif %}
+          {% endfor %}
+          {% if pagination.has_next %}
+            {% set _ = args.update({'page': pagination.next_num}) %}
+            <a href="{{ url_for('admin.documents', **args) }}" class="btn btn--ghost btn--sm">Next &rsaquo;</a>
+          {% endif %}
+        </div>
+      {% endif %}
     {% else %}
       <div class="empty-state">
         <div class="empty-state__title">No Documents Found</div>

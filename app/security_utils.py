@@ -165,6 +165,12 @@ def apply_security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
     
     # Content Security Policy (adjust as needed)
+    # frame-src/object-src only allowed Google's own domains — any document
+    # preview (Documents page, uploaded IDs, generated contracts) served
+    # from Supabase Storage got silently blocked by the browser with
+    # "This content is blocked. Contact the site owner." Supabase's own
+    # domain needs to be allowed there too.
+    supabase_url = current_app.config.get("SUPABASE_URL") or ""
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.socket.io https://accounts.google.com https://www.gstatic.com; "
@@ -172,7 +178,8 @@ def apply_security_headers(response):
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: https: http:; "
         "connect-src 'self' https://accounts.google.com https://api.open-meteo.com; "
-        "frame-src https://accounts.google.com https://www.google.com https://maps.google.com;"
+        f"frame-src 'self' https://accounts.google.com https://www.google.com https://maps.google.com {supabase_url}; "
+        f"object-src 'self' {supabase_url};"
     )
     
     # Referrer Policy
