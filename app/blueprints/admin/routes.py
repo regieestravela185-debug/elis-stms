@@ -1191,6 +1191,85 @@ def generate_contract_pdf(profile_id: int):
     return response
 
 
+@bp.get("/tenants/<int:profile_id>/generate-kasunduan")
+@login_required
+def generate_kasunduan_form(profile_id: int):
+    """Form to fill in the details the residential Kasunduan sa Pagpapaupa
+    needs that aren't otherwise tracked (tenant's postal address, civil
+    status of the lessor). Unit, rent, deposit, and move-in date are
+    pre-filled from existing data."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    unit = db.session.get(Unit, profile.unit_id)
+    if not unit or "commercial" in (unit.type or "").lower():
+        flash("Kasunduan sa Pagpapaupa generation is only available for residential units.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+
+    reservation = (
+        db.session.query(Reservation)
+        .filter(
+            Reservation.user_id == profile.user_id,
+            Reservation.unit_id == profile.unit_id,
+            Reservation.status == ReservationStatus.APPROVED,
+        )
+        .order_by(Reservation.created_at.desc())
+        .first()
+    )
+
+    return render_template(
+        "admin/generate_kasunduan.html",
+        profile=profile,
+        unit=unit,
+        reservation=reservation,
+    )
+
+
+@bp.post("/tenants/<int:profile_id>/generate-kasunduan")
+@login_required
+def generate_kasunduan_pdf_route(profile_id: int):
+    _ensure_admin()
+    from flask import make_response
+
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    unit = db.session.get(Unit, profile.unit_id)
+    if not unit or "commercial" in (unit.type or "").lower():
+        flash("Kasunduan sa Pagpapaupa generation is only available for residential units.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+
+    if not profile.contract_start:
+        flash("This tenant's move-in date isn't set — check the unit assignment before generating a kasunduan.", "warning")
+        return redirect(url_for("admin.tenant_monitoring"))
+
+    data = {
+        "lessor_name": (request.form.get("lessor_name") or "").strip(),
+        "lessor_civil_status": (request.form.get("lessor_civil_status") or "may asawa").strip(),
+        "lessor_address": (request.form.get("lessor_address") or "").strip(),
+        "lessee_name": (request.form.get("lessee_name") or "").strip(),
+        "lessee_address": (request.form.get("lessee_address") or "").strip(),
+        "unit_identifier": (request.form.get("unit_identifier") or unit.unit_code).strip(),
+        "monthly_rental": request.form.get("monthly_rental") or unit.price_monthly,
+        "security_deposit": request.form.get("security_deposit") or "0",
+        "move_in_date": profile.contract_start,
+    }
+
+    required = ["lessor_name", "lessor_address", "lessee_name", "lessee_address", "unit_identifier"]
+    if any(not data[f] for f in required):
+        flash("Please fill in all required fields.", "warning")
+        return redirect(url_for("admin.generate_kasunduan_form", profile_id=profile_id))
+
+    from ...contract_generator import generate_kasunduan_pdf
+    buffer = generate_kasunduan_pdf(data)
+
+    response = make_response(buffer.getvalue())
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f"inline; filename=Kasunduan_{unit.unit_code}.pdf"
+    return response
+
+
 @bp.get("/floorplan")
 @login_required
 def floorplan():

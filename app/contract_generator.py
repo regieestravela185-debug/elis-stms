@@ -292,3 +292,255 @@ def generate_lease_contract_pdf(data: dict) -> BytesIO:
     doc.build(elements)
     buffer.seek(0)
     return buffer
+
+
+_FILIPINO_MONTHS = [
+    "", "Enero", "Pebrero", "Marso", "Abril", "Mayo", "Hunyo",
+    "Hulyo", "Agosto", "Setyembre", "Oktubre", "Nobyembre", "Disyembre",
+]
+
+
+def _filipino_date(d) -> str:
+    return f"ika-{d.day} ng {_FILIPINO_MONTHS[d.month]} {d.year}"
+
+
+def generate_kasunduan_pdf(data: dict) -> BytesIO:
+    """Kasunduan sa Pagpapaupa (residential lease agreement) — same
+    verbatim-boilerplate-except-tenant-facts approach as
+    generate_lease_contract_pdf, but for the month-to-month residential
+    template. Peso amounts are numerals only (no Filipino spelled-out
+    words) per the property owner's choice, since Filipino number-word
+    grammar has rules (na/-ng linkers) that are easy to get wrong."""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from datetime import date as _date
+
+    lessor_name = data["lessor_name"]
+    lessor_civil_status = data["lessor_civil_status"]
+    lessor_address = data["lessor_address"]
+    lessee_name = data["lessee_name"]
+    lessee_address = data["lessee_address"]
+    unit_identifier = data["unit_identifier"]
+    move_in_date = data["move_in_date"]
+    monthly_rental = float(data["monthly_rental"])
+    security_deposit = float(data["security_deposit"])
+
+    monthly_rental_str = f"Php {monthly_rental:,.2f}"
+    security_deposit_str = f"Php {security_deposit:,.2f}"
+    move_in_str = _filipino_date(move_in_date)
+    due_day = move_in_date.day
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.75 * inch, bottomMargin=0.75 * inch)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "KasunduanTitle", parent=styles["Heading1"], fontSize=16,
+        alignment=TA_CENTER, spaceAfter=16,
+    )
+    body_style = ParagraphStyle(
+        "KasunduanBody", parent=styles["Normal"], fontSize=10.5,
+        alignment=TA_JUSTIFY, spaceAfter=10, leading=15,
+    )
+    bullet_style = ParagraphStyle(
+        "KasunduanBullet", parent=body_style, leftIndent=16, bulletIndent=4, spaceAfter=10,
+    )
+    header_style = ParagraphStyle(
+        "KasunduanHeader", parent=styles["Normal"], fontSize=10.5, fontName="Helvetica-Bold",
+        alignment=TA_CENTER, spaceAfter=6,
+    )
+    sig_style = ParagraphStyle("KasunduanSig", parent=styles["Normal"], fontSize=10.5, spaceAfter=4)
+
+    elements = [Paragraph("KASUNDUAN SA PAGPAPAUPA", title_style)]
+
+    elements.append(Paragraph(
+        f'Ang nakasulat na kasunduang ito ay ginawa sa pagitan nina G. {lessor_name}, nasa legal na edad, '
+        f'{lessor_civil_status} at may pahatirang sulat sa {lessor_address}, na sa kasunduang ito ay '
+        f'tatawaging UNANG PANIG, at ni {lessee_name}, at may pahatirang sulat sa {lessee_address}, na sa '
+        'kasunduang ito ay tatawaging IKALAWANG PANIG.',
+        body_style,
+    ))
+    elements.append(Paragraph('Ang UNANG PANIG at ang IKALAWANG PANIG ay nagkasundo sa mga sumusunod:', body_style))
+
+    bullets = [
+        f'Na ang IKALAWANG PANIG ay pumayag na upahan ang kuwarto na may identidad na {unit_identifier}, ng '
+        f'pag-aaring gusali ng UNANG PANIG na matatagpuan sa {lessor_address} simula {move_in_str}.',
+
+        f'Na ang IKALAWANG PANIG ay umayon na uupahan nila ang nasabing kuwarto sa halagang '
+        f'{monthly_rental_str} kada buwan. Ang halaga ay kinakailangang ibigay tuwing ika-{due_day} ng '
+        'bawat buwan. Ang hindi pagbabayad ng buwanang upa sa takdang panahon ay maaring maging dahilan ng '
+        'UNANG PANIG na putulin ang kasunduan sa pagpapaupa sa IKALAWANG PANIG, at kusa at matahimik na '
+        'pag-alis ng IKALAWANG PANIG.',
+
+        f'Na ang IKALAWANG PANIG ay magbibigay ng halagang {monthly_rental_str}, halaga ng isang buwang upa '
+        f'sa mga nasabing kuwarto, bilang paunang isang buwang upa at {security_deposit_str} pa bilang '
+        'deposito bago nila okupahin ang uupahang kuwarto.',
+
+        'Na ang nasabing deposito ay maari lamang kunin ng IKALAWANG PANIG kung sila ay aalis na o tatapusin '
+        'na nila ang kasunduan ng pag-upa sa gusali ng UNANG PANIG. Ang nasabing deposito ay ibibigay ng '
+        'UNANG PANIG matapos na masuri ang kuwartong inuupahan at mapatunayang walang anumang naging sira sa '
+        'pasilidad o nawalang gamit na pag-aari ng UNANG PANIG. Ganundin, matapos matanggap ang electric at '
+        'water bill na nagamit ng IKALAWANG PANIG sa mga huling panahon ng kanilang pagtigil sa kuwartong '
+        'inupahan.',
+
+        'Na ang IKALAWANG PANIG ay magpapahayag ng abiso ng kanilang pag-alis sa UNANG PANIG, isang buwan '
+        'bago ang kanilang takdang pag-alis. Kung sakaling ang petsa ng pag-alis ay hindi tatama sa buwanang '
+        'petsa ng pag-upa (rental period), ang kabuuang huling upa ay tutuusin bilang kalahating buwang upa '
+        'kung ang huling itinigil ay 15 o mas mababang bilang ng araw at isang buwang upa kung ang huling '
+        'itinigil ay mula 16 hanggang 29 na araw. Sa pagkakataon na magpapahayag ang IKALAWANG PANIG ng '
+        'pag-alis ora mismo, o ilang araw lang hanggang kulang isang buwan bago umalis, tutuusin na ang '
+        'itinigil na buong buwan na ang nakonsumo.',
+
+        'Na ang IKALAWANG PANIG ang siyang magbabayad ng electric at water bill na nakonsumo sa mga '
+        'inuupahang kuwarto.',
+
+        'Na ang IKALAWANG PANIG ay hihingi muna ng permiso sa UNANG PANIG kung sakaling may gusto silang '
+        'baguhin, ikabit o idagdag sa mga kuwartong inuupahan.',
+
+        'Na ang IKALAWANG PANIG ang siyang magpapanatili ng kalinisan ng kuwartong kanilang inuupahan. '
+        'Umaasa ang UNANG PANIG na iingatan at pangangalagaan ng IKALAWANG PANIG ang kuwartong kanilang '
+        'inuupahan sa pamamagitan ng maingat at tamang pag-gamit sa mga pasilidad nito. Ibibigay ng UNANG '
+        'PANIG ang kuwartong uupahan ng malinis at nasasa-ayos ang lahat ng gamit. Sa panahon na isasauli na '
+        'ng IKALAWANG PANIG ang mga kwartong inuupahan, magbabawas ang UNANG PANIG ng halagang Php500.00 '
+        'mula sa deposito bilang cleaning fee o depende sa kung anong kalagayan ng unit, mas mataas na '
+        'halaga na tama sa kung ano ang magagastos para maibalik sa dating kalinisan at kaayusan ang '
+        'kuwartong inupahan.',
+
+        'Na sa panahon ng pagsasauli na ng unit na inupahan, inaasahan ang IKALAWANG PANIG na makipagusap '
+        'ng ayos at personal sa opisina upang mai-schedule ang sabay na pag-iinspeksiyon ng kuwartong '
+        'inuupahan, at para maibalik ng ayos ang mga susi. Kung hindi maibabalik ang susi pati na ang lahat '
+        'ng ipinaduplicate, babawasin ang halagang Php800.00 sa deposito, at kung ang ibabalik lamang ay '
+        'ang susi na hindi kasama ang keyholder, ang babawasin naman ay halagang Php150.00.',
+
+        'Na mahigpit na ipinagbabawal ng UNANG PANIG sa IKALAWANG PANIG ang pagdadala, pag-gamit o '
+        'pagkonsumo ng sigarilyo, lalu na ang anumang uri ng ipinagbabawal na gamot o substansiya sa loob '
+        'ng mga kwartong inuupahan o sa compound na nakakasakop dito.',
+
+        'Na upang mapanatili ang kaayusan at seguridad ng compound kung saan matatagpuan ang kuwartong '
+        'inuupahan, ipagbibigay alam ng IKALAWANG PANIG sa UNANG PANIG kung mayroon silang kamag-anak na '
+        'di maiiwasang pansamantalang tumigil o matulog sa kuwartong kanilang inuupahan.',
+
+        'Na ang IKALAWANG PANIG ang mangangalaga at magiging responsable sa kanilang mga gamit. Inaasahan '
+        'na isasara ng IKALAWANG PANIG ang mga pinto (primary lock at double lock) sa pangharap at '
+        'panglikod na pintuan kung sila ay aalis at bago matulog.',
+
+        'Na ang IKALAWANG PANIG ay susunod sa curfew na ipapatupad ng UNANG PANIG. Inaasahan na ang lahat '
+        'ng mga umuupa ay nasa loob na ng compound sa ganap na ika-11 ng gabi.',
+
+        'Na ang IKALAWANG PANIG ay hindi magtatayo ng anumang tindahan o gagamitin ang kuwartong inupahan '
+        'sa komersyo. Ang kwartong inuupahan ay bilang tirahan lamang.',
+
+        'Na ang IKALAWANG PANIG ang magpapanatili ng kalinisan ng buong kuwartong inuupahan. Minsan isang '
+        'buwan, ay papayagan ng IKALAWANG PANIG ang maintenance personnel ng UNANG PANIG na pumasok sa '
+        'kanilang kuwartong inuupahan upang ma-check kung napapanatili ang kalinisan. Hindi rin pinapayagan '
+        'ang IKALAWANG PANIG na magsampay ng mga damit, kumot, tuwalya, kutson o unan sa harapan ng '
+        'kuwartong inuupahan gayundin sa mga barandilya, upang mapanatili ang kaayusan. Kung magkakabit ng '
+        'antenna ng TV, ipagbigay alam muna sa UNANG PANIG upang mailagay ito sa tamang lugar.',
+
+        'Ang UNANG PANIG ay nagse-segregate ng mga basura, mangyaring sumunod ang IKALAWANG PANIG dito. '
+        'Ang inyong mga basura ay inyo ring hihiwa-hiwalayin ayon sa kung ito ay nabubulok o hindi '
+        'nabubulok. Ito ay inyong dadalhin sa nakatakdang lugar na ipunan ng basura.',
+
+        'Na ang IKALAWANG PANIG ay inaasahang susunod sa lahat ng mga patakaran na ipinapatupad ng UNANG '
+        'PANIG. Inaasahan din na ang IKALAWANG PANIG ay hindi pagmumulan ng anumang kaguluhan na maaring '
+        'makakaapekto sa iba pang nangungupahan.',
+
+        'Ang paglipat (moving in) at pag-alis (moving out) sa unit ay dapat isagawa lamang sa mga oras ng '
+        'trabaho, mula 8:00 ng umaga hanggang 4:00 ng hapon. Hindi pinapayagan ang paglipat at pag-alis sa '
+        'labas ng mga nabanggit na oras nang walang paunang pahintulot mula sa may-ari.',
+
+        'Kung ang nangungupahan ay mag-backout o hindi magtutuloy sa paglipat bago ang nakatakdang petsa ng '
+        'pagpasok, ang depositong Php1,500.00 ay hindi na maibabalik at ituturing na hindi refundable.',
+
+        'Kapag aalis na ang nangungupahan, kailangang isauli ang lahat ng orihinal at naduplicate na susi '
+        'ng inuupahang unit. Kung hindi maisasauli ang lahat ng susi, ang gastos sa pagpapalit ng seradura '
+        'ay ibabawas sa deposito ng nangungupahan.',
+    ]
+    for b in bullets:
+        elements.append(Paragraph(f"&bull;&nbsp;&nbsp;{b}", bullet_style))
+
+    elements.append(Spacer(1, 0.15 * inch))
+    elements.append(Paragraph(
+        'Nabasa, naunawaan at sinang-ayunan namin ang mga nasasaad na tuntunin o kasunduan sa itaas. '
+        'Anumang paglabag sa mga nabanggit sa itaas ay maaring maging dahilan upang tapusin ng UNANG PANIG '
+        f'ang kasunduang ito sa IKALAWANG PANIG. Katunayan nito ang paglagda naming sa kasunduang ito ngayong '
+        f'ika-_____ ng _______________, {_date.today().year}. Sumasang-ayon:',
+        body_style,
+    ))
+
+    elements.append(Spacer(1, 0.3 * inch))
+    elements.append(Paragraph('IKALAWANG PANIG', header_style))
+    elements.append(Spacer(1, 0.5 * inch))
+    elements.append(Paragraph(
+        '__________________________________&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;__________________________________',
+        sig_style,
+    ))
+    elements.append(Spacer(1, 0.3 * inch))
+    elements.append(Paragraph('UNANG PANIG', header_style))
+    elements.append(Spacer(1, 0.5 * inch))
+    elements.append(Paragraph(
+        '__________________________________&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;__________________________________',
+        sig_style,
+    ))
+    elements.append(Spacer(1, 0.3 * inch))
+    elements.append(Paragraph('MGA SAKSI', header_style))
+    elements.append(Spacer(1, 0.5 * inch))
+    elements.append(Paragraph(
+        '__________________________________&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;__________________________________',
+        sig_style,
+    ))
+
+    # --- Appendix: blank fill-in-by-hand tables, exactly like the source template ---
+    elements.append(Spacer(1, 0.3 * inch))
+    elements.append(Paragraph('MGA NAKATIRA', header_style))
+    occupants_table = Table(
+        [["NAME", "ADDRESS", "MOBILE NUMBER"]] + [["", "", ""] for _ in range(6)],
+        colWidths=[2.3 * inch, 2.6 * inch, 1.6 * inch],
+    )
+    occupants_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(occupants_table)
+
+    elements.append(Spacer(1, 0.3 * inch))
+    elements.append(Paragraph('MGA GAMIT NA NASA LOOB NG UNIT', header_style))
+    item_rows = [
+        "Floor Tiles", "Double Deck Beds", "Mattress",
+        "Doors — Front", "Doors — Back", "Doors — CR/Bathroom",
+        "CR/Bathroom Fixtures — Faucets", "CR/Bathroom Fixtures — Shower",
+        "CR/Bathroom Fixtures — Bidet", "CR/Bathroom Fixtures — Toilet Bowl",
+        "CR/Bathroom Fixtures — Sink", "CR/Bathroom Fixtures — Pail/Dipper",
+        "Bulbs", "Door Locks — Front", "Door Locks — Back", "Door Locks — CR/Bathroom",
+        "Keys & Key Holder",
+    ]
+    items_table = Table(
+        [["MGA GAMIT", "BILANG NG GAMIT", "KONDISYON"]] + [[label, "", ""] for label in item_rows],
+        colWidths=[2.8 * inch, 1.6 * inch, 2.1 * inch],
+    )
+    items_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(items_table)
+
+    elements.append(Spacer(1, 0.3 * inch))
+    elements.append(Paragraph(
+        '<i>This is a draft generated for printing and physical signing/notarization. It is not a legally '
+        'binding document until signed by both parties and notarized.</i>',
+        ParagraphStyle("KasunduanNote", parent=styles["Normal"], fontSize=8.5, textColor=colors.grey, alignment=TA_CENTER),
+    ))
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer

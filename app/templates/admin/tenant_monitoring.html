@@ -478,6 +478,9 @@
                     >
                       Process Move-Out
 </button>
+                    <a href="{{ url_for('admin.generate_kasunduan_form', profile_id=item.profile.id) }}" class="btn btn--ghost btn--sm" style="color: #2563eb; border-color: rgba(59,130,246,0.4);">
+                      Generate Kasunduan
+</a>
                   {% else %}
                     <a href="{{ url_for('admin.generate_contract_form', profile_id=item.profile.id) }}" class="btn btn--ghost btn--sm" style="color: #b8922f; border-color: rgba(215,179,91,0.4);">
                       Generate Contract

@@ -1,0 +1,82 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Generate Kasunduan sa Pagpapaupa | STMS Admin{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Generate Kasunduan sa Pagpapaupa</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <div class="card" style="max-width: 720px;">
+      <div class="section__header">
+        <h3>{{ profile.user.full_name }} — Unit {{ unit.unit_code }}</h3>
+        <p class="muted">Fills in the property's standard residential Kasunduan sa Pagpapaupa template. Review, print, and get it signed — this is a draft, not the final legal document.</p>
+      </div>
+
+      <form method="post" action="{{ url_for('admin.generate_kasunduan_pdf_route', profile_id=profile.id) }}" class="form mt-16" target="_blank">
+        <h4 class="mt-16">Fixed Details (from system records)</h4>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Unit Identifier (as written in the kasunduan) *</label>
+            <input class="input" name="unit_identifier" value="{{ unit.unit_code }}" placeholder="e.g. Unit #8" required />
+          </div>
+          <div>
+            <label class="label">Monthly Rental (₱)</label>
+            <input class="input" type="number" step="0.01" name="monthly_rental" value="{{ unit.price_monthly }}" required />
+          </div>
+        </div>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Move-in Date</label>
+            <input class="input" value="{{ profile.contract_start.strftime('%B %d, %Y') if profile.contract_start else 'Not set' }}" disabled />
+            <small class="muted">Also the monthly due-date anchor — matches the rest of the system.</small>
+          </div>
+          <div>
+            <label class="label">Security Deposit (₱)</label>
+            <input class="input" type="number" step="0.01" name="security_deposit" value="{{ reservation.deposit_amount if reservation else '' }}" required />
+          </div>
+        </div>
+
+        <h4 class="mt-24">Ikalawang Panig (Tenant) Details</h4>
+        <p class="muted" style="margin-top: -8px;">Hindi pa naka-track sa system — punan galing sa ibinigay ng tenant.</p>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Buong Pangalan *</label>
+            <input class="input" name="lessee_name" value="{{ profile.user.full_name }}" required />
+          </div>
+          <div>
+            <label class="label">Pahatirang Sulat (Postal Address) *</label>
+            <input class="input" name="lessee_address" placeholder="e.g. Makiling, City of Calamba, Laguna" required />
+          </div>
+        </div>
+
+        <h4 class="mt-24">Unang Panig (Property) Details</h4>
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Pangalan *</label>
+            <input class="input" name="lessor_name" value="Nestor J. Liquido" required />
+          </div>
+          <div>
+            <label class="label">Katayuang Sibil (Civil Status)</label>
+            <select class="input" name="lessor_civil_status">
+              <option value="may asawa">May asawa</option>
+              <option value="binata">Binata</option>
+              <option value="dalaga">Dalaga</option>
+              <option value="balo">Balo</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-8">
+          <label class="label">Pahatirang Sulat (Postal Address) *</label>
+          <input class="input" name="lessor_address" value="#2 Brgy. Milagrosa, Calamba City, Laguna" required />
+        </div>
+
+        <button class="btn btn--primary mt-24" type="submit">Generate Kasunduan PDF</button>
+      </form>
+    </div>
+  </section>
+{% endblock %}
