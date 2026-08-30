@@ -1590,45 +1590,18 @@
       width: max-content;
     }
 
+    /* Editorial unit card — image-dominant, price/status live on the photo
+       instead of a colored-tint card body (was busy/"candy" looking). */
     .unit-card--compact {
       min-width: 280px;
       max-width: 280px;
-      transition: all 0.3s ease;
       flex-shrink: 0;
-      border: 2px solid transparent;
-    }
-
-    /* Available unit styling */
-    .unit-card--compact[data-unit-status="available"] {
-      border-color: rgba(76, 175, 80, 0.3);
-      background: linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(76, 175, 80, 0.1) 100%);
-    }
-
-    .unit-card--compact[data-unit-status="available"] .unit-card__status-badge {
-      background: linear-gradient(135deg, #4CAF50, #66BB6A);
-      color: white;
-      animation: pulse-green 2s ease-in-out infinite;
-    }
-
-    .unit-card--compact[data-unit-status="available"] .unit-card__price {
-      color: #4CAF50;
-    }
-
-    /* Occupied unit styling - Blue like floor plan */
-    .unit-card--compact[data-unit-status="occupied"] {
-      border-color: rgba(33, 150, 243, 0.3);
-      background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.1) 100%);
-      opacity: 0.85;
-    }
-
-    .unit-card--compact[data-unit-status="occupied"] .unit-card__status-badge {
-      background: linear-gradient(135deg, #2196F3, #42A5F5);
-      color: white;
-      animation: pulse-blue 2s ease-in-out infinite;
-    }
-
-    .unit-card--compact[data-unit-status="occupied"] .unit-card__price {
-      color: #2196F3;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 18px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s ease;
     }
 
     /* Ensure scroll buttons are always visible */
@@ -1638,43 +1611,15 @@
     }
 
     .unit-card--compact:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    }
-
-    .unit-card--compact[data-unit-status="available"]:hover {
-      border-color: #4CAF50;
-      box-shadow: 0 8px 24px rgba(76, 175, 80, 0.3);
-    }
-
-    .unit-card--compact[data-unit-status="occupied"]:hover {
-      border-color: #2196F3;
-      box-shadow: 0 8px 24px rgba(33, 150, 243, 0.3);
-    }
-
-    @keyframes pulse-green {
-      0%, 100% {
-        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
-      }
-      50% {
-        box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);
-      }
-    }
-
-    @keyframes pulse-blue {
-      0%, 100% {
-        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4);
-      }
-      50% {
-        box-shadow: 0 0 0 8px rgba(33, 150, 243, 0);
-      }
+      transform: translateY(-6px);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.14);
+      border-color: rgba(184, 146, 47, 0.35);
     }
 
     .unit-card__media {
       position: relative;
       width: 100%;
-      height: 160px;
-      border-radius: 8px;
+      height: 210px;
       overflow: hidden;
     }
 
@@ -1682,92 +1627,93 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s ease;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .unit-card--compact:hover .unit-card__media img {
-      transform: scale(1.05);
+      transform: scale(1.08);
     }
 
-    .unit-card__status-badge {
+    .unit-card__status-chip {
       position: absolute;
-      top: 8px;
-      right: 8px;
-      font-size: 11px;
-      padding: 4px 8px;
-    }
-
-    .unit-card__header {
-      display: flex;
-      justify-content: space-between;
+      top: 12px;
+      right: 12px;
+      display: inline-flex;
       align-items: center;
-      margin-bottom: 4px;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
     }
 
-    .unit-card__header h3 {
+    .unit-card__status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .unit-card__status-chip[data-status="available"] { color: #16a34a; }
+    .unit-card__status-chip[data-status="occupied"] { color: #2563eb; }
+    .unit-card__status-chip[data-status="reserved"] { color: #d97706; }
+
+    .unit-card__scrim {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 32px 16px 14px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.7) 100%);
+    }
+
+    .unit-card__scrim-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .unit-card__code {
       font-size: 16px;
-      margin: 0;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.01em;
     }
 
     .unit-card__price {
-      font-size: 14px;
-      font-weight: 700;
-      color: #D7B35B;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: #F0D48A;
+      white-space: nowrap;
     }
 
-    .unit-card__type {
+    .unit-card__price small {
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.85;
+    }
+
+    .unit-card__body {
+      padding: 14px 16px 16px;
+    }
+
+    .unit-card__meta {
       font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
       margin-bottom: 12px;
-    }
-
-    /* Status text styling */
-    .unit-card__status-text {
-      margin-bottom: 8px;
-      text-align: center;
-    }
-
-    .status-text {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      animation: status-pulse 2s ease-in-out infinite;
-    }
-
-    .status-text--available {
-      background: linear-gradient(135deg, #4CAF50, #66BB6A);
-      color: white;
-      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-    }
-
-    .status-text--occupied {
-      background: linear-gradient(135deg, #2196F3, #42A5F5);
-      color: white;
-      box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-    }
-
-    .status-text--reserved {
-      background: linear-gradient(135deg, #F59E0B, #FBBF24);
-      color: white;
-      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-    }
-
-    @keyframes status-pulse {
-      0%, 100% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.05);
-      }
     }
 
     .unit-card__actions {
       display: flex;
       gap: 8px;
-      margin-top: 8px;
     }
 
     .unit-card__actions .btn {
@@ -2198,15 +2144,6 @@
       box-shadow: none !important;
     }
 
-    /* Unit price: elegant serif, solid refined gold */
-    .unit-card__price{
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 500;
-      color: #B8922F;
-      background: none;
-      -webkit-text-fill-color: currentColor;
-    }
-
     /* FAQ: elegant serif question */
     .acc summary{
       font-family: 'Playfair Display', Georgia, serif;
@@ -2372,23 +2309,18 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-badge badge badge--{{ u.status }}">{{ u.status }}</div>
+                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            </div>
+                            <div class="unit-card__scrim">
+                              <div class="unit-card__scrim-row">
+                                <span class="unit-card__code mono">{{ u.unit_code }}</span>
+                                <span class="unit-card__price">₱{{ "{:,.0f}".format(u.price_monthly) }}<small>/mo</small></span>
+                              </div>
+                            </div>
                           </div>
-                          <div class="card__body">
-                            <div class="unit-card__header">
-                              <h3 class="mono">{{ u.unit_code }}</h3>
-                              <span class="unit-card__price">₱{{ "{:,.2f}".format(u.price_monthly) }}</span>
-                            </div>
-                            <div class="unit-card__status-text" data-status="{{ u.status }}">
-                              {% if u.status == 'available' %}
-                                <span class="status-text status-text--available">Available</span>
-                              {% elif u.status == 'reserved' %}
-                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
-                              {% else %}
-                                <span class="status-text status-text--occupied">Currently Occupied</span>
-                              {% endif %}
-                            </div>
-                            <p class="muted unit-card__type">{{ u.type_label }}</p>
+                          <div class="card__body unit-card__body">
+                            <p class="unit-card__meta">{{ u.type_label }} &middot; Floor {{ u.floor }}</p>
 
                             <div class="unit-card__actions">
                               <button type="button" class="btn btn--sm btn--ghost js-open-unit-details">Details</button>
@@ -2450,23 +2382,18 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-badge badge badge--{{ u.status }}">{{ u.status }}</div>
+                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            </div>
+                            <div class="unit-card__scrim">
+                              <div class="unit-card__scrim-row">
+                                <span class="unit-card__code mono">{{ u.unit_code }}</span>
+                                <span class="unit-card__price">₱{{ "{:,.0f}".format(u.price_monthly) }}<small>/mo</small></span>
+                              </div>
+                            </div>
                           </div>
-                          <div class="card__body">
-                            <div class="unit-card__header">
-                              <h3 class="mono">{{ u.unit_code }}</h3>
-                              <span class="unit-card__price">₱{{ "{:,.2f}".format(u.price_monthly) }}</span>
-                            </div>
-                            <div class="unit-card__status-text" data-status="{{ u.status }}">
-                              {% if u.status == 'available' %}
-                                <span class="status-text status-text--available">Available</span>
-                              {% elif u.status == 'reserved' %}
-                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
-                              {% else %}
-                                <span class="status-text status-text--occupied">Currently Occupied</span>
-                              {% endif %}
-                            </div>
-                            <p class="muted unit-card__type">{{ u.type_label }}</p>
+                          <div class="card__body unit-card__body">
+                            <p class="unit-card__meta">{{ u.type_label }} &middot; Floor {{ u.floor }}</p>
 
                             <div class="unit-card__actions">
                               <button type="button" class="btn btn--sm btn--ghost js-open-unit-details">Details</button>
@@ -2529,23 +2456,18 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-badge badge badge--{{ u.status }}">{{ u.status }}</div>
+                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            </div>
+                            <div class="unit-card__scrim">
+                              <div class="unit-card__scrim-row">
+                                <span class="unit-card__code mono">{{ u.unit_code }}</span>
+                                <span class="unit-card__price">₱{{ "{:,.0f}".format(u.price_monthly) }}<small>/mo</small></span>
+                              </div>
+                            </div>
                           </div>
-                          <div class="card__body">
-                            <div class="unit-card__header">
-                              <h3 class="mono">{{ u.unit_code }}</h3>
-                              <span class="unit-card__price">₱{{ "{:,.2f}".format(u.price_monthly) }}</span>
-                            </div>
-                            <div class="unit-card__status-text" data-status="{{ u.status }}">
-                              {% if u.status == 'available' %}
-                                <span class="status-text status-text--available">Available</span>
-                              {% elif u.status == 'reserved' %}
-                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
-                              {% else %}
-                                <span class="status-text status-text--occupied">Currently Occupied</span>
-                              {% endif %}
-                            </div>
-                            <p class="muted unit-card__type">{{ u.type_label }}</p>
+                          <div class="card__body unit-card__body">
+                            <p class="unit-card__meta">{{ u.type_label }} &middot; Floor {{ u.floor }}</p>
 
                             <div class="unit-card__actions">
                               <button type="button" class="btn btn--sm btn--ghost js-open-unit-details">Details</button>
@@ -2609,23 +2531,18 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-badge badge badge--{{ u.status }}">{{ u.status }}</div>
+                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            </div>
+                            <div class="unit-card__scrim">
+                              <div class="unit-card__scrim-row">
+                                <span class="unit-card__code mono">{{ u.unit_code }}</span>
+                                <span class="unit-card__price">₱{{ "{:,.0f}".format(u.price_monthly) }}<small>/mo</small></span>
+                              </div>
+                            </div>
                           </div>
-                          <div class="card__body">
-                            <div class="unit-card__header">
-                              <h3 class="mono">{{ u.unit_code }}</h3>
-                              <span class="unit-card__price">₱{{ "{:,.2f}".format(u.price_monthly) }}</span>
-                            </div>
-                            <div class="unit-card__status-text" data-status="{{ u.status }}">
-                              {% if u.status == 'available' %}
-                                <span class="status-text status-text--available">Available</span>
-                              {% elif u.status == 'reserved' %}
-                                <span class="status-text status-text--reserved">Reserved — Pending Approval</span>
-                              {% else %}
-                                <span class="status-text status-text--occupied">Currently Occupied</span>
-                              {% endif %}
-                            </div>
-                            <p class="muted unit-card__type">{{ u.type_label }}</p>
+                          <div class="card__body unit-card__body">
+                            <p class="unit-card__meta">{{ u.type_label }} &middot; Floor {{ u.floor }}</p>
 
                             <div class="unit-card__actions">
                               <button type="button" class="btn btn--sm btn--ghost js-open-unit-details">Details</button>
