@@ -17,6 +17,10 @@ def home():
         building.id: 3 if building.code in ("B3", "B4", "B5") else 4
         for building in buildings
     }
+    building_unit_types = {
+        building.id: "commercial" if building.code == "B5" else "residential"
+        for building in buildings
+    }
     # Exclude archived units from public view
     units = (
         db.session.query(Unit)
@@ -107,6 +111,11 @@ def home():
             # Default to floor 1 if no floor specified
             units_by_building[u.building_id]["floor_1"].append(unit_data)
     
+    building_unit_counts = {
+        building.id: sum(len(v) for v in units_by_building.get(building.id, {}).values())
+        for building in buildings
+    }
+
     can_reserve = bool(
         current_user.is_authenticated
         and getattr(current_user, "role", None)
@@ -184,6 +193,8 @@ def home():
         otp_dev_code=dev_otp,
         buildings=buildings,
         building_floor_limits=building_floor_limits,
+        building_unit_types=building_unit_types,
+        building_unit_counts=building_unit_counts,
         units_by_building=units_by_building,
         can_reserve=can_reserve,
         can_view_details=can_view_details,

@@ -534,6 +534,35 @@
     rightBtn.addEventListener("click", () => unitsScroll.scrollBy({ left: shift(), behavior: "smooth" }));
   }
 
+  // Building switcher — show one building at a time instead of a long
+  // vertical stack of every building/floor.
+  document.querySelectorAll(".building-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const buildingId = tab.getAttribute("data-building");
+      if (tab.classList.contains("building-tab--active")) return;
+
+      document.querySelectorAll(".building-tab").forEach((t) => {
+        t.classList.remove("building-tab--active");
+        t.setAttribute("aria-selected", "false");
+      });
+      tab.classList.add("building-tab--active");
+      tab.setAttribute("aria-selected", "true");
+
+      document.querySelectorAll(".building-row").forEach((row) => {
+        if (row.getAttribute("data-building") === buildingId) {
+          row.classList.add("building-row--active", "building-row--entering");
+          row.addEventListener(
+            "animationend",
+            () => row.classList.remove("building-row--entering"),
+            { once: true }
+          );
+        } else {
+          row.classList.remove("building-row--active", "building-row--entering");
+        }
+      });
+    });
+  });
+
   // Floor tab navigation
   document.querySelectorAll(".floor-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
