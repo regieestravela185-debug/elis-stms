@@ -182,8 +182,10 @@ function openUnitInfoModal(unitId) {
                  ? `<div class="muted" style="font-size:13px;">Contract ends ${data.tenant.contract_end}</div>`
                  : (data.tenant.is_commercial ? '' : '<div class="muted" style="font-size:13px;">Month-to-month — no fixed end date</div>')}
              </div>
-             <a href="${data.tenant.user_details_url}" class="btn btn--ghost" style="margin-top:14px; width:100%; text-align:center; box-sizing:border-box;">View Tenant Profile</a>
            </div>`
+        : '';
+      const viewProfileBtn = data.tenant
+        ? `<a href="${data.tenant.user_details_url}" class="btn btn--ghost" style="flex:1; text-align:center; box-sizing:border-box;">View Tenant Profile</a>`
         : '';
 
       content.innerHTML = `
@@ -196,7 +198,10 @@ function openUnitInfoModal(unitId) {
         <div style="font-size:22px; font-weight:800; color:#D7B35B; margin-bottom:10px;">₱${data.price_monthly.toLocaleString('en-US', {minimumFractionDigits:2})} <span style="font-size:13px; font-weight:600; color:#64748b;">/ month</span></div>
         ${data.description ? `<p class="muted" style="font-size:14px; line-height:1.6;">${data.description}</p>` : ''}
         ${tenantBlock}
-        <a href="${data.edit_url}" class="btn btn--primary" style="margin-top:16px; width:100%; text-align:center;">Edit Unit</a>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          ${viewProfileBtn}
+          <a href="${data.edit_url}" class="btn btn--primary" style="flex:1; text-align:center; box-sizing:border-box;">Edit Unit</a>
+        </div>
       `;
     })
     .catch(() => {
