@@ -402,6 +402,89 @@
       border-color: #D7B35B;
       box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
     }
+
+    /* Type badge next to each building name in the sidebar */
+    .building-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .building-btn__type {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: auto;
+    }
+    .building-btn__type--residential {
+      background: rgba(37, 99, 235, 0.12);
+      color: #2563eb;
+    }
+    .building-btn__type--commercial {
+      background: rgba(194, 101, 11, 0.12);
+      color: #c2650b;
+    }
+
+    /* Type quick-jump chips */
+    .type-jump-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .type-jump-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .type-jump-btn__hint {
+      font-size: 10px;
+      font-weight: 700;
+      opacity: 0.7;
+    }
+    .type-jump-btn--residential:hover {
+      border-color: #2563eb;
+      background: rgba(37, 99, 235, 0.08);
+      color: #2563eb;
+    }
+    .type-jump-btn--commercial:hover {
+      border-color: #c2650b;
+      background: rgba(194, 101, 11, 0.08);
+      color: #c2650b;
+    }
+    .type-jump-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Confirmation message after a type quick-jump */
+    .type-jump-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #B8922F;
+      background: rgba(184, 146, 47, 0.08);
+      border: 1px solid rgba(184, 146, 47, 0.25);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      animation: fadeInScale 0.3s ease;
+    }
   </style>
 {% endblock %}
 
@@ -459,21 +542,29 @@
         <h3>Buildings</h3>
         <div class="building-list" id="buildingList">
           {% for b in buildings %}
-            <button class="building-btn {% if loop.first %}is-active{% endif %}" data-building="{{ b.id }}">
+            {% set b_type = building_unit_types.get(b.id, 'residential') %}
+            <button class="building-btn {% if loop.first %}is-active{% endif %}" data-building="{{ b.id }}" data-type="{{ b_type }}" data-building-label="{{ b.code }}">
               <span class="mono">{{ b.code }}</span> — {{ b.name }}
+              <span class="building-btn__type building-btn__type--{{ b_type }}">{{ b_type|title }}</span>
 </button>
           {% endfor %}
 </div>
 </div>
 
       <div class="floorplan__main card">
-        <!-- Unit type filter -->
-        <div id="typeFilterBar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
-          <strong style="font-size: 13px; align-self: center; margin-right: 4px;">Type:</strong>
-          <button class="floor-pill is-active" data-type="all" type="button">All Types</button>
-          <button class="floor-pill" data-type="residential" type="button">Residential</button>
-          <button class="floor-pill" data-type="commercial" type="button">Commercial</button>
-</div>
+        <!-- Type quick-jump: B1-B4 are Residential, B5 is Commercial, so
+             this jumps to the representative building rather than acting
+             as an independent filter (which could silently show 0 units). -->
+        <div id="typeJumpBar" class="type-jump-bar">
+          <strong style="font-size: 13px; align-self: center; margin-right: 4px;">Browse by type:</strong>
+          <button class="type-jump-btn type-jump-btn--residential" data-jump-type="residential" type="button">
+            Residential <span class="type-jump-btn__hint">B1–B4</span>
+          </button>
+          <button class="type-jump-btn type-jump-btn--commercial" data-jump-type="commercial" type="button">
+            Commercial <span class="type-jump-btn__hint">B5</span>
+          </button>
+        </div>
+        <div id="typeJumpMessage" class="type-jump-message" hidden></div>
 
         <!-- Floor filter pills -->
         <div id="floorFilterBar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">

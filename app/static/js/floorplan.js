@@ -1,17 +1,14 @@
 let currentBuilding = null;
 let currentFloor = "all";
-let currentType = "all";
 
 function applyFilters() {
   const tiles = document.querySelectorAll(".unit-tile");
   tiles.forEach((t) => {
     const b = t.getAttribute("data-building");
     const f = t.getAttribute("data-floor");
-    const ty = t.getAttribute("data-type");
     const buildingMatch = !currentBuilding || b === currentBuilding;
     const floorMatch = currentFloor === "all" || f === currentFloor;
-    const typeMatch = currentType === "all" || ty === currentType;
-    t.style.display = buildingMatch && floorMatch && typeMatch ? "" : "none";
+    t.style.display = buildingMatch && floorMatch ? "" : "none";
   });
 
   // Hide empty floor sections
@@ -284,14 +281,35 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Unit type filter (Residential / Commercial / All)
-  const typeButtons = document.querySelectorAll("#typeFilterBar .floor-pill");
-  typeButtons.forEach((btn) => {
+  // Type quick-jump: Residential/Commercial isn't an independent filter
+  // anymore (every building is 100% one or the other), so these jump to
+  // the representative building instead of a Building + Type combo that
+  // could silently show zero units.
+  const jumpButtons = document.querySelectorAll("#typeJumpBar .type-jump-btn");
+  const jumpMessage = document.getElementById("typeJumpMessage");
+  jumpButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      typeButtons.forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      currentType = btn.getAttribute("data-type");
-      applyFilters();
+      const type = btn.getAttribute("data-jump-type");
+      const matches = Array.from(document.querySelectorAll(`.building-btn[data-type="${type}"]`));
+      if (!matches.length) return;
+      const target = matches[0];
+      const codes = matches.map((b) => b.getAttribute("data-building-label")).filter(Boolean);
+
+      buttons.forEach((b) => b.classList.remove("is-active"));
+      target.classList.add("is-active");
+      filterByBuilding(target.getAttribute("data-building"));
+      target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      if (jumpMessage) {
+        if (type === "commercial") {
+          jumpMessage.textContent = `${codes[0]} is the only Commercial building — showing all its units.`;
+        } else {
+          jumpMessage.textContent = codes.length > 1
+            ? `Buildings ${codes.join(", ")} are Residential — showing ${codes[0]}. Switch buildings in the sidebar to view the others.`
+            : `${codes[0]} is the only Residential building.`;
+        }
+        jumpMessage.hidden = false;
+      }
     });
   });
 

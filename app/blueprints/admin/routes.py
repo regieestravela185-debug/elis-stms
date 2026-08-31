@@ -1351,6 +1351,7 @@ def floorplan():
     _ensure_admin()
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     building_floor_limits = {building.id: _get_building_floor_limit(building.id) for building in buildings}
+    building_unit_types = {building.id: _get_building_unit_type(building.id) for building in buildings}
     # Exclude archived units from floorplan
     units = [
         unit
@@ -1371,7 +1372,7 @@ def floorplan():
             if profile.user:
                 tenant_by_unit[profile.unit_id] = profile.user.full_name
 
-    return render_template("admin/floorplan.html", buildings=buildings, units=units, tenant_by_unit=tenant_by_unit)
+    return render_template("admin/floorplan.html", buildings=buildings, units=units, tenant_by_unit=tenant_by_unit, building_unit_types=building_unit_types)
 
 
 @bp.get("/units")
