@@ -34,6 +34,7 @@ from ...models import (
     Unit,
     UnitStatus,
     User,
+    UtilityBill,
     VerificationStatus,
 )
 from ...security import sha256_hex
@@ -2400,6 +2401,120 @@ def dismiss_outstanding(profile_id: int):
 
     flash(f"Outstanding notice dismissed for {profile.user.full_name} for this billing cycle.", "success")
     return redirect(url_for("admin.payments"))
+
+
+@bp.get("/tenants/utility-billing")
+@login_required
+def utility_billing():
+    """One row per active RESIDENTIAL tenant for the selected billing
+    month — water is prefilled from the pax_range formula, electric is
+    admin-entered (no formula, varies by actual usage). Opening this page
+    for a month creates that month's UtilityBill row per tenant if it
+    doesn't exist yet (via get_or_create_utility_bill, which also computes
+    any carry-over from an unpaid prior month)."""
+    _ensure_admin()
+    from ...billing_utils import get_or_create_utility_bill
+
+    billing_month = (request.args.get('month') or '').strip() or date.today().strftime('%Y-%m')
+
+    tenants = (
+        db.session.query(TenantProfile)
+        .join(Unit, TenantProfile.unit_id == Unit.id)
+        .filter(TenantProfile.is_active == True, Unit.type == 'residential')  # noqa: E712
+        .order_by(Unit.unit_code.asc())
+        .all()
+    )
+    rows = [{"profile": t, "bill": get_or_create_utility_bill(t, billing_month)} for t in tenants]
+    db.session.commit()  # persist any newly-created bill rows
+
+    return render_template("admin/utility_billing.html", rows=rows, billing_month=billing_month)
+
+
+@bp.post("/tenants/utility-billing")
+@login_required
+def utility_billing_save():
+    """Single form submit saves every edited row at once — inputs are
+    named electric_<bill_id> / water_<bill_id> per row."""
+    _ensure_admin()
+    billing_month = (request.form.get('billing_month') or '').strip() or date.today().strftime('%Y-%m')
+
+    updated_ids = set()
+    for key, value in request.form.items():
+        if not (key.startswith("electric_") or key.startswith("water_")):
+            continue
+        if value.strip() == "":
+            continue
+        try:
+            field, bill_id_str = key.split("_", 1)
+            bill_id = int(bill_id_str)
+            amount = float(value)
+        except ValueError:
+            continue
+        bill = db.session.get(UtilityBill, bill_id)
+        if not bill:
+            continue
+        if field == "electric":
+            bill.electric_amount = amount
+        elif field == "water":
+            bill.water_amount = amount
+        updated_ids.add(bill_id)
+
+    db.session.commit()
+    flash(f"Saved utility bills for {len(updated_ids)} tenant(s).", "success")
+    return redirect(url_for("admin.utility_billing", month=billing_month))
+
+
+@bp.post("/tenants/utility-bills/<int:bill_id>/notify")
+@login_required
+def notify_utility_bill(bill_id: int):
+    """Manual "Send Reminder Now" — in case the automatic 7-day reminder
+    didn't fire or admin wants to nudge a tenant early."""
+    _ensure_admin()
+    from ...jobs import send_utility_bill_reminder_now
+
+    sent = send_utility_bill_reminder_now(current_app._get_current_object(), bill_id)
+    if sent:
+        flash("Bill reminder sent.", "success")
+    else:
+        flash("Not sent — already reminded today, already paid, or tenant has no email on file.", "info")
+    return redirect(url_for("admin.utility_billing", month=request.form.get("billing_month")))
+
+
+@bp.post("/tenants/utility-bills/<int:bill_id>/mark-paid")
+@login_required
+def mark_utility_bill_paid(bill_id: int):
+    """Standalone paid/unpaid tracking for utility bills — intentionally
+    decoupled from Payment/PaymentLedger (no ledger entry created), since
+    utilities are billed and settled outside that flow."""
+    _ensure_admin()
+    bill = db.session.get(UtilityBill, bill_id)
+    if not bill:
+        abort(404)
+    bill.is_paid = True
+    bill.paid_at = datetime.utcnow()
+    bill.marked_paid_by = current_user.id
+    db.session.commit()
+    flash("Utility bill marked as paid.", "success")
+    return redirect(request.referrer or url_for("admin.utility_billing"))
+
+
+@bp.get("/tenants/<int:profile_id>/utility-bills")
+@login_required
+def tenant_utility_bills_partial(profile_id: int):
+    """This ONE tenant's full utility bill history, newest first — powers
+    the "Utility Bills" modal on the Tenant Monitoring row, so paid/unpaid
+    history is clearly tied to that specific tenant's own record."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    bills = (
+        db.session.query(UtilityBill)
+        .filter(UtilityBill.tenant_profile_id == profile_id)
+        .order_by(UtilityBill.billing_month.desc())
+        .all()
+    )
+    return render_template("admin/_utility_bills_modal.html", bills=bills, profile=profile)
 
 
 @bp.get("/deposits")

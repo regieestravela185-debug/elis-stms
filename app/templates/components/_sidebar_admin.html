@@ -20,6 +20,7 @@
   <div class="side-group__label">Finance</div>
   <a class="side-link side-link--payments {% if request.path.startswith('/admin/payments') %}is-active{% endif %}" href="{{ url_for('admin.payments') }}"><span>Payments</span></a>
   <a class="side-link side-link--deposits {% if request.path.startswith('/admin/deposits') %}is-active{% endif %}" href="{{ url_for('admin.deposits') }}"><span>Deposits</span></a>
+  <a class="side-link side-link--utilities {% if request.path.startswith('/admin/tenants/utility-billing') %}is-active{% endif %}" href="{{ url_for('admin.utility_billing') }}"><span>Utility Billing</span></a>
 
   <div class="side-group__label">Communication</div>
   <a class="side-link side-link--announcements {% if request.path.startswith('/admin/announcements') %}is-active{% endif %}" href="{{ url_for('admin.announcements') }}"><span>Announcements</span></a>
@@ -46,6 +47,7 @@
 .side-link--reservations.is-active,
 .side-link--payments.is-active,
 .side-link--deposits.is-active,
+.side-link--utilities.is-active,
 .side-link--announcements.is-active,
 .side-link--documents.is-active,
 .side-link--renewals.is-active,

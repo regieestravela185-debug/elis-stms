@@ -1,0 +1,58 @@
+{# Utility bill history for ONE tenant, newest first — fetched into the
+   "Utility Bills" modal on Tenant Monitoring via a small fetch() call.
+   Forms below are plain POST (consistent with the rest of the app) —
+   submitting reloads the full page, closing the modal; reopen it to see
+   the updated status. #}
+{% if bills %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Rent</th>
+          <th>Water</th>
+          <th>Electric</th>
+          <th>Carried Over</th>
+          <th>Total</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bill in bills %}
+          <tr>
+            <td class="mono">{{ bill.billing_month }}</td>
+            <td class="mono">₱{{ '{:,.2f}'.format(bill.rent_amount_snapshot|float) }}</td>
+            <td class="mono">₱{{ '{:,.2f}'.format(bill.water_amount|float) }}</td>
+            <td class="mono">₱{{ '{:,.2f}'.format(bill.electric_amount|float) }}</td>
+            <td class="mono">{% if bill.carried_over_amount %}₱{{ '{:,.2f}'.format(bill.carried_over_amount|float) }}{% else %}—{% endif %}</td>
+            <td class="mono" style="font-weight: 700; color: #B8922F;">₱{{ '{:,.2f}'.format(bill.grand_total_with_rent) }}</td>
+            <td>{{ bill.due_date.strftime('%b %d, %Y') }}</td>
+            <td>
+              {% if bill.is_paid %}
+                <span class="badge badge--available">Paid</span>
+              {% else %}
+                <span class="badge badge--unpaid">Unpaid</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <form method="post" action="{{ url_for('admin.notify_utility_bill', bill_id=bill.id) }}" style="display: inline;">
+                  <button type="submit" class="btn btn--sm btn--ghost">Send Reminder</button>
+                </form>
+                {% if not bill.is_paid %}
+                  <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark this bill as fully paid?');">
+                    <button type="submit" class="btn btn--sm btn--primary">Mark Paid</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="muted">No utility bills recorded yet for this tenant.</p>
+{% endif %}

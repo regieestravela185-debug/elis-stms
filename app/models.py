@@ -415,6 +415,54 @@ class PaymentLedger(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 
+class UtilityBill(db.Model):
+    """One per-tenant, per-month Electric+Water bill for RESIDENTIAL tenants
+    only. Commercial tenants are never billed here — they pay electric/water
+    directly to the utility company (see Unit.pax_range comment and
+    app/contract_generator.py). Unlike rent, utilities have no late penalty:
+    an unpaid bill's total is copied into carried_over_amount on next
+    month's bill instead of blocking anything (see
+    get_or_create_utility_bill() in app/billing_utils.py).
+    rent_amount_snapshot is for itemized display only — rent collection
+    itself stays entirely in Payment/PaymentLedger, untouched by this
+    table."""
+    __tablename__ = "utility_bills"
+    __table_args__ = (
+        UniqueConstraint("tenant_profile_id", "billing_month", name="uq_utility_bill_tenant_month"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    tenant_profile_id = db.Column(db.Integer, db.ForeignKey("tenant_profiles.id"), nullable=False, index=True)
+    billing_month = db.Column(db.String(7), nullable=False, index=True)  # "YYYY-MM"
+
+    electric_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # admin-entered, no formula
+    water_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # prefilled from compute_water_bill(), editable
+    rent_amount_snapshot = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # display only
+    carried_over_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # from prior unpaid bill
+
+    due_date = db.Column(db.Date, nullable=False)  # same contract_start.day anchor as rent
+
+    is_paid = db.Column(db.Boolean, nullable=False, default=False)
+    paid_at = db.Column(db.DateTime, nullable=True)
+    marked_paid_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    reminder_sent_at = db.Column(db.Date, nullable=True)  # dedup, per-bill not per-tenant
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    tenant_profile = db.relationship("TenantProfile")
+    marked_paid_by_user = db.relationship("User", foreign_keys=[marked_paid_by])
+
+    @property
+    def total_due(self):
+        return float(self.electric_amount or 0) + float(self.water_amount or 0) + float(self.carried_over_amount or 0)
+
+    @property
+    def grand_total_with_rent(self):
+        return self.total_due + float(self.rent_amount_snapshot or 0)
+
+
 class BlockchainAlarmDismissal(db.Model):
     """Track when admin dismisses blockchain alarm"""
     __tablename__ = "blockchain_alarm_dismissal"

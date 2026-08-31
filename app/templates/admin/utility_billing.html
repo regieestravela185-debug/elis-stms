@@ -1,0 +1,193 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Utility Billing | STMS Admin{% endblock %}
+
+{% block head %}
+  <style>
+    .ub-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .ub-month-form {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ub-month-form input[type="month"] {
+      width: auto;
+    }
+    .ub-input {
+      width: 110px;
+      padding: 6px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .ub-input:focus {
+      outline: none;
+      border-color: #D7B35B;
+      box-shadow: 0 0 0 3px rgba(215, 179, 91, 0.12);
+    }
+    .ub-total {
+      font-weight: 700;
+      color: #B8922F;
+    }
+    .ub-carry {
+      color: #d97706;
+      font-weight: 600;
+    }
+    .ub-carry--zero {
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .ub-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+  </style>
+{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Utility Billing</div>
+{% endblock %}
+
+{% block content %}
+  <form id="utilityBulkForm" method="post" action="{{ url_for('admin.utility_billing_save') }}">
+    <input type="hidden" name="billing_month" value="{{ billing_month }}">
+  </form>
+
+  <section class="dash-panel">
+    <div class="card">
+      <div class="ub-toolbar">
+        <div>
+          <h3 style="margin: 0;">Residential Electric &amp; Water Bills</h3>
+          <p class="muted" style="margin: 4px 0 0;">Fill in each tenant's electric amount (water is prefilled from their pax rate) — one save updates every tenant at once. Tenants get an automatic email + in-app reminder 7 days before their due date.</p>
+        </div>
+        <form method="get" action="{{ url_for('admin.utility_billing') }}" class="ub-month-form">
+          <label class="label" style="margin: 0;">Billing Month</label>
+          <input type="month" name="month" value="{{ billing_month }}" class="input" onchange="this.form.submit()">
+        </form>
+      </div>
+
+      {% if rows %}
+        <div class="table-wrap">
+          <table class="table" id="utilityBillingTable">
+            <thead>
+              <tr>
+                <th>Unit</th>
+                <th>Tenant</th>
+                <th>Rent</th>
+                <th>Water (₱)</th>
+                <th>Electric (₱)</th>
+                <th>Carried Over</th>
+                <th>Total Due</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                {% set bill = row.bill %}
+                {% set profile = row.profile %}
+                <tr data-base-total="{{ (bill.rent_amount_snapshot|float) + (bill.carried_over_amount|float) }}">
+                  <td class="mono"><strong>{{ profile.unit.unit_code if profile.unit else '—' }}</strong></td>
+                  <td>{{ profile.user.full_name if profile.user else '—' }}</td>
+                  <td class="mono">₱{{ '{:,.2f}'.format(bill.rent_amount_snapshot|float) }}</td>
+                  <td>
+                    <input
+                      type="number" step="0.01" min="0"
+                      class="ub-input" form="utilityBulkForm"
+                      name="water_{{ bill.id }}"
+                      value="{{ '%.2f'|format(bill.water_amount|float) }}"
+                      data-row="{{ bill.id }}" data-field="water"
+                      {% if bill.is_paid %}disabled{% endif %}
+                    >
+                  </td>
+                  <td>
+                    <input
+                      type="number" step="0.01" min="0"
+                      class="ub-input" form="utilityBulkForm"
+                      name="electric_{{ bill.id }}"
+                      value="{{ '%.2f'|format(bill.electric_amount|float) if bill.electric_amount else '' }}"
+                      placeholder="0.00"
+                      data-row="{{ bill.id }}" data-field="electric"
+                      {% if bill.is_paid %}disabled{% endif %}
+                    >
+                  </td>
+                  <td>
+                    {% if bill.carried_over_amount %}
+                      <span class="ub-carry">₱{{ '{:,.2f}'.format(bill.carried_over_amount|float) }}</span>
+                    {% else %}
+                      <span class="ub-carry--zero">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="mono ub-total" id="total_{{ bill.id }}">₱{{ '{:,.2f}'.format(bill.grand_total_with_rent) }}</td>
+                  <td>{{ bill.due_date.strftime('%b %d, %Y') }}</td>
+                  <td>
+                    {% if bill.is_paid %}
+                      <span class="badge badge--available">Paid</span>
+                    {% else %}
+                      <span class="badge badge--unpaid">Unpaid</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="ub-actions">
+                      <form method="post" action="{{ url_for('admin.notify_utility_bill', bill_id=bill.id) }}" style="display: inline;">
+                        <input type="hidden" name="billing_month" value="{{ billing_month }}">
+                        <button type="submit" class="btn btn--sm btn--ghost" title="Send bill reminder now">Send Reminder</button>
+                      </form>
+                      {% if not bill.is_paid %}
+                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark this bill as fully paid?');">
+                          <button type="submit" class="btn btn--sm btn--primary" title="Mark as paid">Mark Paid</button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+          <button type="submit" form="utilityBulkForm" class="btn btn--primary">Save All Bills</button>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <p class="muted">No active residential tenants found.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <script>
+    // Live-recompute the displayed total as admin edits electric/water,
+    // before saving — carried-over + rent stay fixed (read from the row's
+    // own data-base-total), only water/electric move.
+    document.querySelectorAll('.ub-input').forEach(function (input) {
+      input.addEventListener('input', function () {
+        var billId = input.getAttribute('data-row');
+        var row = input.closest('tr');
+        if (!row) return;
+        var waterInput = row.querySelector('input[data-field="water"]');
+        var electricInput = row.querySelector('input[data-field="electric"]');
+        var water = parseFloat(waterInput.value) || 0;
+        var electric = parseFloat(electricInput.value) || 0;
+        var base = parseFloat(row.getAttribute('data-base-total')) || 0;
+        var totalCell = document.getElementById('total_' + billId);
+        if (!totalCell) return;
+        var newTotal = base + water + electric;
+        totalCell.textContent = '₱' + newTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      });
+    });
+  </script>
+{% endblock %}

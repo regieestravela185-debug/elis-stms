@@ -173,12 +173,19 @@ def emit_payment_notification(user_id, payment_data):
     """Emit payment notification to specific tenant (by User.id) and all admins"""
     # Notify tenant
     socketio.emit('payment_received', payment_data, room=f'tenant_{user_id}')
-    
+
     # Notify all admins
     socketio.emit('new_payment', payment_data, room='admin')
-    
+
     # Trigger unit status update
     emit_unit_status_update()
+
+
+def emit_utility_bill_notification(user_id, bill_data):
+    """Live in-app push to one specific tenant (by User.id) when their
+    monthly utility bill reminder is sent — picked up by the notification
+    bell listener in dashboard_base.html."""
+    socketio.emit('utility_bill_reminder', bill_data, room=f'tenant_{user_id}')
 
 
 def emit_concern_notification(concern_data):

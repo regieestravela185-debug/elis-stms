@@ -7,8 +7,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask
 
 from .extensions import db
-from .models import Payment, Reservation, ReservationStatus, TenantProfile, Unit, UnitStatus
-from .email_helper import send_payment_reminder_email, send_renewal_reminder_email
+from .models import Payment, Reservation, ReservationStatus, TenantProfile, Unit, UnitStatus, UtilityBill
+from .email_helper import send_payment_reminder_email, send_renewal_reminder_email, send_utility_bill_reminder_email
+from .billing_utils import get_or_create_utility_bill
+from .socket_events import emit_utility_bill_notification
 
 
 _scheduler: BackgroundScheduler | None = None
@@ -115,6 +117,81 @@ def send_renewal_reminder_now(app: Flask, tenant_profile_id: int) -> bool:
         return True
 
 
+def _send_utility_bill_reminder(profile: TenantProfile, bill: UtilityBill) -> None:
+    """Shared send step used by both the daily job and the manual trigger —
+    email + in-app push, then stamp reminder_sent_at (caller commits)."""
+    user = profile.user
+    unit_code = profile.unit.unit_code if profile.unit else "N/A"
+    days_remaining = (bill.due_date - date.today()).days
+    send_utility_bill_reminder_email(
+        user.full_name, user.email, unit_code, bill.due_date, days_remaining,
+        float(bill.rent_amount_snapshot), float(bill.electric_amount),
+        float(bill.water_amount), float(bill.carried_over_amount),
+    )
+    emit_utility_bill_notification(user.id, {
+        "title": f"Bill reminder — Unit {unit_code}",
+        "subtitle": f"₱{bill.grand_total_with_rent:,.2f} due {bill.due_date.strftime('%b %d, %Y')}",
+    })
+    bill.reminder_sent_at = date.today()
+
+
+def send_utility_bill_reminders(app: Flask) -> dict:
+    """Daily check: for every active RESIDENTIAL tenant, get/create this
+    month's utility bill (see get_or_create_utility_bill — this is also
+    where carry-over from an unpaid prior month gets computed) and, if it's
+    unpaid with 0-7 days until due_date and not already reminded today,
+    email + in-app push the itemized Rent+Electric+Water(+carry-over)=Total.
+    Commercial tenants are never included — see UtilityBill's docstring."""
+    with app.app_context():
+        today = date.today()
+        sent_count = 0
+
+        profiles = (
+            db.session.query(TenantProfile)
+            .join(Unit, TenantProfile.unit_id == Unit.id)
+            .filter(TenantProfile.is_active == True, Unit.type == "residential")  # noqa: E712
+            .all()
+        )
+        for profile in profiles:
+            user = profile.user
+            if not user or not user.email or not profile.contract_start:
+                continue
+
+            billing_month = today.strftime("%Y-%m")
+            bill = get_or_create_utility_bill(profile, billing_month)
+            if bill.is_paid:
+                continue
+
+            days_until_due = (bill.due_date - today).days
+            if 0 <= days_until_due <= 7 and bill.reminder_sent_at != today:
+                _send_utility_bill_reminder(profile, bill)
+                sent_count += 1
+
+        db.session.commit()
+        return {"utility_reminders": sent_count}
+
+
+def send_utility_bill_reminder_now(app: Flask, utility_bill_id: int) -> bool:
+    """Admin-button-triggered single-bill version of the utility reminder —
+    used by the "Send Reminder Now" action on the Utility Billing page.
+    Bypasses the 7-day window, still deduped to once per day. Returns
+    whether an email was actually sent."""
+    with app.app_context():
+        bill = db.session.get(UtilityBill, utility_bill_id)
+        if not bill or bill.is_paid:
+            return False
+        profile = bill.tenant_profile
+        user = profile.user if profile else None
+        if not user or not user.email:
+            return False
+        if bill.reminder_sent_at == date.today():
+            return False
+
+        _send_utility_bill_reminder(profile, bill)
+        db.session.commit()
+        return True
+
+
 def _auto_cancel_expired_reservations(app: Flask) -> None:
     with app.app_context():
         hours = int(app.config.get("RESERVATION_AUTO_CANCEL_HOURS", 48))
@@ -166,6 +243,16 @@ def start_scheduler(app: Flask) -> None:
         minute=0,
         args=[app],
         id="daily_tenant_reminders",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        func=send_utility_bill_reminders,
+        trigger="cron",
+        hour=8,
+        minute=0,
+        args=[app],
+        id="daily_utility_bill_reminders",
         replace_existing=True,
         max_instances=1,
     )

@@ -635,6 +635,114 @@ The Elis Center Management
     send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
 
 
+def send_utility_bill_reminder_email(
+    tenant_name, tenant_email, unit_code, due_date, days_remaining,
+    rent_amount, electric_amount, water_amount, carried_over_amount,
+):
+    """Monthly Rent + Electric + Water reminder, 7 days before due date.
+    Unlike rent, utilities have no late penalty — an unpaid balance simply
+    carries into next month's bill, so the carried-over line (and any
+    "previous balance" language) only appears when there actually is one."""
+    from datetime import date
+
+    total = float(rent_amount) + float(electric_amount) + float(water_amount) + float(carried_over_amount)
+
+    if days_remaining <= 0:
+        subject = "Bill Due Today - The Elis Center"
+        due_text = "is due today"
+    else:
+        subject = f"Monthly Bill Reminder - {days_remaining} Day{'s' if days_remaining != 1 else ''} Left"
+        due_text = f"is due in {days_remaining} day{'s' if days_remaining != 1 else ''}"
+
+    carried_over_line_text = (
+        f"Carried Over (from last month): ₱{carried_over_amount:,.2f}\n" if carried_over_amount else ""
+    )
+    carried_over_line_html = (
+        f"""<tr>
+                    <td style="padding: 6px 0; color: #b45309;">Carried Over (from last month)</td>
+                    <td style="padding: 6px 0; color: #b45309; text-align: right; font-weight: 600;">₱{carried_over_amount:,.2f}</td>
+                </tr>""" if carried_over_amount else ""
+    )
+
+    text_content = f"""
+Dear {tenant_name},
+
+Your monthly bill for Unit {unit_code} {due_text} ({due_date.strftime('%B %d, %Y')}).
+
+Monthly Rent: ₱{rent_amount:,.2f}
+Electric: ₱{electric_amount:,.2f}
+Water: ₱{water_amount:,.2f}
+{carried_over_line_text}Total Amount Due: ₱{total:,.2f}
+
+Please settle your payment before the due date. If you have already paid, you may disregard this reminder.
+
+Thank you,
+The Elis Center Management
+"""
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Bill Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Monthly Bill Reminder</h2>
+            <div style="background: rgba(245, 158, 11, 0.1); border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 48px; font-weight: 700; color: #f59e0b;">⏰</span>
+                <p style="margin: 12px 0 0 0; color: #b45309; font-size: 18px; font-weight: 600;">Bill {due_text.replace('is ', '').capitalize()}</p>
+            </div>
+            <p style="margin: 0 0 8px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">
+                Your monthly bill for <strong>Unit {unit_code}</strong> {due_text} on <strong>{due_date.strftime('%B %d, %Y')}</strong>.
+            </p>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 24px 0;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #666666;">Monthly Rent</td>
+                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{rent_amount:,.2f}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #666666;">Electric</td>
+                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{electric_amount:,.2f}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #666666;">Water</td>
+                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{water_amount:,.2f}</td>
+                    </tr>
+                    {carried_over_line_html}
+                    <tr>
+                        <td colspan="2" style="border-top: 1px solid #e5e5e5; padding-top: 10px;"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #1a1a1a; font-size: 16px; font-weight: 700;">Total Amount Due</td>
+                        <td style="padding: 6px 0; color: #D7B35B; text-align: right; font-size: 20px; font-weight: 700;">₱{total:,.2f}</td>
+                    </tr>
+                </table>
+            </div>
+            <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
+                Please settle your payment before the due date above. If you have already paid, you may disregard this reminder.
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
 def send_inquiry_confirmation_email(full_name, email, subject_text, message_text):
     """Send inquiry confirmation email to the person who submitted the inquiry"""
     from datetime import datetime

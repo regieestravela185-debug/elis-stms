@@ -482,6 +482,14 @@
                     <a href="{{ url_for('admin.generate_kasunduan_form', profile_id=item.profile.id) }}" class="btn btn--ghost btn--sm" style="color: #2563eb; border-color: rgba(59,130,246,0.4);">
                       Generate Kasunduan
 </a>
+                    <button
+                      type="button"
+                      class="btn btn--ghost btn--sm"
+                      style="color: #2563eb; border-color: rgba(37,99,235,0.35);"
+                      onclick="openUtilityBillsModal({{ item.profile.id }}, '{{ item.profile.user.full_name|e }}')"
+                    >
+                      Utility Bills
+</button>
                   {% else %}
                     <a href="{{ url_for('admin.generate_contract_form', profile_id=item.profile.id) }}" class="btn btn--ghost btn--sm" style="color: #b8922f; border-color: rgba(215,179,91,0.4);">
                       Generate Contract
@@ -558,6 +566,41 @@
   }
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeProcessMoveOutModal();
+  });
+</script>
+
+<!-- Utility Bills Modal (residential only) -->
+<div class="modal" id="utilityBillsModal" hidden>
+  <div class="modal__backdrop" onclick="closeUtilityBillsModal()"></div>
+  <div class="modal__card modal__card--wide">
+    <button type="button" class="modal__x" onclick="closeUtilityBillsModal()">×</button>
+    <h3 class="modal__title">Utility Bills</h3>
+    <p class="muted" id="utilityBillsTenantName" style="margin-top: -8px; margin-bottom: 16px; font-size: 13px;"></p>
+    <div id="utilityBillsContent">
+      <div style="text-align: center; padding: 40px 0;">
+        <div class="spinner"></div>
+        <p class="muted">Loading…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openUtilityBillsModal(profileId, tenantName) {
+    document.getElementById('utilityBillsModal').hidden = false;
+    document.getElementById('utilityBillsTenantName').textContent = tenantName;
+    var content = document.getElementById('utilityBillsContent');
+    content.innerHTML = '<div style="text-align:center;padding:40px 0;"><div class="spinner"></div><p class="muted">Loading…</p></div>';
+    fetch('/admin/tenants/' + profileId + '/utility-bills')
+      .then(function (r) { return r.text(); })
+      .then(function (html) { content.innerHTML = html; })
+      .catch(function () { content.innerHTML = '<p class="muted">Failed to load utility bills. Please try again.</p>'; });
+  }
+  function closeUtilityBillsModal() {
+    document.getElementById('utilityBillsModal').hidden = true;
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeUtilityBillsModal();
   });
 </script>
 

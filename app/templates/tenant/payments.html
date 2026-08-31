@@ -47,6 +47,43 @@
     </div>
   </div>
 
+  {% if current_utility_bill %}
+    <!-- Current Month's Bill: Rent + Electric + Water (+ carried over) -->
+    <div class="card" style="margin-bottom: 24px; padding: 24px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 16px;">This Month's Bill</h3>
+        <span class="muted" style="font-size: 13px;">Due {{ current_utility_bill.due_date.strftime('%b %d, %Y') }}</span>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <tr>
+          <td style="padding: 6px 0; color: var(--muted);">Monthly Rent</td>
+          <td style="padding: 6px 0; text-align: right; font-weight: 600;">₱{{ "{:,.2f}".format(current_utility_bill.rent_amount_snapshot|float) }}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: var(--muted);">Electric</td>
+          <td style="padding: 6px 0; text-align: right; font-weight: 600;">₱{{ "{:,.2f}".format(current_utility_bill.electric_amount|float) }}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: var(--muted);">Water</td>
+          <td style="padding: 6px 0; text-align: right; font-weight: 600;">₱{{ "{:,.2f}".format(current_utility_bill.water_amount|float) }}</td>
+        </tr>
+        {% if current_utility_bill.carried_over_amount %}
+          <tr>
+            <td style="padding: 6px 0; color: #b45309;">Carried Over (from last month)</td>
+            <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #b45309;">₱{{ "{:,.2f}".format(current_utility_bill.carried_over_amount|float) }}</td>
+          </tr>
+        {% endif %}
+        <tr>
+          <td colspan="2" style="border-top: 1px solid var(--border); padding-top: 10px;"></td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-size: 16px; font-weight: 700;">Total Amount Due</td>
+          <td style="padding: 6px 0; text-align: right; font-size: 20px; font-weight: 700; color: #D7B35B;">₱{{ "{:,.2f}".format(current_utility_bill.grand_total_with_rent) }}</td>
+        </tr>
+      </table>
+    </div>
+  {% endif %}
+
   <!-- Submit Bank Transfer Proof -->
   <div class="card" style="margin-bottom: 24px; padding: 20px;">
     <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">

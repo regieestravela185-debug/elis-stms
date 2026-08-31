@@ -832,7 +832,20 @@ def payments():
         'pending_count': pending_count,
     }
 
-    return render_template("tenant/payments.html", payments=payments, pagination=pagination, stats=stats, profile=profile)
+    # Current unpaid utility bill (residential only — see UtilityBill docstring),
+    # if any, for the itemized Rent+Electric+Water=Total card.
+    from ...models import UtilityBill
+    current_utility_bill = (
+        db.session.query(UtilityBill)
+        .filter(UtilityBill.tenant_profile_id == profile.id, UtilityBill.is_paid == False)  # noqa: E712
+        .order_by(UtilityBill.billing_month.desc())
+        .first()
+    )
+
+    return render_template(
+        "tenant/payments.html", payments=payments, pagination=pagination, stats=stats,
+        profile=profile, current_utility_bill=current_utility_bill,
+    )
 
 
 @bp.post("/payments/submit-proof")
