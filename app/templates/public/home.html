@@ -1007,23 +1007,28 @@
 
     .building-header__top {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 18px;
-      margin-bottom: 18px;
+      text-align: center;
+      gap: 2px;
+      margin-bottom: 20px;
     }
 
     .building-header__code {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 44px;
+      font-size: 42px;
       font-weight: 700;
       line-height: 1;
-      flex-shrink: 0;
     }
 
+    /* Same italic-serif treatment as the hero's "effortlessly managed" line. */
     .building-header__name {
-      font-size: 18px;
-      font-weight: 700;
-      margin: 0 0 4px;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 22px;
+      color: #FBE9C4;
+      margin: 4px 0 0;
     }
 
     .building-header__meta {
@@ -1032,6 +1037,7 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
       opacity: 0.85;
+      margin-top: 6px;
     }
 
     /* Unit Inquiry Form */
@@ -1639,6 +1645,7 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      justify-content: center;
     }
 
     .floor-tab {
@@ -2563,10 +2570,8 @@
           <div class="building-header building-header--{{ b_type }}">
             <div class="building-header__top">
               <span class="building-header__code">{{ building.code }}</span>
-              <div class="building-header__info">
-                <h3 class="building-header__name">{{ building.name }}</h3>
-                <span class="building-header__meta">{{ b_type|title }} &middot; {{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }} &middot; {{ max_floor }} floor{{ 's' if max_floor != 1 else '' }}</span>
-              </div>
+              <h3 class="building-header__name">{{ building.name }}</h3>
+              <span class="building-header__meta">{{ b_type|title }} &middot; {{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }} &middot; {{ max_floor }} floor{{ 's' if max_floor != 1 else '' }}</span>
             </div>
             <div class="floor-tabs">
               <button class="floor-tab floor-tab--active" data-floor="1">1st Floor</button>

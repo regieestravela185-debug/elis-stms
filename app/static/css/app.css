@@ -1298,17 +1298,6 @@ body.page-home .nav__link{
   box-shadow: var(--shadow);
   padding:18px;
 }
-.building-header{
-  margin-bottom:14px;
-  padding-bottom:10px;
-  border-bottom:1px solid var(--border);
-}
-.building-header h3{
-  font-size:18px;
-  font-weight:800;
-  letter-spacing:-.01em;
-  color: var(--gold2);
-}
 .building-units{
   display: block;
 }
