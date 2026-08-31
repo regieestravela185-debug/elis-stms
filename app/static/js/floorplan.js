@@ -2,19 +2,17 @@ let currentBuilding = null;
 let currentFloor = "all";
 
 function applyFilters() {
-  const tiles = document.querySelectorAll(".unit-tile");
-  tiles.forEach((t) => {
-    const b = t.getAttribute("data-building");
-    const f = t.getAttribute("data-floor");
+  // Each floor-section now belongs to exactly one building+floor (even
+  // when it has zero units, rendered as an empty-state placeholder), so
+  // sections are filtered directly instead of being hidden based on
+  // whether they happen to contain a visible tile — a floor with
+  // genuinely no units yet must still show up, not disappear.
+  document.querySelectorAll(".floor-section").forEach((sec) => {
+    const b = sec.getAttribute("data-building");
+    const f = sec.getAttribute("data-floor");
     const buildingMatch = !currentBuilding || b === currentBuilding;
     const floorMatch = currentFloor === "all" || f === currentFloor;
-    t.style.display = buildingMatch && floorMatch ? "" : "none";
-  });
-
-  // Hide empty floor sections
-  document.querySelectorAll(".floor-section").forEach((sec) => {
-    const visibleTiles = sec.querySelectorAll('.unit-tile:not([style*="display: none"])');
-    sec.style.display = visibleTiles.length > 0 ? "" : "none";
+    sec.style.display = buildingMatch && floorMatch ? "" : "none";
   });
 }
 
@@ -22,11 +20,12 @@ function rebuildFloorPills(buildingId) {
   const bar = document.getElementById("floorFilterBar");
   if (!bar) return;
 
-  // Collect unique floors for this building
+  // Collect unique floors for this building (from the sections
+  // themselves, since every floor up to the building's limit has one).
   const floors = new Set();
-  document.querySelectorAll(".unit-tile").forEach((t) => {
-    if (t.getAttribute("data-building") === buildingId) {
-      floors.add(t.getAttribute("data-floor"));
+  document.querySelectorAll(".floor-section").forEach((sec) => {
+    if (sec.getAttribute("data-building") === buildingId) {
+      floors.add(sec.getAttribute("data-floor"));
     }
   });
 

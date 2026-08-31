@@ -1372,7 +1372,14 @@ def floorplan():
             if profile.user:
                 tenant_by_unit[profile.unit_id] = profile.user.full_name
 
-    return render_template("admin/floorplan.html", buildings=buildings, units=units, tenant_by_unit=tenant_by_unit, building_unit_types=building_unit_types)
+    return render_template(
+        "admin/floorplan.html",
+        buildings=buildings,
+        units=units,
+        tenant_by_unit=tenant_by_unit,
+        building_unit_types=building_unit_types,
+        building_floor_limits=building_floor_limits,
+    )
 
 
 @bp.get("/units")

@@ -485,6 +485,19 @@
       margin-bottom: 16px;
       animation: fadeInScale 0.3s ease;
     }
+
+    /* Floors with no units yet still render (so the building's full floor
+       count is always visible) — shown as a quiet dashed placeholder
+       instead of just disappearing. */
+    .empty-floor-state {
+      padding: 18px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.015);
+    }
   </style>
 {% endblock %}
 
@@ -572,24 +585,25 @@
           <button class="floor-pill is-active" data-floor="all" type="button">All Floors</button>
 </div>
 
-        {# Group units by floor #}
-        {% set floors_grouped = {} %}
+        {# Group units by building + floor. Every floor 1..max_floor for
+           every building gets rendered (as an empty state if it has no
+           units yet) instead of only floors that already have a unit —
+           otherwise a building's later floors just silently vanish from
+           the page the moment it has zero units on them. #}
+        {% set units_by_building_floor = {} %}
         {% for u in units %}
-          {% set fl = u.floor or 0 %}
-          {% if floors_grouped.update({fl: floors_grouped.get(fl, []) + [u]}) %}{% endif %}
+          {% set _ = units_by_building_floor.setdefault(u.building_id, {}).setdefault(u.floor or 0, []).append(u) %}
         {% endfor %}
 
-        <div class="floorplan__grid" id="unitGrid">
-          {% for floor_num in floors_grouped.keys()|sort %}
-            <div class="floor-section" data-floor="{{ floor_num }}" style="grid-column: 1 / -1; margin-top: 12px;">
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 8px 14px; background: linear-gradient(135deg, rgba(215,179,91,0.12), rgba(215,179,91,0.04)); border-left: 4px solid #D7B35B; border-radius: 6px;">
-                <strong style="font-size: 15px; color: #B8962E;">
-                  {% if floor_num == 0 %}Ground / Unassigned{% else %}Floor {{ floor_num }}{% endif %}
-</strong>
-                <span class="muted" style="font-size: 12px;">{{ floors_grouped[floor_num]|length }} unit(s)</span>
+        {% macro floor_section(b, floor_num, floor_units, label) %}
+          <div class="floor-section" data-building="{{ b.id }}" data-floor="{{ floor_num }}" style="grid-column: 1 / -1; margin-top: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 8px 14px; background: linear-gradient(135deg, rgba(215,179,91,0.12), rgba(215,179,91,0.04)); border-left: 4px solid #D7B35B; border-radius: 6px;">
+              <strong style="font-size: 15px; color: #B8962E;">{{ label }}</strong>
+              <span class="muted" style="font-size: 12px;">{{ floor_units|length }} unit(s)</span>
 </div>
+            {% if floor_units %}
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
-                {% for u in floors_grouped[floor_num] %}
+                {% for u in floor_units %}
                   {% set tenant_name = tenant_by_unit.get(u.id) %}
                   {% set unit_type = 'commercial' if 'commercial' in (u.type or '')|lower else 'residential' %}
                   <button
@@ -609,7 +623,22 @@
 </button>
                 {% endfor %}
 </div>
+            {% else %}
+              <div class="empty-floor-state">No units added on this floor yet.</div>
+            {% endif %}
 </div>
+        {% endmacro %}
+
+        <div class="floorplan__grid" id="unitGrid">
+          {% for b in buildings %}
+            {% set max_floor = building_floor_limits.get(b.id, 4) %}
+            {% for floor_num in range(1, max_floor + 1) %}
+              {{ floor_section(b, floor_num, units_by_building_floor.get(b.id, {}).get(floor_num, []), "Floor " ~ floor_num) }}
+            {% endfor %}
+            {% set unassigned = units_by_building_floor.get(b.id, {}).get(0, []) %}
+            {% if unassigned %}
+              {{ floor_section(b, 0, unassigned, "Ground / Unassigned") }}
+            {% endif %}
           {% endfor %}
 </div>
 </div>
