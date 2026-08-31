@@ -683,9 +683,11 @@
 
     .building-section__header {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 22px;
+      text-align: center;
+      gap: 6px;
+      margin-bottom: 30px;
     }
 
     .building-section__icon {
@@ -697,6 +699,7 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+      margin-bottom: 4px;
     }
 
     .building-section__icon--residential {
@@ -709,18 +712,30 @@
       color: white;
     }
 
+    /* Same premium treatment as the hero's "effortlessly managed"
+       accent — italic serif in soft refined gold — reused here so the
+       section labels read as part of the same design language. */
     .building-section__title {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text);
+      font-style: italic;
+      font-size: 30px;
+      font-weight: 500;
+      color: #B8922F;
       margin: 0;
     }
 
     .building-section__subtitle {
       font-size: 13px;
       color: var(--muted);
-      margin: 2px 0 0;
+      margin: 0;
+    }
+
+    .building-section__divider {
+      display: block;
+      width: 52px;
+      height: 2px;
+      margin-top: 10px;
+      background: linear-gradient(90deg, transparent, #D7B35B, transparent);
     }
 
     .building-sections .building-section--commercial {
@@ -732,6 +747,19 @@
       flex-wrap: wrap;
       justify-content: center;
       gap: 24px;
+    }
+
+    /* Residential: force a balanced 2x2 instead of an uneven 3+1 wrap. */
+    .building-grid--pairs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(260px, 340px));
+      justify-content: center;
+    }
+
+    @media (max-width: 640px) {
+      .building-grid--pairs {
+        grid-template-columns: minmax(0, 340px);
+      }
     }
 
     .building-box {
@@ -2394,12 +2422,11 @@
           <div class="building-section__icon building-section__icon--residential">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           </div>
-          <div>
-            <h3 class="building-section__title">Residential</h3>
-            <p class="building-section__subtitle">Buildings 1&ndash;4 &middot; long-term studio units</p>
-          </div>
+          <h3 class="building-section__title">Residential</h3>
+          <p class="building-section__subtitle">Buildings 1&ndash;4 &middot; long-term studio units</p>
+          <span class="building-section__divider"></span>
         </div>
-        <div class="building-grid">
+        <div class="building-grid building-grid--pairs">
           {% for building in residential_buildings %}
             <button
               type="button"
@@ -2427,10 +2454,9 @@
           <div class="building-section__icon building-section__icon--commercial">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
           </div>
-          <div>
-            <h3 class="building-section__title">Commercial</h3>
-            <p class="building-section__subtitle">Building 5 &middot; business &amp; retail spaces</p>
-          </div>
+          <h3 class="building-section__title">Commercial</h3>
+          <p class="building-section__subtitle">Building 5 &middot; business &amp; retail spaces</p>
+          <span class="building-section__divider"></span>
         </div>
         <div class="building-grid">
           {% for building in commercial_buildings %}
