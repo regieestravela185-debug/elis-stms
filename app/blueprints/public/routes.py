@@ -21,6 +21,8 @@ def home():
         building.id: "commercial" if building.code == "B5" else "residential"
         for building in buildings
     }
+    residential_buildings = [b for b in buildings if building_unit_types.get(b.id) == "residential"]
+    commercial_buildings = [b for b in buildings if building_unit_types.get(b.id) == "commercial"]
     # Exclude archived units from public view
     units = (
         db.session.query(Unit)
@@ -192,6 +194,8 @@ def home():
         otp_target_email=target_email,
         otp_dev_code=dev_otp,
         buildings=buildings,
+        residential_buildings=residential_buildings,
+        commercial_buildings=commercial_buildings,
         building_floor_limits=building_floor_limits,
         building_unit_types=building_unit_types,
         building_unit_counts=building_unit_counts,

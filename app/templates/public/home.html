@@ -669,17 +669,69 @@
       background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
     }
 
-    /* Building picker — B1-B3 on one row, B4-B5 wrap to a second row
-       (flexbox self-centers both rows instead of a fixed grid). Clicking
-       a box opens the full building/floor/unit browser in a modal. */
+    /* Building picker — grouped into Residential / Commercial sections.
+       Within each, boxes wrap 3-then-2 via flexbox self-centering.
+       Clicking a box opens the full floor/unit browser in a modal. */
+    .building-sections {
+      max-width: 1200px;
+      margin: 32px auto 0;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 44px;
+    }
+
+    .building-section__header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .building-section__icon {
+      flex-shrink: 0;
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .building-section__icon--residential {
+      background: linear-gradient(135deg, #4f8cff, #2563eb);
+      color: white;
+    }
+
+    .building-section__icon--commercial {
+      background: linear-gradient(135deg, #f5a742, #c2650b);
+      color: white;
+    }
+
+    .building-section__title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .building-section__subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 2px 0 0;
+    }
+
+    .building-sections .building-section--commercial {
+      transition-delay: 0.15s;
+    }
+
     .building-grid {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 24px;
-      max-width: 1200px;
-      margin: 28px auto 0;
-      padding: 0 20px;
     }
 
     .building-box {
@@ -714,14 +766,67 @@
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    /* Diagonal sheen sweep on hover */
+    .building-box::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -60%;
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+      transform: skewX(-20deg);
+      transition: left 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .building-box:hover::after {
+      left: 130%;
+    }
+
     .building-box:hover {
       transform: translateY(-8px);
       box-shadow: 0 20px 44px rgba(184, 146, 47, 0.18);
       border-color: rgba(184, 146, 47, 0.35);
     }
 
+    .building-box--residential:hover {
+      box-shadow: 0 20px 44px rgba(37, 99, 235, 0.18);
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    .building-box--commercial:hover {
+      box-shadow: 0 20px 44px rgba(194, 101, 11, 0.18);
+      border-color: rgba(194, 101, 11, 0.3);
+    }
+
     .building-box:hover::before {
       transform: scaleX(1);
+    }
+
+    .building-box__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .building-box:hover .building-box__icon {
+      transform: scale(1.08) rotate(-4deg);
+    }
+
+    .building-box__icon--residential {
+      background: rgba(37, 99, 235, 0.1);
+      color: #2563eb;
+    }
+
+    .building-box__icon--commercial {
+      background: rgba(194, 101, 11, 0.1);
+      color: #c2650b;
     }
 
     .building-box__code {
@@ -1436,32 +1541,40 @@
     .announcement-badge-rule-update { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
     .announcement-badge-default { background: rgba(156, 163, 175, 0.15); color: #6b7280; border: 1px solid rgba(156, 163, 175, 0.3); }
 
-    /* Units Filter */
+    /* Units Filter — refined segmented control */
     .units-filter {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      display: inline-flex;
+      gap: 4px;
+      margin-top: 16px;
+      padding: 5px;
+      background: rgba(0, 0, 0, 0.035);
+      border-radius: 999px;
     }
 
     .filter-btn {
-      padding: 8px 16px;
-      background: rgba(245, 245, 245, 0.5);
-      border: 2px solid transparent;
-      border-radius: 8px;
+      padding: 9px 20px;
+      background: transparent;
+      border: none;
+      border-radius: 999px;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
+      color: var(--muted);
     }
 
     .filter-btn:hover {
-      background: rgba(215, 179, 91, 0.1);
+      color: #B8922F;
     }
 
     .filter-btn--active {
-      background: rgba(215, 179, 91, 0.2);
-      border-color: #D7B35B;
-      color: #D7B35B;
+      background: linear-gradient(135deg, #E7C56B, #B8922F);
+      color: white;
+      box-shadow: 0 4px 14px rgba(184, 146, 47, 0.35);
+    }
+
+    .filter-btn--active:hover {
+      color: white;
     }
 
     /* Floor Tabs */
@@ -2275,24 +2388,72 @@
       </div>
     </div>
 
-    <div class="building-grid">
-      {% for building in buildings %}
-        {% set b_type = building_unit_types.get(building.id, 'residential') %}
-        <button
-          type="button"
-          class="building-box"
-          data-building="{{ building.id }}"
-          aria-haspopup="dialog"
-        >
-          <span class="building-box__code">{{ building.code }}</span>
-          <span class="building-box__name">{{ building.name }}</span>
-          <span class="building-box__meta">
-            <span class="building-box__badge building-box__badge--{{ b_type }}">{{ b_type|title }}</span>
-            <span class="building-box__count">{{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }}</span>
-          </span>
-          <span class="building-box__cta">View units <span aria-hidden="true">&rarr;</span></span>
-        </button>
-      {% endfor %}
+    <div class="building-sections">
+      <div class="building-section reveal">
+        <div class="building-section__header">
+          <div class="building-section__icon building-section__icon--residential">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </div>
+          <div>
+            <h3 class="building-section__title">Residential</h3>
+            <p class="building-section__subtitle">Buildings 1&ndash;4 &middot; long-term studio units</p>
+          </div>
+        </div>
+        <div class="building-grid">
+          {% for building in residential_buildings %}
+            <button
+              type="button"
+              class="building-box building-box--residential"
+              data-building="{{ building.id }}"
+              aria-haspopup="dialog"
+            >
+              <span class="building-box__icon building-box__icon--residential">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              </span>
+              <span class="building-box__code">{{ building.code }}</span>
+              <span class="building-box__name">{{ building.name }}</span>
+              <span class="building-box__meta">
+                <span class="building-box__badge building-box__badge--residential">Residential</span>
+                <span class="building-box__count">{{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }}</span>
+              </span>
+              <span class="building-box__cta">View units <span aria-hidden="true">&rarr;</span></span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="building-section building-section--commercial reveal">
+        <div class="building-section__header">
+          <div class="building-section__icon building-section__icon--commercial">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+          </div>
+          <div>
+            <h3 class="building-section__title">Commercial</h3>
+            <p class="building-section__subtitle">Building 5 &middot; business &amp; retail spaces</p>
+          </div>
+        </div>
+        <div class="building-grid">
+          {% for building in commercial_buildings %}
+            <button
+              type="button"
+              class="building-box building-box--commercial"
+              data-building="{{ building.id }}"
+              aria-haspopup="dialog"
+            >
+              <span class="building-box__icon building-box__icon--commercial">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              </span>
+              <span class="building-box__code">{{ building.code }}</span>
+              <span class="building-box__name">{{ building.name }}</span>
+              <span class="building-box__meta">
+                <span class="building-box__badge building-box__badge--commercial">Commercial</span>
+                <span class="building-box__count">{{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }}</span>
+              </span>
+              <span class="building-box__cta">View units <span aria-hidden="true">&rarr;</span></span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
     </div>
   </section>
 
