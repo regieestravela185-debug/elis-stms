@@ -669,93 +669,124 @@
       background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
     }
 
-    /* Building switcher — one building visible at a time instead of one
-       long vertical stack of every building/floor. */
-    .building-tabs {
+    /* Building picker — B1-B3 on one row, B4-B5 wrap to a second row
+       (flexbox self-centers both rows instead of a fixed grid). Clicking
+       a box opens the full building/floor/unit browser in a modal. */
+    .building-grid {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 12px;
-      max-width: 1400px;
-      margin: 28px auto 36px;
+      gap: 24px;
+      max-width: 1200px;
+      margin: 28px auto 0;
       padding: 0 20px;
     }
 
-    .building-tab {
+    .building-box {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 6px;
-      padding: 14px 22px;
+      gap: 8px;
+      flex: 1 1 300px;
+      max-width: 340px;
+      padding: 28px 26px;
       background: white;
-      border: 1.5px solid rgba(0, 0, 0, 0.08);
-      border-radius: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.07);
+      border-radius: 20px;
       cursor: pointer;
       text-align: left;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease, background 0.25s ease;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
     }
 
-    .building-tab:hover {
-      transform: translateY(-3px);
-      border-color: rgba(215, 179, 91, 0.4);
-      box-shadow: 0 8px 20px rgba(215, 179, 91, 0.14);
+    .building-box::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #E7C56B, #C9A84A);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .building-tab__code {
+    .building-box:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 44px rgba(184, 146, 47, 0.18);
+      border-color: rgba(184, 146, 47, 0.35);
+    }
+
+    .building-box:hover::before {
+      transform: scaleX(1);
+    }
+
+    .building-box__code {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 18px;
-      font-weight: 800;
+      font-size: 34px;
+      font-weight: 700;
       color: var(--text);
-      transition: color 0.25s ease;
+      line-height: 1;
     }
 
-    .building-tab__meta {
+    .building-box__name {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .building-box__meta {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      margin-top: 6px;
     }
 
-    .building-tab__badge {
+    .building-box__badge {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      padding: 3px 8px;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
       border-radius: 999px;
     }
 
-    .building-tab__badge--residential {
+    .building-box__badge--residential {
       background: rgba(80, 160, 255, 0.12);
       color: #2563eb;
     }
 
-    .building-tab__badge--commercial {
+    .building-box__badge--commercial {
       background: rgba(255, 149, 0, 0.12);
       color: #c2650b;
     }
 
-    .building-tab__count {
+    .building-box__count {
       font-size: 12px;
       color: var(--muted);
       font-weight: 600;
     }
 
-    .building-tab--active {
-      background: linear-gradient(135deg, #D7B35B, #C9A84A);
-      border-color: #D7B35B;
-      box-shadow: 0 10px 28px rgba(215, 179, 91, 0.3);
-      transform: translateY(-3px);
+    .building-box__cta {
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #B8922F;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .building-tab--active .building-tab__code,
-    .building-tab--active .building-tab__count {
-      color: white;
+    .building-box__cta span {
+      display: inline-block;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .building-tab--active .building-tab__badge {
-      background: rgba(255, 255, 255, 0.25);
-      color: white;
+    .building-box:hover .building-box__cta span {
+      transform: translateX(4px);
     }
 
     /* Building row swap — only the active building is shown; switching
@@ -794,14 +825,9 @@
     .building-row--entering .units-grid-compact .unit-card:nth-child(n+6) { animation-delay: 0.28s; }
 
     @media (max-width: 640px) {
-      .building-tabs {
-        justify-content: flex-start;
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        padding-bottom: 6px;
-      }
-      .building-tab {
-        flex-shrink: 0;
+      .building-box {
+        flex: 1 1 100%;
+        max-width: 100%;
       }
     }
 
@@ -1763,6 +1789,12 @@
       z-index: 1001;
     }
 
+    .modal__card--xwide {
+      max-width: 1200px;
+      width: min(1200px, calc(100% - 32px));
+      z-index: 1001;
+    }
+
     .modal__backdrop {
       z-index: 999;
     }
@@ -2243,26 +2275,33 @@
       </div>
     </div>
 
-    <div class="building-tabs" role="tablist" aria-label="Select building">
+    <div class="building-grid">
       {% for building in buildings %}
         {% set b_type = building_unit_types.get(building.id, 'residential') %}
         <button
           type="button"
-          class="building-tab{% if loop.first %} building-tab--active{% endif %}"
+          class="building-box"
           data-building="{{ building.id }}"
-          role="tab"
-          aria-selected="{{ 'true' if loop.first else 'false' }}"
+          aria-haspopup="dialog"
         >
-          <span class="building-tab__code">{{ building.code }}</span>
-          <span class="building-tab__meta">
-            <span class="building-tab__badge building-tab__badge--{{ b_type }}">{{ b_type|title }}</span>
-            <span class="building-tab__count">{{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }}</span>
+          <span class="building-box__code">{{ building.code }}</span>
+          <span class="building-box__name">{{ building.name }}</span>
+          <span class="building-box__meta">
+            <span class="building-box__badge building-box__badge--{{ b_type }}">{{ b_type|title }}</span>
+            <span class="building-box__count">{{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }}</span>
           </span>
+          <span class="building-box__cta">View units <span aria-hidden="true">&rarr;</span></span>
         </button>
       {% endfor %}
     </div>
+  </section>
 
-    <div class="units-by-building">
+  <!-- Building Units Modal (opened by clicking a building box on the homepage) -->
+  <div class="modal" id="modalBuildingUnits" hidden aria-modal="true" role="dialog" aria-label="Building units">
+    <div class="modal__backdrop js-modal-close"></div>
+    <div class="modal__card modal__card--xwide modal__card--scrollable">
+      <button type="button" class="modal__x js-modal-close" aria-label="Close">×</button>
+      <div class="units-by-building">
       {% for building in buildings %}
         {% set max_floor = building_floor_limits.get(building.id, 4) %}
         <div class="building-row{% if loop.first %} building-row--active{% endif %}" data-building="{{ building.id }}">
@@ -2576,8 +2615,9 @@
           </div>
         </div>
       {% endfor %}
+      </div>
     </div>
-  </section>
+  </div>
 
   <section class="section section--tight reveal">
     <div class="feature-strip">
