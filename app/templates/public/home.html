@@ -957,6 +957,29 @@
     .building-row--entering .units-grid-compact .unit-card:nth-child(5) { animation-delay: 0.23s; }
     .building-row--entering .units-grid-compact .unit-card:nth-child(n+6) { animation-delay: 0.28s; }
 
+    /* Switching floor tabs crossfades the new floor in (was an instant
+       hard cut) with the same staggered card entrance as opening a
+       building for the first time. */
+    .floor-section--entering {
+      animation: floorSectionIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes floorSectionIn {
+      from { opacity: 0; transform: translateX(14px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .floor-section--entering .units-grid-compact .unit-card {
+      animation: unitCardIn 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+
+    .floor-section--entering .units-grid-compact .unit-card:nth-child(1) { animation-delay: 0.02s; }
+    .floor-section--entering .units-grid-compact .unit-card:nth-child(2) { animation-delay: 0.06s; }
+    .floor-section--entering .units-grid-compact .unit-card:nth-child(3) { animation-delay: 0.1s; }
+    .floor-section--entering .units-grid-compact .unit-card:nth-child(4) { animation-delay: 0.14s; }
+    .floor-section--entering .units-grid-compact .unit-card:nth-child(5) { animation-delay: 0.18s; }
+    .floor-section--entering .units-grid-compact .unit-card:nth-child(n+6) { animation-delay: 0.22s; }
+
     @media (max-width: 640px) {
       .building-box {
         flex: 1 1 100%;
@@ -964,45 +987,51 @@
       }
     }
 
+    /* Building header banner inside the units modal — type-tinted
+       gradient with the code/name/meta up top and the floor tabs below. */
     .building-header {
-      background: white;
-      padding: 32px;
-      border-radius: 16px;
-      border: 1px solid rgba(0, 0, 0, 0.06);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    }
-
-    .building-header h3 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 26px;
-      font-weight: 800;
-      margin-bottom: 20px;
-      letter-spacing: -0.01em;
-      color: var(--text);
-    }
-
-    .floor-tab {
-      padding: 12px 24px;
-      background: white;
-      border: 1.5px solid rgba(0, 0, 0, 0.1);
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .floor-tab:hover {
-      border-color: #D7B35B;
-      color: #D7B35B;
-    }
-
-    .floor-tab--active {
-      background: linear-gradient(135deg, #D7B35B, #C9A84A);
+      padding: 30px 32px 20px;
+      border-radius: 20px 20px 0 0;
       color: white;
-      border-color: #D7B35B;
-      box-shadow: 0 4px 12px rgba(215, 179, 91, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .building-header--residential {
+      background: linear-gradient(135deg, #3b6fd6 0%, #2563eb 55%, #1d4ed8 100%);
+    }
+
+    .building-header--commercial {
+      background: linear-gradient(135deg, #e08a2e 0%, #c2650b 55%, #a4560a 100%);
+    }
+
+    .building-header__top {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .building-header__code {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 44px;
+      font-weight: 700;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .building-header__name {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+
+    .building-header__meta {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.85;
     }
 
     /* Unit Inquiry Form */
@@ -1605,74 +1634,73 @@
       color: white;
     }
 
-    /* Floor Tabs */
+    /* Floor Tabs — translucent glass pills over the colored header banner */
     .floor-tabs {
       display: flex;
       gap: 8px;
-      margin-top: 16px;
+      flex-wrap: wrap;
     }
 
     .floor-tab {
-      padding: 8px 16px;
-      background: rgba(245, 245, 245, 0.5);
-      border: 2px solid transparent;
-      border-radius: 8px;
+      padding: 9px 18px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1.5px solid rgba(255, 255, 255, 0.28);
+      border-radius: 999px;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.85);
     }
 
     .floor-tab:hover {
-      background: rgba(215, 179, 91, 0.1);
+      background: rgba(255, 255, 255, 0.24);
+      color: white;
     }
 
     .floor-tab--active {
-      background: rgba(215, 179, 91, 0.2);
-      border-color: #D7B35B;
-      color: #D7B35B;
+      background: white;
+      border-color: white;
+      color: var(--text);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
     }
 
-    .sticky-floor-nav {
+    /* The whole banner (code/name/floor-tabs) pins to the top of the
+       modal's own scroll area while browsing that building's units. */
+    .building-header {
       position: sticky;
-      top: 80px;
+      top: 0;
       z-index: 100;
-      background: var(--bg);
-      padding: 8px 0;
-      border-radius: 8px;
-    }
-    @media (max-width: 768px){
-      /* Sticky floor tabs pinned mid-scroll looked like a floating card
-         stuck on top of the unit list on small screens — let it scroll
-         normally with the rest of the building card instead. */
-      .sticky-floor-nav{ position: static; top: auto; z-index: auto; }
     }
 
     /* Floor Scroll Container */
     .floor-scroll-container {
       position: relative;
-      display: flex;
-      align-items: center;
-      gap: 12px;
       margin-top: 16px;
       width: 100%;
       max-width: 100%;
     }
 
     .units-scroll {
-      flex: 1 1 auto;
-      min-width: 0;
+      width: 100%;
       overflow-x: auto;
       overflow-y: hidden;
       scroll-behavior: smooth;
+      scroll-snap-type: x proximity;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
       -ms-overflow-style: none;
       position: relative;
+      -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);
+      mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);
     }
 
     .units-scroll::-webkit-scrollbar {
       display: none;
+    }
+
+    .unit-card--compact {
+      scroll-snap-align: start;
     }
 
     /* Prevent page-wide horizontal scroll */
@@ -1689,14 +1717,6 @@
     .building-row {
       max-width: 1400px;
       margin: 0 auto;
-    }
-
-    .building-header {
-      text-align: center;
-    }
-
-    .floor-tabs {
-      justify-content: center;
     }
 
     .units-by-building {
@@ -1728,25 +1748,51 @@
       justify-content: center;
     }
 
+    /* Floating glass scroll buttons — overlay the card row edges (rather
+       than sitting beside it) and only appear on hover/focus, so they
+       don't clutter the row until needed. Always visible on touch. */
     .scroll-btn {
-      width: 40px;
-      height: 40px;
-      background: rgba(215, 179, 91, 0.2);
-      border: 2px solid #D7B35B;
+      position: absolute;
+      top: 50%;
+      width: 42px;
+      height: 42px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 50%;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #D7B35B;
-      transition: all 0.3s ease;
-      flex-shrink: 0;
+      color: var(--text);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+      opacity: 0;
+      transform: translateY(-50%) scale(0.9);
+      transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease, color 0.25s ease;
+      z-index: 15;
+    }
+
+    .scroll-btn--left { left: 6px; }
+    .scroll-btn--right { right: 6px; }
+
+    .floor-scroll-container:hover .scroll-btn,
+    .floor-scroll-container:focus-within .scroll-btn {
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
     }
 
     .scroll-btn:hover {
-      background: #D7B35B;
+      background: #B8922F;
       color: white;
-      transform: scale(1.1);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    @media (hover: none) {
+      .scroll-btn {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+      }
     }
 
     /* Compact Unit Cards */
@@ -1769,12 +1815,6 @@
       background: white;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s ease;
-    }
-
-    /* Ensure scroll buttons are always visible */
-    .scroll-btn {
-      flex-shrink: 0;
-      z-index: 10;
     }
 
     .unit-card--compact:hover {
@@ -1934,6 +1974,33 @@
       max-width: 1200px;
       width: min(1200px, calc(100% - 32px));
       z-index: 1001;
+    }
+
+    /* Building Units modal — the gradient header banner runs edge-to-edge
+       flush with the modal's rounded top, so drop the shared modal
+       padding here and re-add it just around the floor/unit content. */
+    #modalBuildingUnits .modal__card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #modalBuildingUnits .modal__card--scrollable {
+      overflow-y: auto;
+    }
+
+    #modalBuildingUnits .modal__x {
+      z-index: 200;
+      background: rgba(255, 255, 255, 0.22);
+      color: white;
+    }
+
+    #modalBuildingUnits .modal__x:hover {
+      background: rgba(255, 255, 255, 0.36);
+      color: white;
+    }
+
+    #modalBuildingUnits .building-units {
+      padding: 22px 32px 30px;
     }
 
     .modal__backdrop {
@@ -2491,10 +2558,17 @@
       <div class="units-by-building">
       {% for building in buildings %}
         {% set max_floor = building_floor_limits.get(building.id, 4) %}
+        {% set b_type = building_unit_types.get(building.id, 'residential') %}
         <div class="building-row{% if loop.first %} building-row--active{% endif %}" data-building="{{ building.id }}">
-          <div class="building-header">
-            <h3>{{ building.code }} — {{ building.name }}</h3>
-            <div class="floor-tabs sticky-floor-nav">
+          <div class="building-header building-header--{{ b_type }}">
+            <div class="building-header__top">
+              <span class="building-header__code">{{ building.code }}</span>
+              <div class="building-header__info">
+                <h3 class="building-header__name">{{ building.name }}</h3>
+                <span class="building-header__meta">{{ b_type|title }} &middot; {{ building_unit_counts.get(building.id, 0) }} unit{{ 's' if building_unit_counts.get(building.id, 0) != 1 else '' }} &middot; {{ max_floor }} floor{{ 's' if max_floor != 1 else '' }}</span>
+              </div>
+            </div>
+            <div class="floor-tabs">
               <button class="floor-tab floor-tab--active" data-floor="1">1st Floor</button>
               <button class="floor-tab" data-floor="2">2nd Floor</button>
               {% if max_floor >= 3 %}<button class="floor-tab" data-floor="3">3rd Floor</button>{% endif %}

@@ -574,12 +574,18 @@
       buildingRow.querySelectorAll(".floor-tab").forEach((t) => t.classList.remove("floor-tab--active"));
       tab.classList.add("floor-tab--active");
 
-      // Show corresponding floor section
+      // Show corresponding floor section, crossfading it in
       const floor = tab.getAttribute("data-floor");
       buildingRow.querySelectorAll(".floor-section").forEach((section) => {
-        section.classList.remove("floor-section--active");
         if (section.getAttribute("data-floor") === floor) {
-          section.classList.add("floor-section--active");
+          section.classList.add("floor-section--active", "floor-section--entering");
+          section.addEventListener(
+            "animationend",
+            () => section.classList.remove("floor-section--entering"),
+            { once: true }
+          );
+        } else {
+          section.classList.remove("floor-section--active", "floor-section--entering");
         }
       });
     });
