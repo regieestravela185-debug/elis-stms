@@ -1,0 +1,152 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Final Settlement — {{ profile.user.full_name }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <section class="card" style="padding: 24px;">
+    <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 260px;">
+        <h2 style="margin: 0 0 4px 0;">Final Settlement</h2>
+        <p class="muted" style="margin: 0; font-size: 14px;">
+          {{ profile.user.full_name }} &middot; Unit {{ profile.unit.unit_code if profile.unit else '—' }}
+          &middot; moved in {{ profile.contract_start.strftime('%b %d, %Y') if profile.contract_start else '—' }}
+        </p>
+      </div>
+      <a href="{{ url_for('admin.tenant_monitoring') }}" class="btn btn--ghost btn--sm">&lsaquo; Back to Monitoring</a>
+    </div>
+
+    {# ---- move-out date: recorded when the administrator learns of it ---- #}
+    <form method="post" action="{{ url_for('admin.tenant_settlement_save', profile_id=profile.id) }}"
+          style="margin-top: 18px;">
+      <input type="hidden" name="action" value="set_move_out">
+      <div class="settle-moveout">
+        <div>
+          <label class="label">Move-out date</label>
+          <input class="input" type="date" name="moved_out_on"
+                 value="{{ s.moved_out_on.isoformat() if s.moved_out_on else '' }}"
+                 style="max-width: 200px;">
+        </div>
+        <button type="submit" class="btn btn--ghost btn--sm">Save date</button>
+        <p class="muted" style="margin: 0; font-size: 13px; flex: 1; min-width: 240px;">
+          {% if not s.moved_out_on %}
+            Residential tenants are month to month and do not always give notice.
+            Record the date you learned they left — the deposit is then held for
+            one month while the final charges are totalled.
+          {% elif s.is_releasable %}
+            Held since {{ s.moved_out_on.strftime('%b %d, %Y') }}.
+            <strong>The one-month hold ended {{ s.releasable_on.strftime('%b %d, %Y') }}</strong>
+            — the deposit can be released.
+          {% else %}
+            Held until <strong>{{ s.releasable_on.strftime('%b %d, %Y') }}</strong>
+            ({{ s.days_until_releasable }} day{{ 's' if s.days_until_releasable != 1 }} to go).
+          {% endif %}
+        </p>
+      </div>
+    </form>
+
+    {# ---- what is owed ---- #}
+    <h3 style="margin: 26px 0 10px 0; font-size: 16px;">Charges</h3>
+    <div style="overflow-x: auto;">
+      <table class="table" style="min-width: 560px;">
+        <tbody>
+          <tr>
+            <td>
+              Unpaid rent
+              {% if s.rent.count %}
+                <div class="muted" style="font-size: 12px;">
+                  {{ s.rent.count }} month{{ 's' if s.rent.count != 1 }}
+                  ({{ s.rent.months | join(', ') }}) at &#8369;{{ '{:,.2f}'.format(s.rent.rate) }}
+                </div>
+              {% endif %}
+            </td>
+            <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(s.rent.total) }}</td>
+          </tr>
+          <tr>
+            <td>Unpaid electric</td>
+            <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(s.electric_owed) }}</td>
+          </tr>
+          <tr>
+            <td>Unpaid water</td>
+            <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(s.water_owed) }}</td>
+          </tr>
+
+          {% for d in s.damaged %}
+            <tr {% if not d.is_priced %}class="row--attention"{% endif %}>
+              <td>
+                {{ d.label }} &times;{{ d.quantity }}
+                <span class="muted" style="font-size: 12px;">&middot; {{ d.condition }}</span>
+                {% if d.notes %}<div class="muted" style="font-size: 12px;">{{ d.notes }}</div>{% endif %}
+                {% if not d.is_priced %}
+                  <div style="font-size: 12px; color: #b45309;">
+                    No replacement cost recorded — reported but not charged.
+                    <a href="{{ url_for('admin.unit_inventory', unit_id=profile.unit_id) }}">Set it in the inventory</a>.
+                  </div>
+                {% endif %}
+              </td>
+              <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(d.line_total) }}</td>
+            </tr>
+          {% endfor %}
+
+          <tr>
+            <td style="border-top: 2px solid var(--border); font-weight: 700;">Total charges</td>
+            <td class="mono" style="border-top: 2px solid var(--border); text-align: right; font-size: 18px; font-weight: 700; color: #b45309;">
+              &#8369;{{ '{:,.2f}'.format(s.total_owed) }}
+            </td>
+          </tr>
+          <tr>
+            <td>Security deposit held</td>
+            <td class="mono" style="text-align: right; font-size: 18px; font-weight: 700; color: #16a34a;">
+              &#8369;{{ '{:,.2f}'.format(s.deposit) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {% if not s.damaged %}
+      <p class="muted" style="font-size: 13px; margin-top: 10px;">
+        No fixtures are marked damaged or missing.
+        <a href="{{ url_for('admin.unit_inventory', unit_id=profile.unit_id) }}">Check the unit inventory</a>
+        before closing this settlement.
+      </p>
+    {% endif %}
+
+    {# ---- the two ways this can close ---- #}
+    <h3 style="margin: 26px 0 10px 0; font-size: 16px;">How is this being settled?</h3>
+    <div class="settle-options">
+      <form method="post" action="{{ url_for('admin.tenant_settlement_save', profile_id=profile.id) }}"
+            class="settle-option"
+            onsubmit="return confirm('Deduct the charges from the deposit and record the refund?');">
+        <input type="hidden" name="action" value="deduct">
+        <h4>Deduct from the deposit</h4>
+        <p class="muted">The charges come out of the deposit and whatever is left is returned.</p>
+        <div class="settle-figure">Refund to tenant &#8369;{{ '{:,.2f}'.format(s.refund_after_deduction) }}</div>
+        {% if s.shortfall %}
+          <p style="color: #b45309; font-size: 13px; margin: 6px 0 0 0;">
+            The charges exceed the deposit by &#8369;{{ '{:,.2f}'.format(s.shortfall) }},
+            which stays collectible from the tenant.
+          </p>
+        {% endif %}
+        <button type="submit" class="btn btn--primary" style="margin-top: 12px;">Deduct and record</button>
+      </form>
+
+      <form method="post" action="{{ url_for('admin.tenant_settlement_save', profile_id=profile.id) }}"
+            class="settle-option"
+            onsubmit="return confirm('Record that the tenant paid the charges separately, so the full deposit is returned?');">
+        <input type="hidden" name="action" value="tenant_paid">
+        <h4>Tenant pays the charges</h4>
+        <p class="muted">The tenant settles the &#8369;{{ '{:,.2f}'.format(s.total_owed) }} separately and takes the deposit back whole.</p>
+        <div class="settle-figure">Refund to tenant &#8369;{{ '{:,.2f}'.format(s.refund_if_tenant_pays) }}</div>
+        <button type="submit" class="btn btn--ghost" style="margin-top: 12px;">Record as paid by tenant</button>
+      </form>
+    </div>
+
+    {% if not s.is_releasable and s.moved_out_on %}
+      <p class="muted" style="font-size: 13px; margin-top: 14px;">
+        The one-month hold has not ended yet. You can still record the settlement
+        now — this only writes the figures; releasing the money stays your call.
+      </p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

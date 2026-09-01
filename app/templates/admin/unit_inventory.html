@@ -43,7 +43,8 @@
             <tr>
               <th style="width: 34%;">MGA GAMIT / Item</th>
               <th style="width: 14%;">BILANG / Quantity</th>
-              <th style="width: 22%;">KONDISYON / Condition</th>
+              <th style="width: 20%;">KONDISYON / Condition</th>
+              <th style="width: 14%;">Replacement &#8369;</th>
               <th>Notes (optional)</th>
             </tr>
           </thead>
@@ -66,6 +67,12 @@
                   </select>
                 </td>
                 <td>
+                  <input class="input" type="number" min="0" step="0.01"
+                         name="cost_{{ item.id }}"
+                         value="{{ '%.2f'|format(item.replacement_cost|float) if item.replacement_cost else '' }}"
+                         placeholder="0.00" style="max-width: 110px;">
+                </td>
+                <td>
                   <input class="input" type="text" name="notes_{{ item.id }}"
                          value="{{ item.notes or '' }}"
                          placeholder="e.g. bottom bunk rail loose">
@@ -80,7 +87,9 @@
         <p class="muted" style="margin: 0; font-size: 13px; max-width: 560px;">
           Record the condition as it is at move-in. At move-out you compare
           against this, so anything the tenant damaged is evidenced rather than
-          argued.
+          argued. The replacement cost is what a damaged item is charged at in
+          the final settlement &mdash; leave it blank and the damage is still
+          reported, just not automatically charged.
         </p>
         <button type="submit" class="btn btn--primary">Save Inventory</button>
       </div>

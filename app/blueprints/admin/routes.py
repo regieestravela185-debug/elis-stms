@@ -40,7 +40,8 @@ from ...models import (
 )
 from ...inventory import (ensure_unit_inventory, inventory_summary,
                           INVENTORY_CONDITIONS, CONDITION_KEYS)
-from ...billing_utils import get_payment_timeline, payment_standing
+from ...billing_utils import (get_payment_timeline, payment_standing,
+                              final_settlement)
 from ...security import sha256_hex
 from ...predictive_analytics import update_tenant_risk_profile
 from ...ph_holidays import holidays_by_date
@@ -2604,6 +2605,106 @@ def pause_utility_bill_reminders(bill_id: int):
     return redirect(request.referrer or url_for("admin.utility_billing"))
 
 
+@bp.get("/tenants/<int:profile_id>/settlement")
+@login_required
+def tenant_settlement(profile_id: int):
+    """Final statement for a tenant who has moved out: unpaid rent,
+    outstanding electric and water, and damaged or missing fixtures, set
+    against their security deposit.
+
+    Nothing here is applied automatically. Two outcomes are possible and
+    only the administrator knows which happened — the charges come out of
+    the deposit and the balance is returned, or the tenant settles them
+    separately and takes the deposit back whole."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    return render_template(
+        "admin/tenant_settlement.html",
+        profile=profile,
+        s=final_settlement(profile),
+        timeline=get_payment_timeline(profile),
+    )
+
+
+@bp.post("/tenants/<int:profile_id>/settlement")
+@login_required
+def tenant_settlement_save(profile_id: int):
+    """Record the move-out date, or close the settlement one of two ways."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    action = (request.form.get("action") or "").strip()
+
+    if action == "set_move_out":
+        raw = (request.form.get("moved_out_on") or "").strip()
+        try:
+            profile.moved_out_on = datetime.strptime(raw, "%Y-%m-%d").date() if raw else None
+        except ValueError:
+            flash("That move-out date could not be read.", "warning")
+            return redirect(url_for("admin.tenant_settlement", profile_id=profile.id))
+        db.session.commit()
+        if profile.moved_out_on:
+            flash(f"Move-out recorded. The deposit is held until "
+                  f"{profile.deposit_releasable_on:%b %d, %Y} to allow the final "
+                  f"charges to be totalled.", "success")
+        else:
+            flash("Move-out date cleared.", "info")
+        return redirect(url_for("admin.tenant_settlement", profile_id=profile.id))
+
+    st = final_settlement(profile)
+    reservation = st["reservation"]
+    if not reservation:
+        flash("No reservation found for this tenant, so there is no deposit "
+              "record to settle against.", "warning")
+        return redirect(url_for("admin.tenant_settlement", profile_id=profile.id))
+
+    lines = [f"\u20b1{st['rent']['total']:,.2f} — unpaid rent "
+             f"({st['rent']['count']} month(s))"] if st["rent"]["total"] else []
+    if st["electric_owed"]:
+        lines.append(f"\u20b1{st['electric_owed']:,.2f} — unpaid electric")
+    if st["water_owed"]:
+        lines.append(f"\u20b1{st['water_owed']:,.2f} — unpaid water")
+    for d in st["damaged"]:
+        if d["is_priced"]:
+            lines.append(f"\u20b1{d['line_total']:,.2f} — {d['label']} "
+                         f"x{d['quantity']} ({d['condition']})")
+
+    if action == "deduct":
+        reservation.deposit_deductions = "\n".join(f"• {l}" for l in lines) or None
+        reservation.deposit_return_amount = st["refund_after_deduction"]
+        reservation.deposit_return_date = date.today()
+        note = (f"Settled {date.today():%Y-%m-%d} by {current_user.full_name}: "
+                f"charges \u20b1{st['total_owed']:,.2f} deducted from deposit "
+                f"\u20b1{st['deposit']:,.2f}.")
+        if st["shortfall"]:
+            note += f" Shortfall \u20b1{st['shortfall']:,.2f} still collectible."
+        reservation.deposit_notes = note
+        db.session.commit()
+        flash(f"Charges deducted. Refund due to tenant: "
+              f"\u20b1{st['refund_after_deduction']:,.2f}."
+              + (f" A shortfall of \u20b1{st['shortfall']:,.2f} remains uncovered."
+                 if st["shortfall"] else ""), "success")
+
+    elif action == "tenant_paid":
+        reservation.deposit_deductions = None
+        reservation.deposit_return_amount = st["deposit"]
+        reservation.deposit_return_date = date.today()
+        reservation.deposit_notes = (
+            f"Settled {date.today():%Y-%m-%d} by {current_user.full_name}: tenant "
+            f"paid the \u20b1{st['total_owed']:,.2f} in charges separately, so the "
+            f"deposit of \u20b1{st['deposit']:,.2f} returns in full.")
+        db.session.commit()
+        flash(f"Recorded as settled by the tenant. Full deposit of "
+              f"\u20b1{st['deposit']:,.2f} is returnable.", "success")
+    else:
+        flash("Unknown action.", "warning")
+
+    return redirect(url_for("admin.tenant_settlement", profile_id=profile.id))
+
+
 @bp.get("/tenants/<int:profile_id>/payment-history")
 @login_required
 def tenant_payment_history(profile_id: int):
@@ -2690,9 +2791,15 @@ def unit_inventory_save(unit_id: int):
         if condition not in CONDITION_KEYS:
             condition = row.condition
         note = (request.form.get(f"notes_{row_id}") or "").strip()[:255] or None
+        try:
+            cost = max(0.0, float(request.form.get(f"cost_{row_id}") or 0))
+        except ValueError:
+            cost = float(row.replacement_cost or 0)
 
-        if (row.quantity, row.condition, row.notes) != (quantity, condition, note):
+        if (row.quantity, row.condition, row.notes, float(row.replacement_cost or 0)) != \
+                (quantity, condition, note, cost):
             row.quantity, row.condition, row.notes = quantity, condition, note
+            row.replacement_cost = cost
             changed += 1
 
     db.session.commit()

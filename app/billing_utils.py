@@ -255,3 +255,87 @@ def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None) -
         "total_owed": round(arrears["total"] + utility_outstanding, 2),
         "is_current": arrears["count"] == 0 and utility_outstanding <= 0,
     }
+
+
+def final_settlement(tenant_profile: TenantProfile, as_of: date | None = None) -> dict:
+    """Everything owed when a tenant leaves, set against their deposit.
+
+    Three charges are totalled: rent months never paid, electric and water
+    left outstanding, and fixtures recorded as damaged or missing priced at
+    their replacement cost. The administrator used to type each of these in
+    by hand as a free-text deduction; here they are read from the records
+    that already hold them, so the figures can be checked rather than
+    taken on trust.
+
+    The result is deliberately NOT applied to anything. It is a statement
+    the administrator reviews, because two outcomes are possible and only
+    they can know which happened: the charges come out of the deposit and
+    the remainder is returned, or the tenant pays the charges separately
+    and takes the deposit back in full.
+
+    Fixtures with no replacement cost recorded are listed as damage but
+    contribute nothing to the total — an unpriced item should be visible
+    and questioned, not silently charged at zero or guessed at.
+    """
+    from .models import Reservation, UnitInventoryItem
+    from .inventory import CONDITION_NEEDS_ATTENTION
+
+    as_of = as_of or date.today()
+    arrears = get_rent_arrears(tenant_profile, as_of)
+
+    from .models import UtilityBill
+    bills = (db.session.query(UtilityBill)
+             .filter(UtilityBill.tenant_profile_id == tenant_profile.id)
+             .order_by(UtilityBill.billing_month).all())
+    electric_owed = sum(b.electric_outstanding for b in bills)
+    water_owed = sum(b.water_outstanding for b in bills)
+
+    damaged, damage_owed, unpriced = [], 0.0, 0
+    for row in (db.session.query(UnitInventoryItem)
+                .filter(UnitInventoryItem.unit_id == tenant_profile.unit_id)
+                .order_by(UnitInventoryItem.sort_order).all()):
+        if row.condition not in CONDITION_NEEDS_ATTENTION or not row.quantity:
+            continue
+        cost = float(row.replacement_cost or 0)
+        line = cost * row.quantity
+        damage_owed += line
+        if cost <= 0:
+            unpriced += 1
+        damaged.append({
+            "label": row.label, "condition": row.condition_label,
+            "quantity": row.quantity, "unit_cost": cost, "line_total": line,
+            "notes": row.notes, "is_priced": cost > 0,
+        })
+
+    # The deposit lives on the tenant's reservation, which is where it was
+    # taken. Fall back to zero rather than guessing an amount.
+    reservation = (db.session.query(Reservation)
+                   .filter(Reservation.unit_id == tenant_profile.unit_id,
+                           Reservation.user_id == tenant_profile.user_id)
+                   .order_by(Reservation.id.desc()).first())
+    deposit = float(reservation.deposit_amount or 0) if reservation else 0.0
+
+    total_owed = round(arrears["total"] + electric_owed + water_owed + damage_owed, 2)
+    releasable = tenant_profile.deposit_releasable_on
+
+    return {
+        "rent": {"months": arrears["months"], "count": arrears["count"],
+                 "rate": arrears["monthly_rate"], "total": arrears["total"]},
+        "electric_owed": round(electric_owed, 2),
+        "water_owed": round(water_owed, 2),
+        "damaged": damaged,
+        "damage_owed": round(damage_owed, 2),
+        "unpriced_damage_count": unpriced,
+        "total_owed": total_owed,
+        "deposit": deposit,
+        "reservation": reservation,
+        # If the charges come out of the deposit:
+        "refund_after_deduction": round(max(0.0, deposit - total_owed), 2),
+        "shortfall": round(max(0.0, total_owed - deposit), 2),
+        # If the tenant settles separately, the deposit returns untouched.
+        "refund_if_tenant_pays": deposit,
+        "moved_out_on": tenant_profile.moved_out_on,
+        "releasable_on": releasable,
+        "is_releasable": bool(releasable and releasable <= as_of),
+        "days_until_releasable": (releasable - as_of).days if releasable else None,
+    }

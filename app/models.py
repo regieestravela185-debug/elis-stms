@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import calendar
 from datetime import datetime, date
 
 from flask_login import UserMixin
@@ -326,6 +327,12 @@ class IdentityVerification(db.Model):
     reviewer = db.relationship("User", foreign_keys=[reviewed_by])
 
 
+def _add_one_month(d):
+    """Same day next month, clamped to that month's length."""
+    year, month = (d.year + (d.month // 12)), (d.month % 12) + 1
+    return date(year, month, min(d.day, calendar.monthrange(year, month)[1]))
+
+
 class TenantProfile(db.Model):
     __tablename__ = "tenant_profiles"
 
@@ -354,6 +361,13 @@ class TenantProfile(db.Model):
     # delinquency). Naturally stops applying once the cycle rolls over.
     dismissed_outstanding_month = db.Column(db.String(7), nullable=True)
 
+    # When the tenant actually vacated. Residential tenants are month to
+    # month and do not always give notice, so this is recorded when the
+    # administrator learns of it rather than derived from a contract end.
+    # The security deposit is held for a month afterwards to leave time to
+    # total the final charges — see deposit_releasable_on.
+    moved_out_on = db.Column(db.Date, nullable=True)
+
     # Email preferences
     email_announcements = db.Column(db.Boolean, nullable=False, default=True)
     email_payment_reminders = db.Column(db.Boolean, nullable=False, default=True)
@@ -371,6 +385,15 @@ class TenantProfile(db.Model):
 
     user = db.relationship("User", back_populates="tenant_profile")
     unit = db.relationship("Unit")
+
+    @property
+    def deposit_releasable_on(self):
+        """One month after move-out. The deposit is held until then so the
+        final rent, utilities and any damage can be totalled before
+        anything is returned."""
+        if not self.moved_out_on:
+            return None
+        return _add_one_month(self.moved_out_on)
 
     @property
     def contract_rent(self) -> float:
@@ -413,6 +436,12 @@ class UnitInventoryItem(db.Model):
     # One of app/inventory.py's INVENTORY_CONDITIONS keys.
     condition = db.Column(db.String(20), nullable=False, default="good")
     notes = db.Column(db.String(255), nullable=True)
+
+    # What it costs to replace or repair ONE of these. Used to price damage
+    # at move-out so the deduction is a figure both sides can check, rather
+    # than a number the administrator has to justify from memory. Zero means
+    # unpriced — damage is then reported but not auto-charged.
+    replacement_cost = db.Column(db.Numeric(12, 2), nullable=False, default=0)
 
     # Standard items keep their position from STANDARD_UNIT_INVENTORY;
     # anything the administrator adds sorts after them.

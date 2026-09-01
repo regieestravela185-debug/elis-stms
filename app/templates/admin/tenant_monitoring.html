@@ -492,6 +492,11 @@
                   >
                     History
 </button>
+                  <a href="{{ url_for('admin.tenant_settlement', profile_id=item.profile.id) }}"
+                     class="btn btn--ghost btn--sm"
+                     title="Final charges and deposit when this tenant leaves">
+                    Settlement
+</a>
                   {% if item.status == 'Urgent' or item.status == 'Near Expiry' %}
                     <form action="{{ url_for('admin.notify_tenant_renewal', tenant_profile_id=item.profile.id) }}" method="post" style="display: inline;">
                       <button type="submit" class="btn--notify">
