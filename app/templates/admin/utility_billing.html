@@ -149,7 +149,7 @@
                       <span class="badge badge--unpaid">Unpaid</span>
                     {% endif %}
                     {% if bill.reminders_paused %}
-                      <span class="badge badge--muted" title="Automatic reminders stopped for this bill">Reminders off</span>
+                      <span class="badge badge--muted" title="Automatic reminders are off for this month only — next month's bill turns them back on automatically">Reminders off this month</span>
                     {% endif %}
                   </td>
                   <td>
@@ -181,8 +181,8 @@
                             <button type="submit" class="btn btn--sm btn--ghost" title="Resume automatic reminders">Resume Reminders</button>
                           {% else %}
                             <button type="submit" class="btn btn--sm btn--ghost"
-                                    onclick="return confirm('Stop the automatic reminders for this bill? Use this when the tenant has said they will settle next month. The balance still carries over.');"
-                                    title="Stop automatic reminders for this bill">Stop Reminders</button>
+                                    onclick="return confirm('Stop the automatic reminders for THIS month only?\n\nUse this when the tenant has said they will settle next month.\n\n• The unpaid balance still carries into next month\n• Next month\'s bill starts with reminders back ON, so the tenant is alerted again as its due date approaches\n• You can still send a reminder manually at any time');"
+                                    title="Stop automatic reminders for this month's bill only">Stop Reminders</button>
                           {% endif %}
                         </form>
                       {% endif %}

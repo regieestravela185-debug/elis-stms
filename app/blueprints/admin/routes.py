@@ -2549,9 +2549,16 @@ def pause_utility_bill_reminders(bill_id: int):
 
     Used when a tenant tells the administrator they will settle next
     month: the balance still rolls forward exactly as before, we just
-    stop emailing them about it. Next month's bill is a new row and
-    starts unpaused, so the pause never silently persists. The manual
-    "Send Reminder Now" button deliberately still works while paused."""
+    stop emailing them about it.
+
+    The pause is deliberately scoped to this one bill and cannot outlive
+    it. Next month is a separate row created by
+    get_or_create_utility_bill() with reminders_paused defaulting to
+    False, so the tenant is alerted again on their own as that month's
+    due date approaches, carrying the unpaid balance with it. A pause
+    can therefore never silently persist and leave a tenant unreminded
+    indefinitely. The manual "Send Reminder Now" button also still works
+    while paused — it is the administrator overriding their own pause."""
     _ensure_admin()
     bill = db.session.get(UtilityBill, bill_id)
     if not bill:
@@ -2569,8 +2576,10 @@ def pause_utility_bill_reminders(bill_id: int):
     if resume:
         flash("Automatic reminders resumed for this bill.", "success")
     else:
-        flash("Automatic reminders stopped for this bill. The balance still "
-              "carries into next month.", "success")
+        flash("Automatic reminders stopped for this month's bill. The unpaid "
+              "balance still carries into next month, and next month's bill "
+              "turns reminders back on by itself as its due date approaches.",
+              "success")
     return redirect(request.referrer or url_for("admin.utility_billing"))
 
 
