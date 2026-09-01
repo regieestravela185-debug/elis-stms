@@ -10,6 +10,21 @@ from ...nlp_chatbot import process_chat_message
 bp = Blueprint("public", __name__)
 
 
+def _unit_inclusion(unit, is_commercial, inclusions_by_unit):
+    """A readable one-line summary of what a unit includes.
+
+    Built from the recorded inventory so the listing reflects what the
+    tenant will actually sign for in the Kasunduan, rather than the fixed
+    "Bedframe, CR" every unit used to claim."""
+    if is_commercial:
+        return "Commercial space"
+    items = inclusions_by_unit.get(unit.id) or []
+    if not items:
+        return "Studio type unit"
+    shown = ", ".join(items[:4])
+    return shown + (f", +{len(items) - 4} more" if len(items) > 4 else "")
+
+
 @bp.get("/")
 def home():
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
@@ -52,6 +67,21 @@ def home():
             'count': rating_count
         }
     
+    # What each unit actually includes, read once for the whole page rather
+    # than per unit. Only items with a quantity are listed — a zero means the
+    # unit does not have that fixture.
+    from ...models import UnitInventoryItem
+    inclusions_by_unit = {}
+    for row in (db.session.query(UnitInventoryItem)
+                .filter(UnitInventoryItem.quantity > 0)
+                .order_by(UnitInventoryItem.unit_id, UnitInventoryItem.sort_order)
+                .all()):
+        # Fixtures read better to a prospective tenant without the
+        # sub-category prefix the Kasunduan needs ("CR/Bathroom Fixtures —
+        # Shower" becomes "Shower").
+        label = row.label.split("—")[-1].strip() if "—" in row.label else row.label
+        inclusions_by_unit.setdefault(row.unit_id, []).append(label)
+
     # Group units by building and floor
     units_by_building = {}
     for u in units:
@@ -93,7 +123,11 @@ def home():
             "type_label": (u.type or "Unit").title(),
             "images": images,
             "description": (u.description or "").strip(),
-            "inclusion": "Bedframe, CR" if not is_commercial else "Commercial space",
+            # What the unit actually comes with, from its recorded inventory
+            # (the Kasunduan fixture list). Falls back to the old generic
+            # wording for commercial units and for any unit not yet
+            # inventoried, so a listing never reads as empty.
+            "inclusion": _unit_inclusion(u, is_commercial, inclusions_by_unit),
             "contract_note": "Minimum 1-year contract" if is_commercial else "Studio type unit",
             "floor": unit_floor,
             "rating": unit_ratings[u.id]['avg'],

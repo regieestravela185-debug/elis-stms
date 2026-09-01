@@ -386,6 +386,55 @@ class TenantProfile(db.Model):
         return 0.0
 
 
+class UnitInventoryItem(db.Model):
+    """One fixture or furnishing that comes with a unit, with how many
+    there are and what state they are in.
+
+    These are the rows of the Kasunduan's "MGA GAMIT NA NASA LOOB NG UNIT"
+    table, which used to be printed blank and filled in by hand. Recording
+    them means the contract generates already filled, prospective tenants
+    can see what a unit includes, and the condition agreed at move-in is
+    on file to compare against at move-out.
+
+    The label is stored on the row rather than referencing a shared key,
+    so revising app/inventory.py's standard list never rewrites what a
+    unit was already inventoried under.
+    """
+    __tablename__ = "unit_inventory_items"
+    __table_args__ = (
+        UniqueConstraint("unit_id", "label", name="uq_unit_inventory_label"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey("units.id"), nullable=False, index=True)
+
+    label = db.Column(db.String(120), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+    # One of app/inventory.py's INVENTORY_CONDITIONS keys.
+    condition = db.Column(db.String(20), nullable=False, default="good")
+    notes = db.Column(db.String(255), nullable=True)
+
+    # Standard items keep their position from STANDARD_UNIT_INVENTORY;
+    # anything the administrator adds sorts after them.
+    sort_order = db.Column(db.Integer, nullable=False, default=999)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    unit = db.relationship("Unit", backref=db.backref(
+        "inventory_items", cascade="all, delete-orphan", lazy="select"))
+
+    @property
+    def condition_label(self) -> str:
+        from .inventory import CONDITION_LABELS
+        return CONDITION_LABELS.get(self.condition, self.condition or "—")
+
+    @property
+    def needs_attention(self) -> bool:
+        from .inventory import CONDITION_NEEDS_ATTENTION
+        return self.condition in CONDITION_NEEDS_ATTENTION
+
+
 # Statuses that must never count as money received: a tenant-submitted
 # proof still awaiting review, one that was rejected, and one an
 # administrator voided after entering it by mistake. A voided payment is

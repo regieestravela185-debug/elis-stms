@@ -1433,3 +1433,16 @@ body.page-home .nav__link{
    but must never read as money received. */
 .row--voided { opacity: .55; }
 .row--voided td { background: rgba(148, 163, 184, .07); }
+
+/* Unit inventory: counts at a glance, and rows needing attention. */
+.inv-summary {
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  padding: 12px 14px; margin-top: 14px; border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid rgba(215, 179, 91, .35);
+  background: rgba(215, 179, 91, .09);
+}
+.inv-summary--empty { display: block; color: var(--muted); line-height: 1.55; }
+.inv-summary__warn { color: #b45309; }
+.inv-summary__ok { color: #16a34a; }
+.row--attention td { background: rgba(245, 158, 11, .08); }

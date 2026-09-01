@@ -603,6 +603,9 @@
                     <div class="action-buttons">
                       {% if not unit.is_archived %}
                         <a href="{{ url_for('admin.edit_unit', unit_id=unit.id) }}" class="btn btn--sm btn--ghost" title="Edit Unit">Edit</a>
+                        {% if unit.type == 'residential' %}
+                          <a href="{{ url_for('admin.unit_inventory', unit_id=unit.id) }}" class="btn btn--sm btn--ghost" title="Record the fixtures this unit comes with">Inventory</a>
+                        {% endif %}
                         <form method="post" action="{{ url_for('admin.duplicate_unit', unit_id=unit.id) }}" style="display: inline;">
                           <button class="btn btn--sm btn--duplicate" type="submit" title="Duplicate Unit">Duplicate</button>
                         </form>

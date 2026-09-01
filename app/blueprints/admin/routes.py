@@ -38,6 +38,8 @@ from ...models import (
     VerificationStatus,
     PAYMENT_STATUSES_NOT_COUNTED,
 )
+from ...inventory import (ensure_unit_inventory, inventory_summary,
+                          INVENTORY_CONDITIONS, CONDITION_KEYS)
 from ...security import sha256_hex
 from ...predictive_analytics import update_tenant_risk_profile
 from ...ph_holidays import holidays_by_date
@@ -1331,6 +1333,15 @@ def generate_kasunduan_pdf_route(profile_id: int):
         "monthly_rental_words": (request.form.get("monthly_rental_words") or "").strip(),
         "security_deposit_words": (request.form.get("security_deposit_words") or "").strip(),
         "move_in_date": profile.contract_start,
+        # Only items actually present are printed. A quantity of zero means
+        # the unit does not have that fixture, so listing it would have the
+        # tenant sign for something that is not there.
+        "inventory": [
+            {"label": row.label, "quantity": row.quantity,
+             "condition": row.condition_label}
+            for row in ensure_unit_inventory(unit)
+            if (row.quantity or 0) > 0
+        ],
     }
 
     required = ["lessor_name", "lessor_address", "lessee_name", "lessee_address", "unit_identifier"]
@@ -2602,6 +2613,66 @@ def tenant_utility_bills_partial(profile_id: int):
         .all()
     )
     return render_template("admin/_utility_bills_modal.html", bills=bills, profile=profile)
+
+
+@bp.get("/units/<int:unit_id>/inventory")
+@login_required
+def unit_inventory(unit_id: int):
+    """Encode what a unit comes with: the fixtures and furnishings listed
+    in the Kasunduan, with how many there are and what state they are in.
+
+    The rows are created on first view rather than by a separate setup
+    step, so a unit added after the migration still opens with the full
+    standard list ready to fill in."""
+    _ensure_admin()
+    unit = db.session.get(Unit, unit_id)
+    if not unit:
+        abort(404)
+    items = ensure_unit_inventory(unit, commit=True)
+    return render_template(
+        "admin/unit_inventory.html",
+        unit=unit, items=items,
+        conditions=INVENTORY_CONDITIONS,
+        summary=inventory_summary(items),
+    )
+
+
+@bp.post("/units/<int:unit_id>/inventory")
+@login_required
+def unit_inventory_save(unit_id: int):
+    """Save the whole inventory in one submit — quantity, condition and
+    note per row, named by row id."""
+    _ensure_admin()
+    unit = db.session.get(Unit, unit_id)
+    if not unit:
+        abort(404)
+
+    rows = {r.id: r for r in ensure_unit_inventory(unit)}
+    changed = 0
+    for row_id, row in rows.items():
+        qty_raw = request.form.get(f"quantity_{row_id}")
+        if qty_raw is None:
+            continue  # row absent from this submit; leave it alone
+        try:
+            quantity = max(0, int(qty_raw or 0))
+        except ValueError:
+            continue
+        condition = (request.form.get(f"condition_{row_id}") or "").strip()
+        if condition not in CONDITION_KEYS:
+            condition = row.condition
+        note = (request.form.get(f"notes_{row_id}") or "").strip()[:255] or None
+
+        if (row.quantity, row.condition, row.notes) != (quantity, condition, note):
+            row.quantity, row.condition, row.notes = quantity, condition, note
+            changed += 1
+
+    db.session.commit()
+    if changed:
+        flash(f"Inventory saved for {unit.unit_code} — {changed} item(s) updated.",
+              "success")
+    else:
+        flash("No changes to save.", "info")
+    return redirect(url_for("admin.unit_inventory", unit_id=unit.id))
 
 
 @bp.get("/deposits")

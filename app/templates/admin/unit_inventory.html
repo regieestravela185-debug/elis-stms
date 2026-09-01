@@ -1,0 +1,90 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Unit Inventory — {{ unit.unit_code }}{% endblock %}
+
+{% block content %}
+<div class="page">
+  <section class="card" style="padding: 24px;">
+    <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 8px;">
+      <div style="flex: 1; min-width: 240px;">
+        <h2 style="margin: 0 0 4px 0;">Unit Inventory — {{ unit.unit_code }}</h2>
+        <p class="muted" style="margin: 0; font-size: 14px;">
+          What comes with this unit. These are the same items printed in the
+          Kasunduan, so whatever you record here is what the contract shows —
+          no more filling the table in by hand.
+        </p>
+      </div>
+      <a href="{{ url_for('admin.units') }}" class="btn btn--ghost btn--sm">&lsaquo; Back to Units</a>
+    </div>
+
+    {% if summary.is_encoded %}
+      <div class="inv-summary">
+        <span><strong>{{ summary.total_items }}</strong> item types</span>
+        <span><strong>{{ summary.total_units }}</strong> pieces in total</span>
+        {% if summary.attention_count %}
+          <span class="inv-summary__warn">
+            <strong>{{ summary.attention_count }}</strong> damaged or missing
+          </span>
+        {% else %}
+          <span class="inv-summary__ok">Nothing damaged or missing</span>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="inv-summary inv-summary--empty">
+        Not yet inventoried. Set a quantity above zero for each item this unit
+        actually has — items left at zero are treated as not present and are
+        hidden from the Kasunduan and the public listing.
+      </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('admin.unit_inventory_save', unit_id=unit.id) }}">
+      <div style="overflow-x: auto; margin-top: 18px;">
+        <table class="table" style="min-width: 720px;">
+          <thead>
+            <tr>
+              <th style="width: 34%;">MGA GAMIT / Item</th>
+              <th style="width: 14%;">BILANG / Quantity</th>
+              <th style="width: 22%;">KONDISYON / Condition</th>
+              <th>Notes (optional)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              <tr {% if item.needs_attention and item.quantity %}class="row--attention"{% endif %}>
+                <td>
+                  <strong style="font-size: 14px;">{{ item.label }}</strong>
+                </td>
+                <td>
+                  <input class="input" type="number" min="0" step="1"
+                         name="quantity_{{ item.id }}" value="{{ item.quantity }}"
+                         style="max-width: 96px;">
+                </td>
+                <td>
+                  <select class="input" name="condition_{{ item.id }}">
+                    {% for key, label in conditions %}
+                      <option value="{{ key }}" {% if item.condition == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input class="input" type="text" name="notes_{{ item.id }}"
+                         value="{{ item.notes or '' }}"
+                         placeholder="e.g. bottom bunk rail loose">
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+        <p class="muted" style="margin: 0; font-size: 13px; max-width: 560px;">
+          Record the condition as it is at move-in. At move-out you compare
+          against this, so anything the tenant damaged is evidenced rather than
+          argued.
+        </p>
+        <button type="submit" class="btn btn--primary">Save Inventory</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

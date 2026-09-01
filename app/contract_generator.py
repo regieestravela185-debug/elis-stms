@@ -523,17 +523,24 @@ def generate_kasunduan_pdf(data: dict) -> BytesIO:
 
     elements.append(Spacer(1, 0.3 * inch))
     elements.append(Paragraph('MGA GAMIT NA NASA LOOB NG UNIT', header_style))
-    item_rows = [
-        "Floor Tiles", "Double Deck Beds", "Mattress",
-        "Doors — Front", "Doors — Back", "Doors — CR/Bathroom",
-        "CR/Bathroom Fixtures — Faucets", "CR/Bathroom Fixtures — Shower",
-        "CR/Bathroom Fixtures — Bidet", "CR/Bathroom Fixtures — Toilet Bowl",
-        "CR/Bathroom Fixtures — Sink", "CR/Bathroom Fixtures — Pail/Dipper",
-        "Bulbs", "Door Locks — Front", "Door Locks — Back", "Door Locks — CR/Bathroom",
-        "Keys & Key Holder",
-    ]
+    # Rows come from the unit's recorded inventory when the caller supplied
+    # it, so the contract prints already filled in. Without it, fall back to
+    # the standard labels with blank columns — the same hand-filled table
+    # this document has always used, so a unit not yet inventoried still
+    # produces a usable contract.
+    from .inventory import STANDARD_UNIT_INVENTORY
+
+    inventory = data.get("inventory") or []
+    if inventory:
+        item_rows = [
+            [row["label"], str(row["quantity"]), row["condition"]]
+            for row in inventory
+        ]
+    else:
+        item_rows = [[label, "", ""] for label in STANDARD_UNIT_INVENTORY]
+
     items_table = Table(
-        [["MGA GAMIT", "BILANG NG GAMIT", "KONDISYON"]] + [[label, "", ""] for label in item_rows],
+        [["MGA GAMIT", "BILANG NG GAMIT", "KONDISYON"]] + item_rows,
         colWidths=[2.8 * inch, 1.6 * inch, 2.1 * inch],
     )
     items_table.setStyle(TableStyle([
