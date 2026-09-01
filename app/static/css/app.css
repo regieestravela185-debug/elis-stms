@@ -1428,3 +1428,8 @@ body.page-home .nav__link{
 }
 .ub-carry { display: block; }
 .badge--muted { border-color: rgba(120, 120, 120, .35); color: rgba(90, 90, 90, 1); }
+
+/* A voided payment stays in the list so it can be reviewed and restored,
+   but must never read as money received. */
+.row--voided { opacity: .55; }
+.row--voided td { background: rgba(148, 163, 184, .07); }

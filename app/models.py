@@ -366,6 +366,19 @@ class TenantProfile(db.Model):
     unit = db.relationship("Unit")
 
 
+# Statuses that must never count as money received: a tenant-submitted
+# proof still awaiting review, one that was rejected, and one an
+# administrator voided after entering it by mistake. A voided payment is
+# kept, not deleted — the ledger hash covers the row's amount, reference
+# and timestamp, so removing it would break the chain, while changing only
+# the status leaves every hash valid.
+#
+# Use this everywhere a query means "real payments". The one deliberate
+# exception is the admin payments LIST, which shows voided rows so they can
+# be reviewed and restored.
+PAYMENT_STATUSES_NOT_COUNTED = ("pending", "rejected", "voided")
+
+
 class Payment(db.Model):
     __tablename__ = "payments"
 
@@ -381,7 +394,7 @@ class Payment(db.Model):
     deposit_transaction_type = db.Column(db.String(50), nullable=True)  # 'deposit_paid', 'deposit_returned', 'deposit_deducted'
 
     # Payment improvements
-    payment_status = db.Column(db.String(20), nullable=False, default='verified')  # verified, pending, late, rejected
+    payment_status = db.Column(db.String(20), nullable=False, default='verified')  # verified, late, pending, rejected, voided
     is_late = db.Column(db.Boolean, nullable=False, default=False)
     breakdown_json = db.Column(db.Text, nullable=True)  # JSON: {rent, utilities, late_fee, other}
     receipt_number = db.Column(db.String(50), nullable=True)  # OR number

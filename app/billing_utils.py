@@ -108,7 +108,7 @@ def get_unpaid_rent_months(tenant_profile: TenantProfile, as_of: date | None = N
     collection stays entirely in Payment/PaymentLedger; UtilityBill only
     snapshots the rent figure for display alongside the utilities.
     """
-    from .models import Payment  # local import: models imports this module's peers
+    from .models import Payment, PAYMENT_STATUSES_NOT_COUNTED  # local: avoids a cycle
 
     as_of = as_of or date.today()
     start = tenant_profile.contract_start
@@ -124,7 +124,7 @@ def get_unpaid_rent_months(tenant_profile: TenantProfile, as_of: date | None = N
             Payment.tenant_profile_id == tenant_profile.id,
             Payment.payment_month.isnot(None),
             Payment.is_deposit.is_(False),
-            Payment.payment_status != "rejected",
+            Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
         )
         .all()
     }

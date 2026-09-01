@@ -36,6 +36,7 @@ from ...models import (
     User,
     UtilityBill,
     VerificationStatus,
+    PAYMENT_STATUSES_NOT_COUNTED,
 )
 from ...security import sha256_hex
 from ...predictive_analytics import update_tenant_risk_profile
@@ -271,7 +272,7 @@ def _compute_final_month_charge(profile: "TenantProfile", actual_move_out_date: 
             db.session.query(Payment)
             .filter(Payment.tenant_profile_id == profile.id)
             .filter(Payment.is_deposit == False)  # noqa: E712
-            .filter(Payment.payment_status.notin_(["pending", "rejected"]))
+            .filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
             .filter(Payment.paid_at >= cycle_start_dt)
             .first()
             is not None
@@ -2202,7 +2203,7 @@ def get_unit_quick_info(unit_id: int):
                 db.session.query(Payment)
                 .filter(Payment.tenant_profile_id == profile.id)
                 .filter(Payment.is_deposit == False)  # noqa: E712
-                .filter(Payment.payment_status.notin_(["pending", "rejected"]))
+                .filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
                 .filter(Payment.paid_at >= cycle_start)
                 .first()
                 is not None
@@ -2294,7 +2295,7 @@ def payments():
     # at 100 (now paginated to 25), so "Total Revenue" was quietly only
     # ever the most recent 100 payments, never the true total.
     from sqlalchemy import func as _func
-    _confirmed = db.session.query(Payment).filter(Payment.payment_status.notin_(['pending', 'rejected']))
+    _confirmed = db.session.query(Payment).filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
     this_month_start_dt = dt.combine(today.replace(day=1), dt.min.time())
     last_month_end_dt = this_month_start_dt
     last_month_start_dt = dt.combine((today.replace(day=1) - timedelta(days=1)).replace(day=1), dt.min.time())
@@ -2331,7 +2332,7 @@ def payments():
             db.session.query(Payment)
             .filter(Payment.tenant_profile_id == profile.id)
             .filter(Payment.is_deposit == False)  # noqa: E712
-            .filter(Payment.payment_status.notin_(['pending', 'rejected']))
+            .filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
             .filter(Payment.paid_at >= cycle_start)
             .first()
             is not None
@@ -3392,6 +3393,78 @@ def reject_payment_proof(payment_id: int):
 
     flash("Payment proof rejected. The tenant has been notified.", "success")
     return redirect(url_for("admin.payments"))
+
+
+@bp.post("/payments/<int:payment_id>/void")
+@login_required
+def void_payment(payment_id: int):
+    """Undo a rent payment the administrator entered by mistake.
+
+    The row is kept and only its status changes. The ledger hash covers
+    the payment's amount, reference and timestamp but NOT its status
+    (see _generate_payment_ledger), so voiding leaves every hash in the
+    chain valid — whereas deleting the row would orphan its ledger entry
+    and raise a tampering alarm on the Payments page.
+
+    A voided payment stops counting everywhere money is counted: revenue
+    totals, "already paid this cycle", and the rent arrears that drive
+    the Add Payment prefill. It stays visible in the payments list so it
+    can be reviewed, and restored if the void itself was the mistake.
+
+    Tenant-submitted proofs still awaiting review are not voided here —
+    those are approved or rejected through their own actions."""
+    _ensure_admin()
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        abort(404)
+    if payment.payment_status == "pending":
+        flash("This is a tenant-submitted proof awaiting review — use "
+              "Reject instead, so the tenant is told why.", "warning")
+        return redirect(request.referrer or url_for("admin.payments"))
+    if payment.payment_status == "voided":
+        flash("This payment is already voided.", "info")
+        return redirect(request.referrer or url_for("admin.payments"))
+
+    reason = (request.form.get("reason") or "").strip()
+    previous = payment.payment_status
+    payment.payment_status = "voided"
+    stamp = (f"[Voided {datetime.utcnow():%Y-%m-%d} by "
+             f"{current_user.full_name}, was '{previous}'"
+             + (f": {reason}" if reason else "") + "] ")
+    payment.notes = (stamp + (payment.notes or ""))[:255]
+    db.session.commit()
+
+    month = f" for {payment.payment_month}" if payment.payment_month else ""
+    flash(f"Payment of ₱{float(payment.amount):,.2f}{month} voided. It no "
+          f"longer counts toward revenue or this tenant's paid months, and "
+          f"the blockchain ledger is untouched.", "success")
+    return redirect(request.referrer or url_for("admin.payments"))
+
+
+@bp.post("/payments/<int:payment_id>/restore")
+@login_required
+def restore_payment(payment_id: int):
+    """Put a voided payment back. Returns it to 'late' or 'verified' by
+    re-deriving lateness from its own month, rather than trusting the
+    status it happened to carry before."""
+    _ensure_admin()
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        abort(404)
+    if payment.payment_status != "voided":
+        flash("Only a voided payment can be restored.", "warning")
+        return redirect(request.referrer or url_for("admin.payments"))
+
+    profile = payment.tenant_profile
+    is_late = _is_rent_payment_late(profile, payment.paid_at,
+                                    payment.payment_month or "") if profile else False
+    payment.payment_status = "late" if is_late else "verified"
+    payment.notes = (f"[Restored {datetime.utcnow():%Y-%m-%d} by "
+                     f"{current_user.full_name}] " + (payment.notes or ""))[:255]
+    db.session.commit()
+    flash(f"Payment of ₱{float(payment.amount):,.2f} restored and counting "
+          f"again.", "success")
+    return redirect(request.referrer or url_for("admin.payments"))
 
 
 @bp.get("/payments/export")

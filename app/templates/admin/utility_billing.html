@@ -158,6 +158,22 @@
                         <input type="hidden" name="billing_month" value="{{ billing_month }}">
                         <button type="submit" class="btn btn--sm btn--ghost" title="Send bill reminder now">Send Reminder</button>
                       </form>
+                      {% if bill.electric_paid %}
+                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;"
+                              onsubmit="return confirm('Marked the electric as paid by mistake?\n\nIt goes back to unpaid and will carry into next month again.');">
+                          <input type="hidden" name="component" value="electric">
+                          <input type="hidden" name="undo" value="1">
+                          <button type="submit" class="btn btn--sm btn--ghost" title="Undo — electric was not actually paid">Undo Electric</button>
+                        </form>
+                      {% endif %}
+                      {% if bill.water_paid %}
+                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;"
+                              onsubmit="return confirm('Marked the water as paid by mistake?\n\nIt goes back to unpaid and will carry into next month again.');">
+                          <input type="hidden" name="component" value="water">
+                          <input type="hidden" name="undo" value="1">
+                          <button type="submit" class="btn btn--sm btn--ghost" title="Undo — water was not actually paid">Undo Water</button>
+                        </form>
+                      {% endif %}
                       {% if not bill.electric_paid %}
                         <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark the ELECTRIC as paid? Anything left unpaid still carries into next month.');">
                           <input type="hidden" name="component" value="electric">

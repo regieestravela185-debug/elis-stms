@@ -11,6 +11,7 @@ from ...models import (
     MoveOutNotice, MoveOutNoticeStatus,
     Payment, RenewalRequest, RenewalRequestStatus, Reservation, ReservationStatus,
     Role, TenantProfile, Unit, UnitStatus, User,
+    PAYMENT_STATUSES_NOT_COUNTED,
 )
 
 bp = Blueprint("tenant", __name__, url_prefix="/tenant")
@@ -771,7 +772,7 @@ def payments():
     # `query` — an aggregate SELECT with a leftover ORDER BY on a
     # non-aggregated/non-grouped column is invalid in Postgres.
     from sqlalchemy import func as _func
-    confirmed_query = query.filter(Payment.payment_status.notin_(['pending', 'rejected']))
+    confirmed_query = query.filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
     total_amount = float(confirmed_query.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar() or 0)
     total_count = confirmed_query.count()
     last_payment = confirmed_query.order_by(Payment.paid_at.desc()).first()
@@ -803,7 +804,7 @@ def payments():
     # Get available years for filter (confirmed payments only)
     all_payments = db.session.query(Payment).filter(
         Payment.tenant_profile_id == profile.id,
-        Payment.payment_status.notin_(['pending', 'rejected']),
+        Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
     ).all()
     available_years = sorted(set(p.paid_at.year for p in all_payments), reverse=True)
 

@@ -542,7 +542,8 @@
                     data-amount="{{ payment.amount }}"
                     data-tenant="{{ payment.tenant_profile.user.full_name.lower() }}"
                     data-unit="{{ payment.tenant_profile.unit.unit_code.lower() }}"
-                    data-method="{{ payment.payment_method or 'cash' }}">
+                    data-method="{{ payment.payment_method or 'cash' }}"
+                    {% if payment.payment_status == 'voided' %}class="row--voided"{% endif %}>
                   <td class="muted" style="font-size: 12px;">
                     {{ payment.paid_at.strftime("%b %d, %Y") }}
                     <div style="font-size: 10px; margin-top: 2px;">{{ payment.paid_at.strftime("%I:%M %p") }}</div>
@@ -579,7 +580,9 @@
                     {% endif %}
 </td>
                   <td>
-                    {% if payment.is_deposit %}
+                    {% if payment.payment_status == 'voided' %}
+                      <span class="badge badge--rejected">Voided</span>
+                    {% elif payment.is_deposit %}
                       <span class="muted" style="font-size: 12px;">—</span>
                     {% elif payment.is_late %}
                       <span class="badge badge--rejected">Late</span>
@@ -587,7 +590,7 @@
                       <span class="badge badge--available">On time</span>
                     {% endif %}
 </td>
-                  <td class="mono" style="font-size: 16px; font-weight: 700; color: #22c55e;">
+                  <td class="mono" style="font-size: 16px; font-weight: 700; {% if payment.payment_status == 'voided' %}color: var(--muted); text-decoration: line-through;{% else %}color: #22c55e;{% endif %}">
                     ₱{{ '{:,.2f}'.format(payment.amount|float) }}
 </td>
                   <td class="muted" style="font-size: 13px;">
@@ -601,9 +604,24 @@
                     {% endif %}
 </td>
                   <td>
-                    <a href="{{ url_for('admin.view_ledger', payment_id=payment.id) }}" class="btn btn--sm btn--ghost" style="font-size: 12px;" title="View Blockchain Ledger">
-                       Ledger
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <a href="{{ url_for('admin.view_ledger', payment_id=payment.id) }}" class="btn btn--sm btn--ghost" style="font-size: 12px;" title="View Blockchain Ledger">
+                        Ledger
 </a>
+                      {% if payment.payment_status == 'voided' %}
+                        <form method="post" action="{{ url_for('admin.restore_payment', payment_id=payment.id) }}"
+                              onsubmit="return confirm('Restore this payment? It will count again toward revenue and this tenant\'s paid months.');">
+                          <button type="submit" class="btn btn--sm btn--ghost" style="font-size: 12px;">Restore</button>
+                        </form>
+                      {% elif not payment.is_deposit %}
+                        <button type="button" class="btn btn--sm btn--ghost js-void-payment" style="font-size: 12px;"
+                                data-id="{{ payment.id }}"
+                                data-amount="{{ '{:,.2f}'.format(payment.amount|float) }}"
+                                data-tenant="{{ payment.tenant_profile.user.full_name }}"
+                                data-month="{{ payment.payment_month or '' }}"
+                                title="Entered by mistake? Void it">Void</button>
+                      {% endif %}
+</div>
 </td>
                 </tr>
               {% endfor %}
@@ -773,6 +791,27 @@
       });
     });
 
+
+  // Void modal — a mis-entered payment is reversed by status, never deleted,
+  // so the ledger hash chain it belongs to stays verifiable.
+  document.querySelectorAll('.js-void-payment').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var month = btn.getAttribute('data-month');
+      document.getElementById('voidSummary').textContent =
+        '\u20b1' + btn.getAttribute('data-amount') + ' \u2022 '
+        + btn.getAttribute('data-tenant') + (month ? ' \u2022 ' + month : '');
+      document.getElementById('voidPaymentForm').action =
+        '/admin/payments/' + btn.getAttribute('data-id') + '/void';
+      document.getElementById('voidPaymentModal').hidden = false;
+    });
+  });
+  window.closeVoidModal = function () {
+    document.getElementById('voidPaymentModal').hidden = true;
+  };
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { window.closeVoidModal(); }
+  });
+
     // Filters
     const searchInput = document.getElementById('searchInput');
     const typeSelect = document.getElementById('typeSelect');
@@ -809,4 +848,31 @@
     sortSelect.addEventListener('change', applyFilters);
   });
   </script>
+
+<!-- Void a mis-entered payment. Voiding keeps the row and its ledger entry —
+     only the status changes — so the blockchain chain stays intact. -->
+<div class="modal" id="voidPaymentModal" hidden>
+  <div class="modal__backdrop" onclick="closeVoidModal()"></div>
+  <div class="modal__panel" style="max-width: 520px;">
+    <button type="button" class="modal__x" onclick="closeVoidModal()">&times;</button>
+    <h3 class="modal__title">Void this payment</h3>
+    <p class="muted" id="voidSummary" style="margin-top: -6px; font-size: 13px;"></p>
+    <p class="muted" style="font-size: 13px; line-height: 1.55;">
+      The record is kept and the blockchain ledger is left untouched — only its
+      status changes, so no integrity alarm is raised. It stops counting toward
+      revenue and toward this tenant&rsquo;s paid months, so the month it covered
+      goes back to being owed. You can restore it afterwards.
+    </p>
+    <form method="post" id="voidPaymentForm">
+      <label class="label">Reason (recorded in the payment&rsquo;s notes)</label>
+      <textarea class="input" name="reason" rows="3"
+                placeholder="e.g. Wrong tenant selected, duplicate entry, wrong amount"></textarea>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+        <button type="button" class="btn btn--ghost" onclick="closeVoidModal()">Cancel</button>
+        <button type="submit" class="btn btn--primary">Void Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {% endblock %}
