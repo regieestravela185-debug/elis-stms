@@ -1986,7 +1986,8 @@ def approve_reservation(reservation_id: int):
         existing_profile.is_active = True
         profile = existing_profile
     else:
-        profile = TenantProfile(user_id=user.id, unit_id=unit.id, contract_start=contract_start, contract_end=contract_end)
+        profile = TenantProfile(user_id=user.id, unit_id=unit.id, contract_start=contract_start,
+                            contract_end=contract_end, monthly_rent=unit.price_monthly)
         db.session.add(profile)
 
     user.role = Role.TENANT
@@ -2003,7 +2004,7 @@ def approve_reservation(reservation_id: int):
     
     monthly_payment = Payment(
         tenant_profile_id=profile.id,
-        amount=float(unit.price_monthly),
+        amount=profile.contract_rent,
         reference=f"Monthly - {unit.unit_code}",
         notes="First month payment",
         is_deposit=False,

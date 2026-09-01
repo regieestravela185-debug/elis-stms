@@ -25,7 +25,7 @@ def get_or_create_utility_bill(tenant_profile: TenantProfile, billing_month: str
     throughout app/jobs.py and admin/routes.py for rent due dates),
     water_amount defaulted from compute_water_bill(unit.pax_range),
     electric_amount 0 (admin fills in), rent_amount_snapshot from
-    unit.price_monthly, and the two carry-over buckets taken from
+    the tenant's contract rent, and the two carry-over buckets taken from
     whichever of the prior month's components were left unsettled.
 
     Carry-over is per component, because tenants settle electric and
@@ -58,7 +58,7 @@ def get_or_create_utility_bill(tenant_profile: TenantProfile, billing_month: str
 
     unit = tenant_profile.unit
     water_amount = compute_water_bill(unit.pax_range) if unit else None
-    rent_amount = float(unit.price_monthly) if unit and unit.price_monthly else 0
+    rent_amount = tenant_profile.contract_rent
 
     prior_bill = (
         db.session.query(UtilityBill)
@@ -144,14 +144,12 @@ def get_rent_arrears(tenant_profile: TenantProfile, as_of: date | None = None) -
     """Summary of what the tenant still owes in rent.
 
     Returns months (oldest first), their count, the monthly rate, and the
-    total. Every unpaid month is valued at the unit's current
-    price_monthly — the system keeps no history of past rates, so a rate
-    change would revalue older months. Flagged here rather than silently
-    assumed.
+    total. Unpaid months are valued at the tenant's own contract rent, so
+    raising the unit's asking price for future tenants never revalues what
+    someone already owes.
     """
     months = get_unpaid_rent_months(tenant_profile, as_of)
-    unit = tenant_profile.unit
-    rate = float(unit.price_monthly) if unit and unit.price_monthly else 0.0
+    rate = tenant_profile.contract_rent
     return {
         "months": months,
         "count": len(months),

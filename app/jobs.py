@@ -81,7 +81,7 @@ def send_renewal_and_payment_reminders(app: Flask) -> dict:
                         is not None
                     )
                     if not already_paid:
-                        amount = float(profile.unit.price_monthly) if profile.unit and profile.unit.price_monthly else 0
+                        amount = profile.contract_rent
                         send_payment_reminder_email(
                             user.full_name, user.email, unit_code, next_due, days_until_due, amount
                         )

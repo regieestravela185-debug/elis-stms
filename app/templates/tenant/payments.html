@@ -98,6 +98,60 @@
     </div>
   {% endif %}
 
+  {% if utility_bill_history %}
+    <!-- Electric and water settle independently, so each month lists its own
+         two statuses rather than a single paid/unpaid for the whole bill. -->
+    <div class="card" style="margin-bottom: 24px; padding: 20px;">
+      <h3 style="margin: 0 0 4px 0; font-size: 16px;">Electric &amp; Water History</h3>
+      <p class="muted" style="margin: 0 0 16px 0; font-size: 13px;">
+        Electric and water are settled separately. Anything left unpaid is
+        added to the next month&rsquo;s bill &mdash; there is no late fee.
+      </p>
+      <div style="overflow-x: auto;">
+        <table class="table" style="min-width: 520px;">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Due</th>
+              <th>Electric</th>
+              <th>Water</th>
+              <th style="text-align: right;">Still owed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in utility_bill_history %}
+              <tr>
+                <td class="mono"><strong>{{ b.billing_month }}</strong></td>
+                <td class="muted" style="font-size: 13px;">{{ b.due_date.strftime('%b %d, %Y') }}</td>
+                <td>
+                  <span class="mono">&#8369;{{ '{:,.2f}'.format(b.electric_due) }}</span><br>
+                  {% if b.electric_paid %}
+                    <span class="badge badge--available">Paid</span>
+                  {% elif b.electric_due > 0 %}
+                    <span class="badge badge--unpaid">Unpaid</span>
+                  {% else %}
+                    <span class="muted" style="font-size: 12px;">not billed</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="mono">&#8369;{{ '{:,.2f}'.format(b.water_due) }}</span><br>
+                  {% if b.water_paid %}
+                    <span class="badge badge--available">Paid</span>
+                  {% else %}
+                    <span class="badge badge--unpaid">Unpaid</span>
+                  {% endif %}
+                </td>
+                <td class="mono" style="text-align: right; font-weight: 700; {% if b.total_outstanding > 0 %}color: #b45309;{% else %}color: var(--muted);{% endif %}">
+                  &#8369;{{ '{:,.2f}'.format(b.total_outstanding) }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
   <!-- Submit Bank Transfer Proof -->
   <div class="card" style="margin-bottom: 24px; padding: 20px;">
     <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">

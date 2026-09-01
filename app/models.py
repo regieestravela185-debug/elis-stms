@@ -336,6 +336,13 @@ class TenantProfile(db.Model):
     contract_start = db.Column(db.Date, nullable=False, default=date.today)
     contract_end = db.Column(db.Date, nullable=True)
 
+    # The rent agreed in THIS tenant's contract, captured when the contract
+    # was created. Rent is a term of the contract, not a live attribute of
+    # the unit: raising Unit.price_monthly sets the asking price for the
+    # next tenant and must not silently revalue an existing tenant's unpaid
+    # months. Read it through contract_rent, never off the unit directly.
+    monthly_rent = db.Column(db.Numeric(12, 2), nullable=True)
+
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     last_renewal_reminder_sent = db.Column(db.Date, nullable=True)
@@ -364,6 +371,19 @@ class TenantProfile(db.Model):
 
     user = db.relationship("User", back_populates="tenant_profile")
     unit = db.relationship("Unit")
+
+    @property
+    def contract_rent(self) -> float:
+        """What this tenant actually owes per month.
+
+        Falls back to the unit's current price for profiles created before
+        monthly_rent existed and never backfilled — those tenants behave
+        exactly as they did before, rather than suddenly owing nothing."""
+        if self.monthly_rent is not None:
+            return float(self.monthly_rent)
+        if self.unit and self.unit.price_monthly:
+            return float(self.unit.price_monthly)
+        return 0.0
 
 
 # Statuses that must never count as money received: a tenant-submitted

@@ -848,10 +848,21 @@ def payments():
         .first()
     )
 
+    # Full utility history, newest first. The card above shows only what is
+    # currently owed; without this the tenant has no way to see what they
+    # settled and when, and has to ask the administrator.
+    utility_bill_history = (
+        db.session.query(UtilityBill)
+        .filter(UtilityBill.tenant_profile_id == profile.id)
+        .order_by(UtilityBill.billing_month.desc())
+        .all()
+    )
+
     return render_template(
         "tenant/payments.html", payments=payments, pagination=pagination, stats=stats,
         profile=profile, current_utility_bill=current_utility_bill,
         rent_arrears=rent_arrears,
+        utility_bill_history=utility_bill_history,
     )
 
 
