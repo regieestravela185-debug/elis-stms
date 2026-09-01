@@ -143,10 +143,15 @@ def suggest_reply(category: Optional[str] = None, text: str = "") -> str:
     return _REPLY_TEMPLATES["general"]
 
 
+# Fixed monthly water charge per occupancy bracket. ₱205 covers the first
+# bracket, and each further bracket adds ₱70 per head — two heads per step,
+# so ₱140 between brackets. Residential only.
+WATER_BILL_RATE_PER_HEAD = 70.0
+
 WATER_BILL_RATES = {
     "1-2": 205.0,
-    "3-4": 305.0,
-    "5-6": 405.0,
+    "3-4": 345.0,
+    "5-6": 485.0,
 }
 
 
