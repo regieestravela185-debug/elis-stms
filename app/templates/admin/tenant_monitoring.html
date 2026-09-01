@@ -361,6 +361,7 @@
               <th>Move-in Date</th>
               <th>Move-out Date</th>
               <th>Status</th>
+              <th>Payments</th>
               <th>Renewal Risk</th>
               <th>Actions</th>
             </tr>
@@ -449,6 +450,26 @@
                 {% endif %}
 </td>
               <td>
+                {# How far behind, at a glance. The month-by-month record is
+                   behind the History button in the actions column. #}
+                {% set _st = standings.get(item.profile.id) %}
+                {% if not _st %}
+                  <span class="muted" style="font-size: 12px;">&mdash;</span>
+                {% elif _st.is_current %}
+                  <span class="badge badge--available">Up to date</span>
+                {% else %}
+                  {% if _st.months_behind %}
+                    <span class="badge badge--unpaid">{{ _st.months_behind }} month{{ 's' if _st.months_behind != 1 }} unpaid</span>
+                    <div class="muted" style="font-size: 10px; margin-top: 4px;">since {{ _st.unpaid_since }}</div>
+                  {% else %}
+                    <span class="badge badge--pending">Utilities only</span>
+                  {% endif %}
+                  <div class="mono" style="font-size: 11px; margin-top: 3px; color: #b45309; font-weight: 700;">
+                    &#8369;{{ '{:,.2f}'.format(_st.total_owed) }}
+                  </div>
+                {% endif %}
+</td>
+              <td>
                 {% set _ch = item.churn %}
                 {% if _ch %}
                   {% set _lc = '#ef4444' if _ch.level == 'high' else ('#eab308' if _ch.level == 'medium' else '#22c55e') %}
@@ -463,6 +484,14 @@
                   <a href="{{ url_for('admin.user_details', user_id=item.profile.user.id) }}" class="btn btn--ghost btn--sm">
                      View
 </a>
+                  <button
+                    type="button"
+                    class="btn btn--ghost btn--sm"
+                    onclick="openPaymentHistoryModal({{ item.profile.id }}, '{{ item.profile.user.full_name|e }}')"
+                    title="Month-by-month record of rent, electric and water"
+                  >
+                    History
+</button>
                   {% if item.status == 'Urgent' or item.status == 'Near Expiry' %}
                     <form action="{{ url_for('admin.notify_tenant_renewal', tenant_profile_id=item.profile.id) }}" method="post" style="display: inline;">
                       <button type="submit" class="btn--notify">
@@ -566,6 +595,42 @@
   }
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeProcessMoveOutModal();
+  });
+</script>
+
+<!-- Payment History Modal — month-by-month, so "they have not paid since
+     September" is answerable without leaving the page. -->
+<div class="modal" id="paymentHistoryModal" hidden>
+  <div class="modal__backdrop" onclick="closePaymentHistoryModal()"></div>
+  <div class="modal__card modal__card--wide">
+    <button type="button" class="modal__x" onclick="closePaymentHistoryModal()">&times;</button>
+    <h3 class="modal__title">Payment History</h3>
+    <p class="muted" id="paymentHistoryTenantName" style="margin-top: -8px; margin-bottom: 16px; font-size: 13px;"></p>
+    <div id="paymentHistoryContent">
+      <div style="text-align: center; padding: 40px 0;">
+        <div class="spinner"></div>
+        <p class="muted">Loading&hellip;</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openPaymentHistoryModal(profileId, tenantName) {
+    document.getElementById('paymentHistoryModal').hidden = false;
+    document.getElementById('paymentHistoryTenantName').textContent = tenantName;
+    var content = document.getElementById('paymentHistoryContent');
+    content.innerHTML = '<div style="text-align:center;padding:40px 0;"><div class="spinner"></div><p class="muted">Loading&hellip;</p></div>';
+    fetch('/admin/tenants/' + profileId + '/payment-history')
+      .then(function (r) { return r.text(); })
+      .then(function (html) { content.innerHTML = html; })
+      .catch(function () { content.innerHTML = '<p class="muted">Failed to load payment history. Please try again.</p>'; });
+  }
+  function closePaymentHistoryModal() {
+    document.getElementById('paymentHistoryModal').hidden = true;
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePaymentHistoryModal();
   });
 </script>
 

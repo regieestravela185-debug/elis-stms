@@ -1446,3 +1446,8 @@ body.page-home .nav__link{
 .inv-summary__warn { color: #b45309; }
 .inv-summary__ok { color: #16a34a; }
 .row--attention td { background: rgba(245, 158, 11, .08); }
+
+/* Payment History: standing summary at the top of the modal. */
+.ph-standing { padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+.ph-standing--ok { border: 1px solid rgba(34,197,94,.35); background: rgba(34,197,94,.09); }
+.ph-standing--behind { border: 1px solid rgba(180,83,9,.4); background: rgba(245,158,11,.10); }

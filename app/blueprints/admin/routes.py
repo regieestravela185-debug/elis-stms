@@ -40,6 +40,7 @@ from ...models import (
 )
 from ...inventory import (ensure_unit_inventory, inventory_summary,
                           INVENTORY_CONDITIONS, CONDITION_KEYS)
+from ...billing_utils import get_payment_timeline, payment_standing
 from ...security import sha256_hex
 from ...predictive_analytics import update_tenant_risk_profile
 from ...ph_holidays import holidays_by_date
@@ -1165,8 +1166,15 @@ def tenant_monitoring():
 
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
 
+    # How far behind each tenant is, so the row itself answers "have they
+    # been paying?" without opening anything. The month-by-month detail is
+    # one click away in the Payment History modal.
+    standings = {row["profile"].id: payment_standing(row["profile"])
+                 for row in monitoring_data if row.get("profile")}
+
     return render_template(
         "admin/tenant_monitoring.html",
+        standings=standings,
         monitoring_data=monitoring_data,
         notice_items=notice_items,
         pagination=pagination,
@@ -2594,6 +2602,27 @@ def pause_utility_bill_reminders(bill_id: int):
               "turns reminders back on by itself as its due date approaches.",
               "success")
     return redirect(request.referrer or url_for("admin.utility_billing"))
+
+
+@bp.get("/tenants/<int:profile_id>/payment-history")
+@login_required
+def tenant_payment_history(profile_id: int):
+    """This ONE tenant's month-by-month payment record, newest first.
+
+    Answers the question the panel raised: which months has this tenant
+    not paid, and since when. The system could always compute it — until
+    now nothing displayed it, so "Outstanding This Month" was the only
+    view and it forgot everything older than the current cycle."""
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, profile_id)
+    if not profile:
+        abort(404)
+    return render_template(
+        "admin/_payment_history_modal.html",
+        profile=profile,
+        timeline=get_payment_timeline(profile),
+        standing=payment_standing(profile),
+    )
 
 
 @bp.get("/tenants/<int:profile_id>/utility-bills")

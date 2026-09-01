@@ -1,0 +1,99 @@
+{# Month-by-month record for one tenant, newest first. Rent and the two
+   utilities are shown side by side because they are settled separately —
+   a tenant can be current on rent and still owe water. #}
+
+{% if standing.is_current %}
+  <div class="ph-standing ph-standing--ok">
+    <strong>Up to date.</strong> Nothing outstanding on rent or utilities.
+  </div>
+{% else %}
+  <div class="ph-standing ph-standing--behind">
+    <strong>
+      {% if standing.months_behind %}
+        {{ standing.months_behind }} month{{ 's' if standing.months_behind != 1 }} of rent unpaid
+        {%- if standing.unpaid_since %}, since {{ standing.unpaid_since }}{% endif %}.
+      {% else %}
+        Rent is up to date.
+      {% endif %}
+    </strong>
+    <div style="margin-top: 4px;">
+      Rent owed &#8369;{{ '{:,.2f}'.format(standing.rent_owed) }}
+      {%- if standing.utility_owed %} &middot; Electric &amp; water owed &#8369;{{ '{:,.2f}'.format(standing.utility_owed) }}{% endif %}
+      &middot; <strong>Total &#8369;{{ '{:,.2f}'.format(standing.total_owed) }}</strong>
+    </div>
+  </div>
+{% endif %}
+
+{% if not timeline %}
+  <p class="muted">No move-in date recorded for this tenant, so there is no
+     billing period to report on yet.</p>
+{% else %}
+  <div style="overflow-x: auto; margin-top: 14px;">
+    <table class="table" style="min-width: 640px;">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Due</th>
+          <th>Rent</th>
+          <th>Electric</th>
+          <th>Water</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in timeline %}
+          <tr {% if row.rent_state == 'unpaid' %}class="row--attention"{% endif %}>
+            <td><strong style="font-size: 14px;">{{ row.label }}</strong></td>
+            <td class="muted" style="font-size: 12px;">{{ row.due_date.strftime('%b %d') }}</td>
+            <td>
+              {% if row.rent_state == 'paid' %}
+                <span class="badge badge--available">Paid</span><br>
+                <span class="muted" style="font-size: 11px;">
+                  &#8369;{{ '{:,.2f}'.format(row.paid_amount) }} on {{ row.paid_on.strftime('%b %d') }}
+                </span>
+              {% elif row.rent_state == 'late' %}
+                <span class="badge badge--rejected">Paid late</span><br>
+                <span class="muted" style="font-size: 11px;">
+                  &#8369;{{ '{:,.2f}'.format(row.paid_amount) }} on {{ row.paid_on.strftime('%b %d') }}
+                </span>
+              {% elif row.rent_state == 'upcoming' %}
+                <span class="badge badge--muted">Not yet due</span>
+              {% else %}
+                <span class="badge badge--unpaid">Unpaid</span><br>
+                <span class="muted" style="font-size: 11px;">&#8369;{{ '{:,.2f}'.format(row.rent_amount) }}</span>
+              {% endif %}
+            </td>
+
+            {% if row.bill %}
+              <td>
+                {% if row.bill.electric_paid %}
+                  <span class="badge badge--available">Paid</span>
+                {% elif row.bill.electric_due > 0 %}
+                  <span class="badge badge--unpaid">Unpaid</span><br>
+                  <span class="muted" style="font-size: 11px;">&#8369;{{ '{:,.2f}'.format(row.bill.electric_due) }}</span>
+                {% else %}
+                  <span class="muted" style="font-size: 12px;">not billed</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if row.bill.water_paid %}
+                  <span class="badge badge--available">Paid</span>
+                {% else %}
+                  <span class="badge badge--unpaid">Unpaid</span><br>
+                  <span class="muted" style="font-size: 11px;">&#8369;{{ '{:,.2f}'.format(row.bill.water_due) }}</span>
+                {% endif %}
+              </td>
+            {% else %}
+              <td colspan="2" class="muted" style="font-size: 12px;">
+                No utility bill for this month
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="margin-top: 12px; font-size: 12px;">
+    Electric and water are settled separately, so a month can show one paid and
+    the other not. Anything unpaid carries into the next month&rsquo;s bill.
+  </p>
+{% endif %}
