@@ -2359,8 +2359,16 @@ def payments():
         .all()
     )
 
+    # Rent arrears per tenant, so the Add Payment form can tell the admin
+    # "this tenant has 3 unpaid months" and prefill the real total instead of
+    # a single month's rate. Keyed by profile id for the template's data-*
+    # attributes; see get_rent_arrears() for how a month counts as unpaid.
+    from ...billing_utils import get_rent_arrears
+    rent_arrears = {t.id: get_rent_arrears(t) for t in tenants if t.is_active}
+
     return render_template(
         "admin/payments.html",
+        rent_arrears=rent_arrears,
         tenants=tenants,
         payments=payments,
         pagination=pagination,
@@ -2453,10 +2461,16 @@ def utility_billing_save():
         bill = db.session.get(UtilityBill, bill_id)
         if not bill:
             continue
-        if field == "electric":
+        # A settled component is read-only: its input is rendered disabled,
+        # so it never submits normally. Re-check server-side anyway, so a
+        # replayed or hand-built POST cannot revise an amount the tenant has
+        # already paid — and with it the carry-over already derived from it.
+        if field == "electric" and not bill.electric_paid:
             bill.electric_amount = amount
-        elif field == "water":
+        elif field == "water" and not bill.water_paid:
             bill.water_amount = amount
+        else:
+            continue
         updated_ids.add(bill_id)
 
     db.session.commit()
@@ -2483,18 +2497,80 @@ def notify_utility_bill(bill_id: int):
 @bp.post("/tenants/utility-bills/<int:bill_id>/mark-paid")
 @login_required
 def mark_utility_bill_paid(bill_id: int):
-    """Standalone paid/unpaid tracking for utility bills — intentionally
-    decoupled from Payment/PaymentLedger (no ledger entry created), since
-    utilities are billed and settled outside that flow."""
+    """Settle one component of a utility bill, or both.
+
+    Electric and water are settled independently — a tenant may pay the
+    electric and leave the water — so this takes a `component` of
+    "electric", "water" or "both". Whatever is left unsettled is what
+    rolls into next month's bill (see get_or_create_utility_bill).
+
+    Intentionally decoupled from Payment/PaymentLedger (no ledger entry
+    created): utilities are billed and settled outside that flow, and
+    only rent goes on the chain."""
     _ensure_admin()
     bill = db.session.get(UtilityBill, bill_id)
     if not bill:
         abort(404)
-    bill.is_paid = True
-    bill.paid_at = datetime.utcnow()
-    bill.marked_paid_by = current_user.id
+
+    component = (request.form.get("component") or "both").strip().lower()
+    if component not in ("electric", "water", "both"):
+        component = "both"
+    undo = request.form.get("undo") == "1"
+    now = None if undo else datetime.utcnow()
+
+    if component in ("electric", "both"):
+        bill.electric_paid = not undo
+        bill.electric_paid_at = now
+    if component in ("water", "both"):
+        bill.water_paid = not undo
+        bill.water_paid_at = now
+
+    bill.marked_paid_by = None if undo else current_user.id
+    bill.sync_totals()
     db.session.commit()
-    flash("Utility bill marked as paid.", "success")
+
+    label = {"electric": "Electric", "water": "Water", "both": "Electric and water"}[component]
+    if undo:
+        flash(f"{label} marked as unpaid — it will carry into next month.", "info")
+    elif bill.is_paid:
+        flash("Utility bill fully settled.", "success")
+    else:
+        remaining = " and ".join(bill.unpaid_components)
+        flash(f"{label} marked as paid. {remaining} still outstanding "
+              f"(₱{bill.total_outstanding:,.2f}) — it will carry into next month.",
+              "success")
+    return redirect(request.referrer or url_for("admin.utility_billing"))
+
+
+@bp.post("/tenants/utility-bills/<int:bill_id>/pause-reminders")
+@login_required
+def pause_utility_bill_reminders(bill_id: int):
+    """Stop (or resume) the automated reminder for THIS bill only.
+
+    Used when a tenant tells the administrator they will settle next
+    month: the balance still rolls forward exactly as before, we just
+    stop emailing them about it. Next month's bill is a new row and
+    starts unpaused, so the pause never silently persists. The manual
+    "Send Reminder Now" button deliberately still works while paused."""
+    _ensure_admin()
+    bill = db.session.get(UtilityBill, bill_id)
+    if not bill:
+        abort(404)
+
+    resume = request.form.get("resume") == "1"
+    bill.reminders_paused = not resume
+    bill.reminders_paused_at = None if resume else datetime.utcnow()
+    bill.reminders_paused_by = None if resume else current_user.id
+    bill.reminders_paused_note = (
+        None if resume else (request.form.get("note") or "").strip()[:255] or None
+    )
+    db.session.commit()
+
+    if resume:
+        flash("Automatic reminders resumed for this bill.", "success")
+    else:
+        flash("Automatic reminders stopped for this bill. The balance still "
+              "carries into next month.", "success")
     return redirect(request.referrer or url_for("admin.utility_billing"))
 
 
@@ -3115,6 +3191,34 @@ def add_payment():
     # Create payment with normalized timestamp for blockchain consistency
     from datetime import datetime
     paid_at_normalized = datetime.utcnow().replace(microsecond=0)
+    # A tenant settling several months at once hands over one amount, but
+    # each month has to stay its own Payment row: payment_month is what
+    # marks a cycle as settled everywhere else in the app (arrears,
+    # "Outstanding This Month", the tenant portal). So the lump sum is
+    # allocated oldest-first across whole months, and only the remainder —
+    # if any — stays on the month the admin picked.
+    # A tenant settling several months at once hands over one amount, but
+    # each month has to stay its own Payment row: payment_month is what
+    # marks a cycle as settled everywhere else in the app (arrears,
+    # "Outstanding This Month", the tenant portal). So a lump sum that
+    # covers two or more whole months is allocated oldest-first, with the
+    # main row below carrying one month and the rest written after it.
+    extra_months = []
+    if payment_month:
+        from ...billing_utils import get_rent_arrears
+        arrears = get_rent_arrears(profile)
+        rate = arrears["monthly_rate"]
+        covered = arrears["months"]  # oldest first
+        if rate > 0 and len(covered) > 1 and float(amount) >= rate * 2:
+            months = covered[:min(int(float(amount) // rate), len(covered))]
+            main_month = payment_month if payment_month in months else months[0]
+            extra_months = [m for m in months if m != main_month]
+            if extra_months:
+                amount = rate
+                payment_month = main_month
+                month_name = datetime.strptime(main_month, "%Y-%m").strftime("%B %Y")
+                reference = f"Rent - {month_name}"
+
     is_late = _is_rent_payment_late(profile, paid_at_normalized, payment_month)
     p = Payment(
         tenant_profile_id=profile.id,
@@ -3130,6 +3234,25 @@ def add_payment():
     db.session.flush()
 
     _generate_payment_ledger(p)
+
+    # Remaining months of a multi-month settlement, each its own row and its
+    # own ledger entry so the chain reflects one entry per cycle settled.
+    for month in extra_months:
+        month_name = datetime.strptime(month, "%Y-%m").strftime("%B %Y")
+        extra = Payment(
+            tenant_profile_id=profile.id,
+            amount=amount,
+            reference=f"Rent - {month_name}",
+            paid_at=paid_at_normalized,
+            is_late=_is_rent_payment_late(profile, paid_at_normalized, month),
+            payment_status="late" if _is_rent_payment_late(profile, paid_at_normalized, month) else "verified",
+            payment_month=month,
+            payment_method=payment_method,
+            notes="Part of a multi-month settlement recorded in one transaction.",
+        )
+        db.session.add(extra)
+        db.session.flush()
+        _generate_payment_ledger(extra)
 
     # Optional: mark unit as occupied (and clear unpaid flag)
     unit = db.session.get(Unit, profile.unit_id)
@@ -3158,6 +3281,11 @@ def add_payment():
 
     if duplicate_warning:
         flash(duplicate_warning, "warning")
+    elif extra_months:
+        settled = [payment_month] + extra_months
+        flash(f"Payment recorded for {len(settled)} months "
+              f"({', '.join(sorted(settled))}) — one ledger entry each. "
+              f"Total ₱{float(amount) * len(settled):,.2f}.", "success")
     else:
         flash("Payment recorded (with ledger hash).", "success")
     return redirect(url_for("admin.payments"))

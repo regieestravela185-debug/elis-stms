@@ -127,10 +127,14 @@ def _send_utility_bill_reminder(profile: TenantProfile, bill: UtilityBill) -> No
         user.full_name, user.email, unit_code, bill.due_date, days_remaining,
         float(bill.rent_amount_snapshot), float(bill.electric_amount),
         float(bill.water_amount), float(bill.carried_over_amount),
+        electric_paid=bill.electric_paid, water_paid=bill.water_paid,
+        carried_over_electric=float(bill.carried_over_electric or 0),
+        carried_over_water=float(bill.carried_over_water or 0),
     )
+    still_owed = " and ".join(bill.unpaid_components) or "Balance"
     emit_utility_bill_notification(user.id, {
-        "title": f"Bill reminder — Unit {unit_code}",
-        "subtitle": f"₱{bill.grand_total_with_rent:,.2f} due {bill.due_date.strftime('%b %d, %Y')}",
+        "title": f"{still_owed} reminder — Unit {unit_code}",
+        "subtitle": f"₱{bill.total_outstanding:,.2f} due {bill.due_date.strftime('%b %d, %Y')}",
     })
     bill.reminder_sent_at = date.today()
 
@@ -159,7 +163,10 @@ def send_utility_bill_reminders(app: Flask) -> dict:
 
             billing_month = today.strftime("%Y-%m")
             bill = get_or_create_utility_bill(profile, billing_month)
-            if bill.is_paid:
+            # Paused means the tenant has already told the administrator they
+            # will settle next month — the balance still rolls forward, we
+            # just stop nagging them about it.
+            if bill.is_paid or bill.reminders_paused:
                 continue
 
             days_until_due = (bill.due_date - today).days
@@ -178,6 +185,9 @@ def send_utility_bill_reminder_now(app: Flask, utility_bill_id: int) -> bool:
     whether an email was actually sent."""
     with app.app_context():
         bill = db.session.get(UtilityBill, utility_bill_id)
+        # The manual button deliberately ignores reminders_paused: it is the
+        # administrator asking for this one send, which overrides the pause
+        # they themselves set.
         if not bill or bill.is_paid:
             return False
         profile = bill.tenant_profile

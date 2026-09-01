@@ -380,10 +380,15 @@
           <select class="input" name="tenant_profile_id" id="paymentTenantSelect" required>
             <option value="" disabled selected>Select tenant...</option>
             {% for t in tenants %}
+              {% set ar = rent_arrears.get(t.id) %}
               <option value="{{ t.id }}" 
                       data-price="{{ t.unit.price_monthly }}" 
                       data-unit="{{ t.unit.unit_code }}"
-                      data-building="{{ t.unit.building.code }}">
+                      data-building="{{ t.unit.building.code }}"
+                      data-arrears-count="{{ ar.count if ar else 0 }}"
+                      data-arrears-total="{{ ar.total if ar else 0 }}"
+                      data-arrears-oldest="{{ ar.oldest or '' if ar else '' }}"
+                      data-arrears-months="{{ (ar.months | join(', ')) if ar else '' }}">
                 {{ t.user.full_name }} • {{ t.unit.building.code }}-{{ t.unit.unit_code }}
 </option>
             {% endfor %}
@@ -397,6 +402,10 @@
           <label class="label">Amount (₱) *</label>
           <input class="input" name="amount" id="paymentAmountInput" type="number" step="0.01" min="0" required />
 </div>
+        <div id="arrearsNotice" class="arrears-notice" style="display: none; grid-column: 1 / -1;">
+          <strong id="arrearsHeadline"></strong>
+          <span id="arrearsDetail" class="muted"></span>
+        </div>
         <div>
           <label class="label">Reference</label>
           <input class="input" name="reference" placeholder="OR / Txn ref (optional)" />
@@ -696,6 +705,9 @@
     const amountInput = document.getElementById('paymentAmountInput');
     const monthInput = document.getElementById('paymentMonthInput');
     const tenantInfo = document.getElementById('tenantInfo');
+    const arrearsNotice = document.getElementById('arrearsNotice');
+    const arrearsHeadline = document.getElementById('arrearsHeadline');
+    const arrearsDetail = document.getElementById('arrearsDetail');
     const infoUnit = document.getElementById('infoUnit');
     const infoPrice = document.getElementById('infoPrice');
 
@@ -711,10 +723,42 @@
       const building = selectedOption.getAttribute('data-building');
 
       if (price && unit) {
-        amountInput.value = price;
         infoUnit.textContent = building + '-' + unit;
         infoPrice.textContent = '₱' + parseFloat(price).toLocaleString('en-US', {minimumFractionDigits: 2});
         tenantInfo.style.display = 'block';
+      }
+
+      // Unpaid rent piles up month over month. Prefill what the tenant
+      // actually owes in total, not one month's rate, and say so plainly —
+      // the amount is still editable for a partial settlement.
+      var count = parseInt(selectedOption.getAttribute('data-arrears-count') || '0', 10);
+      var total = parseFloat(selectedOption.getAttribute('data-arrears-total') || '0');
+      var oldest = selectedOption.getAttribute('data-arrears-oldest') || '';
+      var months = selectedOption.getAttribute('data-arrears-months') || '';
+      var peso = function (v) {
+        return '₱' + v.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      };
+
+      if (count > 1) {
+        amountInput.value = total.toFixed(2);
+        if (oldest) { monthInput.value = oldest; }
+        arrearsNotice.style.display = 'block';
+        arrearsNotice.classList.add('arrears-notice--due');
+        arrearsHeadline.textContent =
+          count + ' unpaid months have accumulated — ' + peso(total) + ' in total.';
+        arrearsDetail.textContent =
+          ' Covering ' + months + '. Recording this amount settles every one of '
+          + 'them, each with its own ledger entry. Edit the amount for a partial payment.';
+      } else if (count === 1) {
+        amountInput.value = total.toFixed(2);
+        if (oldest) { monthInput.value = oldest; }
+        arrearsNotice.style.display = 'block';
+        arrearsNotice.classList.remove('arrears-notice--due');
+        arrearsHeadline.textContent = 'One month due: ' + months + '.';
+        arrearsDetail.textContent = ' ' + peso(total) + ' prefilled.';
+      } else {
+        amountInput.value = price;
+        arrearsNotice.style.display = 'none';
       }
     });
 

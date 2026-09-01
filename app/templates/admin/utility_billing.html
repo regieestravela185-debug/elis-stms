@@ -88,7 +88,7 @@
                 <th>Water (₱)</th>
                 <th>Electric (₱)</th>
                 <th>Carried Over</th>
-                <th>Total Due</th>
+                <th>Outstanding</th>
                 <th>Due Date</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -98,7 +98,9 @@
               {% for row in rows %}
                 {% set bill = row.bill %}
                 {% set profile = row.profile %}
-                <tr data-base-total="{{ (bill.rent_amount_snapshot|float) + (bill.carried_over_amount|float) }}">
+                <tr data-base-total="{{ (bill.rent_amount_snapshot|float) + (0 if bill.electric_paid else bill.carried_over_electric|float) + (0 if bill.water_paid else bill.carried_over_water|float) }}"
+                    data-electric-paid="{{ 1 if bill.electric_paid else 0 }}"
+                    data-water-paid="{{ 1 if bill.water_paid else 0 }}">
                   <td class="mono"><strong>{{ profile.unit.unit_code if profile.unit else '—' }}</strong></td>
                   <td>{{ profile.user.full_name if profile.user else '—' }}</td>
                   <td class="mono">₱{{ '{:,.2f}'.format(bill.rent_amount_snapshot|float) }}</td>
@@ -109,8 +111,9 @@
                       name="water_{{ bill.id }}"
                       value="{{ '%.2f'|format(bill.water_amount|float) }}"
                       data-row="{{ bill.id }}" data-field="water"
-                      {% if bill.is_paid %}disabled{% endif %}
+                      {% if bill.water_paid %}disabled{% endif %}
                     >
+                    {% if bill.water_paid %}<span class="ub-settled">settled</span>{% endif %}
                   </td>
                   <td>
                     <input
@@ -120,23 +123,33 @@
                       value="{{ '%.2f'|format(bill.electric_amount|float) if bill.electric_amount else '' }}"
                       placeholder="0.00"
                       data-row="{{ bill.id }}" data-field="electric"
-                      {% if bill.is_paid %}disabled{% endif %}
+                      {% if bill.electric_paid %}disabled{% endif %}
                     >
+                    {% if bill.electric_paid %}<span class="ub-settled">settled</span>{% endif %}
                   </td>
                   <td>
-                    {% if bill.carried_over_amount %}
-                      <span class="ub-carry">₱{{ '{:,.2f}'.format(bill.carried_over_amount|float) }}</span>
-                    {% else %}
+                    {% if bill.carried_over_electric %}
+                      <span class="ub-carry">E ₱{{ '{:,.2f}'.format(bill.carried_over_electric|float) }}</span>
+                    {% endif %}
+                    {% if bill.carried_over_water %}
+                      <span class="ub-carry">W ₱{{ '{:,.2f}'.format(bill.carried_over_water|float) }}</span>
+                    {% endif %}
+                    {% if not bill.carried_over_electric and not bill.carried_over_water %}
                       <span class="ub-carry--zero">—</span>
                     {% endif %}
                   </td>
-                  <td class="mono ub-total" id="total_{{ bill.id }}">₱{{ '{:,.2f}'.format(bill.grand_total_with_rent) }}</td>
+                  <td class="mono ub-total" id="total_{{ bill.id }}">₱{{ '{:,.2f}'.format(bill.total_outstanding + (bill.rent_amount_snapshot|float)) }}</td>
                   <td>{{ bill.due_date.strftime('%b %d, %Y') }}</td>
                   <td>
                     {% if bill.is_paid %}
                       <span class="badge badge--available">Paid</span>
+                    {% elif bill.electric_paid or bill.water_paid %}
+                      <span class="badge badge--pending">{{ bill.unpaid_components | join(' + ') }} unpaid</span>
                     {% else %}
                       <span class="badge badge--unpaid">Unpaid</span>
+                    {% endif %}
+                    {% if bill.reminders_paused %}
+                      <span class="badge badge--muted" title="Automatic reminders stopped for this bill">Reminders off</span>
                     {% endif %}
                   </td>
                   <td>
@@ -145,9 +158,32 @@
                         <input type="hidden" name="billing_month" value="{{ billing_month }}">
                         <button type="submit" class="btn btn--sm btn--ghost" title="Send bill reminder now">Send Reminder</button>
                       </form>
+                      {% if not bill.electric_paid %}
+                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark the ELECTRIC as paid? Anything left unpaid still carries into next month.');">
+                          <input type="hidden" name="component" value="electric">
+                          <button type="submit" class="btn btn--sm btn--ghost" title="Electric paid">Electric Paid</button>
+                        </form>
+                      {% endif %}
+                      {% if not bill.water_paid %}
+                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark the WATER as paid? Anything left unpaid still carries into next month.');">
+                          <input type="hidden" name="component" value="water">
+                          <button type="submit" class="btn btn--sm btn--ghost" title="Water paid">Water Paid</button>
+                        </form>
+                      {% endif %}
                       {% if not bill.is_paid %}
-                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark this bill as fully paid?');">
-                          <button type="submit" class="btn btn--sm btn--primary" title="Mark as paid">Mark Paid</button>
+                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark BOTH electric and water as paid?');">
+                          <input type="hidden" name="component" value="both">
+                          <button type="submit" class="btn btn--sm btn--primary" title="Mark both as paid">Mark Paid</button>
+                        </form>
+                        <form method="post" action="{{ url_for('admin.pause_utility_bill_reminders', bill_id=bill.id) }}" style="display: inline;">
+                          {% if bill.reminders_paused %}
+                            <input type="hidden" name="resume" value="1">
+                            <button type="submit" class="btn btn--sm btn--ghost" title="Resume automatic reminders">Resume Reminders</button>
+                          {% else %}
+                            <button type="submit" class="btn btn--sm btn--ghost"
+                                    onclick="return confirm('Stop the automatic reminders for this bill? Use this when the tenant has said they will settle next month. The balance still carries over.');"
+                                    title="Stop automatic reminders for this bill">Stop Reminders</button>
+                          {% endif %}
                         </form>
                       {% endif %}
                     </div>
@@ -170,9 +206,10 @@
   </section>
 
   <script>
-    // Live-recompute the displayed total as admin edits electric/water,
-    // before saving — carried-over + rent stay fixed (read from the row's
-    // own data-base-total), only water/electric move.
+    // Live-recompute the OUTSTANDING total as admin edits electric/water,
+    // before saving. Rent plus any still-unpaid carry-over is fixed (read
+    // from the row's own data-base-total); a component already settled is
+    // excluded, since it is no longer owed.
     document.querySelectorAll('.ub-input').forEach(function (input) {
       input.addEventListener('input', function () {
         var billId = input.getAttribute('data-row');
@@ -180,8 +217,10 @@
         if (!row) return;
         var waterInput = row.querySelector('input[data-field="water"]');
         var electricInput = row.querySelector('input[data-field="electric"]');
-        var water = parseFloat(waterInput.value) || 0;
-        var electric = parseFloat(electricInput.value) || 0;
+        var water = row.getAttribute('data-water-paid') === '1'
+          ? 0 : (parseFloat(waterInput.value) || 0);
+        var electric = row.getAttribute('data-electric-paid') === '1'
+          ? 0 : (parseFloat(electricInput.value) || 0);
         var base = parseFloat(row.getAttribute('data-base-total')) || 0;
         var totalCell = document.getElementById('total_' + billId);
         if (!totalCell) return;

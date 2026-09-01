@@ -835,6 +835,11 @@ def payments():
     # Current unpaid utility bill (residential only — see UtilityBill docstring),
     # if any, for the itemized Rent+Electric+Water=Total card.
     from ...models import UtilityBill
+    from ...billing_utils import get_rent_arrears
+
+    # Unpaid rent accumulates in Payment/PaymentLedger, not on the bill row,
+    # so the itemized card reads it from there to show the true total owed.
+    rent_arrears = get_rent_arrears(profile)
     current_utility_bill = (
         db.session.query(UtilityBill)
         .filter(UtilityBill.tenant_profile_id == profile.id, UtilityBill.is_paid == False)  # noqa: E712
@@ -845,6 +850,7 @@ def payments():
     return render_template(
         "tenant/payments.html", payments=payments, pagination=pagination, stats=stats,
         profile=profile, current_utility_bill=current_utility_bill,
+        rent_arrears=rent_arrears,
     )
 
 

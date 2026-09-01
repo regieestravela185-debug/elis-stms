@@ -60,17 +60,31 @@
           <td style="padding: 6px 0; text-align: right; font-weight: 600;">₱{{ "{:,.2f}".format(current_utility_bill.rent_amount_snapshot|float) }}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 0; color: var(--muted);">Electric</td>
-          <td style="padding: 6px 0; text-align: right; font-weight: 600;">₱{{ "{:,.2f}".format(current_utility_bill.electric_amount|float) }}</td>
+          <td style="padding: 6px 0; color: var(--muted);">
+            Electric
+            {% if current_utility_bill.electric_paid %}
+              <span class="badge badge--available" style="margin-left: 6px;">Paid</span>
+            {% elif current_utility_bill.carried_over_electric %}
+              <span class="muted" style="font-size: 12px;">(incl. ₱{{ "{:,.2f}".format(current_utility_bill.carried_over_electric|float) }} from last month)</span>
+            {% endif %}
+          </td>
+          <td style="padding: 6px 0; text-align: right; font-weight: 600;{% if current_utility_bill.electric_paid %} text-decoration: line-through; opacity: .55;{% endif %}">₱{{ "{:,.2f}".format(current_utility_bill.electric_due) }}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 0; color: var(--muted);">Water</td>
-          <td style="padding: 6px 0; text-align: right; font-weight: 600;">₱{{ "{:,.2f}".format(current_utility_bill.water_amount|float) }}</td>
+          <td style="padding: 6px 0; color: var(--muted);">
+            Water
+            {% if current_utility_bill.water_paid %}
+              <span class="badge badge--available" style="margin-left: 6px;">Paid</span>
+            {% elif current_utility_bill.carried_over_water %}
+              <span class="muted" style="font-size: 12px;">(incl. ₱{{ "{:,.2f}".format(current_utility_bill.carried_over_water|float) }} from last month)</span>
+            {% endif %}
+          </td>
+          <td style="padding: 6px 0; text-align: right; font-weight: 600;{% if current_utility_bill.water_paid %} text-decoration: line-through; opacity: .55;{% endif %}">₱{{ "{:,.2f}".format(current_utility_bill.water_due) }}</td>
         </tr>
-        {% if current_utility_bill.carried_over_amount %}
+        {% if rent_arrears and rent_arrears.count > 1 %}
           <tr>
-            <td style="padding: 6px 0; color: #b45309;">Carried Over (from last month)</td>
-            <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #b45309;">₱{{ "{:,.2f}".format(current_utility_bill.carried_over_amount|float) }}</td>
+            <td style="padding: 6px 0; color: #b45309;">Unpaid rent from earlier months ({{ rent_arrears.count - 1 }})</td>
+            <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #b45309;">₱{{ "{:,.2f}".format(rent_arrears.total - rent_arrears.monthly_rate) }}</td>
           </tr>
         {% endif %}
         <tr>
@@ -78,7 +92,7 @@
         </tr>
         <tr>
           <td style="padding: 6px 0; font-size: 16px; font-weight: 700;">Total Amount Due</td>
-          <td style="padding: 6px 0; text-align: right; font-size: 20px; font-weight: 700; color: #D7B35B;">₱{{ "{:,.2f}".format(current_utility_bill.grand_total_with_rent) }}</td>
+          <td style="padding: 6px 0; text-align: right; font-size: 20px; font-weight: 700; color: #D7B35B;">₱{{ "{:,.2f}".format(current_utility_bill.total_outstanding + (rent_arrears.total if rent_arrears and rent_arrears.count else current_utility_bill.rent_amount_snapshot|float)) }}</td>
         </tr>
       </table>
     </div>

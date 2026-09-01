@@ -638,14 +638,38 @@ The Elis Center Management
 def send_utility_bill_reminder_email(
     tenant_name, tenant_email, unit_code, due_date, days_remaining,
     rent_amount, electric_amount, water_amount, carried_over_amount,
+    electric_paid=False, water_paid=False,
+    carried_over_electric=0, carried_over_water=0,
 ):
     """Monthly Rent + Electric + Water reminder, 7 days before due date.
     Unlike rent, utilities have no late penalty — an unpaid balance simply
     carries into next month's bill, so the carried-over line (and any
-    "previous balance" language) only appears when there actually is one."""
+    "previous balance" language) only appears when there actually is one.
+
+    Electric and water are settled independently, so each line states its
+    own status: a component already paid is shown as settled and is left
+    out of the total, and each carry-over is shown against the component
+    it came from rather than as one unattributed lump."""
     from datetime import date
 
-    total = float(rent_amount) + float(electric_amount) + float(water_amount) + float(carried_over_amount)
+    electric_due = float(electric_amount) + float(carried_over_electric)
+    water_due = float(water_amount) + float(carried_over_water)
+    total = float(rent_amount)
+    if not electric_paid:
+        total += electric_due
+    if not water_paid:
+        total += water_due
+
+    def _status(paid, carried):
+        """Trailing note on a line: settled, or how much of it is arrears."""
+        if paid:
+            return " — already settled"
+        if carried:
+            return f" (includes ₱{carried:,.2f} unpaid from last month)"
+        return ""
+
+    electric_note = _status(electric_paid, float(carried_over_electric))
+    water_note = _status(water_paid, float(carried_over_water))
 
     if days_remaining <= 0:
         subject = "Bill Due Today - The Elis Center"
@@ -654,25 +678,15 @@ def send_utility_bill_reminder_email(
         subject = f"Monthly Bill Reminder - {days_remaining} Day{'s' if days_remaining != 1 else ''} Left"
         due_text = f"is due in {days_remaining} day{'s' if days_remaining != 1 else ''}"
 
-    carried_over_line_text = (
-        f"Carried Over (from last month): ₱{carried_over_amount:,.2f}\n" if carried_over_amount else ""
-    )
-    carried_over_line_html = (
-        f"""<tr>
-                    <td style="padding: 6px 0; color: #b45309;">Carried Over (from last month)</td>
-                    <td style="padding: 6px 0; color: #b45309; text-align: right; font-weight: 600;">₱{carried_over_amount:,.2f}</td>
-                </tr>""" if carried_over_amount else ""
-    )
-
     text_content = f"""
 Dear {tenant_name},
 
 Your monthly bill for Unit {unit_code} {due_text} ({due_date.strftime('%B %d, %Y')}).
 
 Monthly Rent: ₱{rent_amount:,.2f}
-Electric: ₱{electric_amount:,.2f}
-Water: ₱{water_amount:,.2f}
-{carried_over_line_text}Total Amount Due: ₱{total:,.2f}
+Electric: ₱{electric_due:,.2f}{electric_note}
+Water: ₱{water_due:,.2f}{water_note}
+Total Amount Due: ₱{total:,.2f}
 
 Please settle your payment before the due date. If you have already paid, you may disregard this reminder.
 
@@ -711,14 +725,13 @@ The Elis Center Management
                         <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{rent_amount:,.2f}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #666666;">Electric</td>
-                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{electric_amount:,.2f}</td>
+                        <td style="padding: 6px 0; color: #666666;">Electric{electric_note}</td>
+                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{electric_due:,.2f}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #666666;">Water</td>
-                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{water_amount:,.2f}</td>
+                        <td style="padding: 6px 0; color: #666666;">Water{water_note}</td>
+                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{water_due:,.2f}</td>
                     </tr>
-                    {carried_over_line_html}
                     <tr>
                         <td colspan="2" style="border-top: 1px solid #e5e5e5; padding-top: 10px;"></td>
                     </tr>

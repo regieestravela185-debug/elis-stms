@@ -420,12 +420,20 @@ class UtilityBill(db.Model):
     only. Commercial tenants are never billed here — they pay electric/water
     directly to the utility company (see Unit.pax_range comment and
     app/contract_generator.py). Unlike rent, utilities have no late penalty:
-    an unpaid bill's total is copied into carried_over_amount on next
-    month's bill instead of blocking anything (see
-    get_or_create_utility_bill() in app/billing_utils.py).
+    an unpaid charge is copied into next month's bill instead of blocking
+    anything (see get_or_create_utility_bill() in app/billing_utils.py).
+
+    Electric and water are settled INDEPENDENTLY: a tenant may pay the
+    electric and leave the water, and only the water then carries over.
+    That is why the carry-over is kept in two buckets rather than one
+    lump sum — carried_over_electric accumulates unpaid electric and
+    carried_over_water accumulates unpaid water, so an accumulated
+    balance stays traceable to the charge it came from.
+
     rent_amount_snapshot is for itemized display only — rent collection
-    itself stays entirely in Payment/PaymentLedger, untouched by this
-    table."""
+    itself stays entirely in Payment/PaymentLedger. Unpaid rent
+    accumulates there instead, and is computed by
+    get_rent_arrears() in app/billing_utils.py."""
     __tablename__ = "utility_bills"
     __table_args__ = (
         UniqueConstraint("tenant_profile_id", "billing_month", name="uq_utility_bill_tenant_month"),
@@ -438,29 +446,99 @@ class UtilityBill(db.Model):
     electric_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # admin-entered, no formula
     water_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # prefilled from compute_water_bill(), editable
     rent_amount_snapshot = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # display only
-    carried_over_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)  # from prior unpaid bill
+    # Kept as the SUM of the two buckets below so existing reads keep working;
+    # always write it through _sync_totals() rather than on its own.
+    carried_over_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    carried_over_electric = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    carried_over_water = db.Column(db.Numeric(12, 2), nullable=False, default=0)
 
     due_date = db.Column(db.Date, nullable=False)  # same contract_start.day anchor as rent
 
+    # is_paid stays a real column (queries filter on it) but is derived:
+    # it is True only when BOTH components are settled. Maintain it through
+    # _sync_totals(), never on its own.
     is_paid = db.Column(db.Boolean, nullable=False, default=False)
     paid_at = db.Column(db.DateTime, nullable=True)
     marked_paid_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
+    electric_paid = db.Column(db.Boolean, nullable=False, default=False)
+    electric_paid_at = db.Column(db.DateTime, nullable=True)
+    water_paid = db.Column(db.Boolean, nullable=False, default=False)
+    water_paid_at = db.Column(db.DateTime, nullable=True)
+
     reminder_sent_at = db.Column(db.Date, nullable=True)  # dedup, per-bill not per-tenant
+
+    # Set when the tenant has told the administrator they will settle next
+    # month. Suppresses the automated reminder for THIS bill only — next
+    # month's bill is a new row and starts unpaused.
+    reminders_paused = db.Column(db.Boolean, nullable=False, default=False)
+    reminders_paused_at = db.Column(db.DateTime, nullable=True)
+    reminders_paused_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    reminders_paused_note = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     tenant_profile = db.relationship("TenantProfile")
     marked_paid_by_user = db.relationship("User", foreign_keys=[marked_paid_by])
+    reminders_paused_by_user = db.relationship("User", foreign_keys=[reminders_paused_by])
+
+    # --- amounts -------------------------------------------------------
+    @property
+    def electric_due(self):
+        """This month's electric plus every earlier electric left unpaid."""
+        return float(self.electric_amount or 0) + float(self.carried_over_electric or 0)
+
+    @property
+    def water_due(self):
+        """This month's water plus every earlier water left unpaid."""
+        return float(self.water_amount or 0) + float(self.carried_over_water or 0)
+
+    @property
+    def electric_outstanding(self):
+        return 0.0 if self.electric_paid else self.electric_due
+
+    @property
+    def water_outstanding(self):
+        return 0.0 if self.water_paid else self.water_due
 
     @property
     def total_due(self):
-        return float(self.electric_amount or 0) + float(self.water_amount or 0) + float(self.carried_over_amount or 0)
+        """Everything billed this cycle, whether or not it has been paid."""
+        return self.electric_due + self.water_due
+
+    @property
+    def total_outstanding(self):
+        """Only what is still unsettled — this is what carries forward."""
+        return self.electric_outstanding + self.water_outstanding
 
     @property
     def grand_total_with_rent(self):
         return self.total_due + float(self.rent_amount_snapshot or 0)
+
+    # --- state ---------------------------------------------------------
+    def sync_totals(self):
+        """Keep the two derived columns (carried_over_amount, is_paid) in
+        step with the buckets and per-component flags they summarize.
+        Call after changing any of them, before commit."""
+        self.carried_over_amount = (float(self.carried_over_electric or 0)
+                                    + float(self.carried_over_water or 0))
+        self.is_paid = bool(self.electric_paid and self.water_paid)
+        if self.is_paid and self.paid_at is None:
+            self.paid_at = datetime.utcnow()
+        elif not self.is_paid:
+            self.paid_at = None
+        return self
+
+    @property
+    def unpaid_components(self):
+        """Labels of what is still owed, for reminders and status chips."""
+        out = []
+        if not self.electric_paid and self.electric_due > 0:
+            out.append("Electric")
+        if not self.water_paid and self.water_due > 0:
+            out.append("Water")
+        return out
 
 
 class BlockchainAlarmDismissal(db.Model):

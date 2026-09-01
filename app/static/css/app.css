@@ -1399,3 +1399,32 @@ body.page-home .nav__link{
   font-size:13px;
   line-height:1.45;
 }
+
+/* Accumulated-rent notice on the admin Add Payment form. Neutral by
+   default; --due when more than one month has piled up. */
+.arrears-notice {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(215, 179, 91, .45);
+  background: rgba(215, 179, 91, .10);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.arrears-notice--due {
+  border-color: rgba(180, 83, 9, .45);
+  background: rgba(245, 158, 11, .12);
+}
+.arrears-notice strong { display: block; margin-bottom: 2px; }
+
+/* Utility Billing: a component already settled is greyed and labelled,
+   so a disabled input doesn't read as "broken". */
+.ub-settled {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #16a34a;
+}
+.ub-carry { display: block; }
+.badge--muted { border-color: rgba(120, 120, 120, .35); color: rgba(90, 90, 90, 1); }
