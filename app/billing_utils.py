@@ -254,17 +254,30 @@ def get_payment_timeline(tenant_profile: TenantProfile, as_of: date | None = Non
     return rows
 
 
+def utility_outstanding(tenant_profile: TenantProfile) -> float:
+    """What a tenant still owes on electric and water, in total.
+
+    This is the LATEST bill's outstanding, not the sum across bills. Each
+    month's bill carries forward whatever the month before left unpaid, so
+    the newest one is already the running total — adding the older ones to
+    it counts the same peso once for every month it has rolled through.
+    """
+    from .models import UtilityBill
+
+    latest = (db.session.query(UtilityBill)
+              .filter(UtilityBill.tenant_profile_id == tenant_profile.id)
+              .order_by(UtilityBill.billing_month.desc())
+              .first())
+    return round(latest.total_outstanding, 2) if latest else 0.0
+
+
 def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None) -> dict:
     """One-line standing for a monitoring row: how far behind, since when,
     and whether utilities are outstanding too."""
     from .models import UtilityBill
 
     arrears = get_rent_arrears(tenant_profile, as_of)
-    utility_outstanding = sum(
-        b.total_outstanding for b in
-        db.session.query(UtilityBill)
-        .filter(UtilityBill.tenant_profile_id == tenant_profile.id).all()
-    )
+    owed_on_utilities = utility_outstanding(tenant_profile)
     oldest = arrears["oldest"]
     since = None
     if oldest:
@@ -274,9 +287,9 @@ def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None) -
         "months_behind": arrears["count"],
         "rent_owed": arrears["total"],
         "unpaid_since": since,
-        "utility_owed": round(utility_outstanding, 2),
-        "total_owed": round(arrears["total"] + utility_outstanding, 2),
-        "is_current": arrears["count"] == 0 and utility_outstanding <= 0,
+        "utility_owed": owed_on_utilities,
+        "total_owed": round(arrears["total"] + owed_on_utilities, 2),
+        "is_current": arrears["count"] == 0 and owed_on_utilities <= 0,
     }
 
 
@@ -307,11 +320,14 @@ def final_settlement(tenant_profile: TenantProfile, as_of: date | None = None) -
     arrears = get_rent_arrears(tenant_profile, as_of)
 
     from .models import UtilityBill
-    bills = (db.session.query(UtilityBill)
-             .filter(UtilityBill.tenant_profile_id == tenant_profile.id)
-             .order_by(UtilityBill.billing_month).all())
-    electric_owed = sum(b.electric_outstanding for b in bills)
-    water_owed = sum(b.water_outstanding for b in bills)
+    # The newest bill already carries every earlier unpaid month, so it is
+    # the running total — summing the bills would charge the same balance
+    # once for each month it rolled through.
+    latest_bill = (db.session.query(UtilityBill)
+                   .filter(UtilityBill.tenant_profile_id == tenant_profile.id)
+                   .order_by(UtilityBill.billing_month.desc()).first())
+    electric_owed = latest_bill.electric_outstanding if latest_bill else 0.0
+    water_owed = latest_bill.water_outstanding if latest_bill else 0.0
 
     damaged, damage_owed, unpriced = [], 0.0, 0
     for row in (db.session.query(UnitInventoryItem)

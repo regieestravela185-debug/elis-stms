@@ -19,7 +19,7 @@ from __future__ import annotations
 import calendar
 from datetime import date
 
-from .billing_utils import get_rent_arrears
+from .billing_utils import get_rent_arrears, utility_outstanding
 from .extensions import db
 from .models import TenantProfile, Unit, UtilityBill
 
@@ -102,6 +102,7 @@ def collection_outlook(as_of: date | None = None) -> dict:
     expected_rent = 0.0
     billing_next_month = 0
     overdue_rent = 0.0
+    overdue_utilities = 0.0
     tenants_behind = []
 
     for p in profiles:
@@ -110,18 +111,21 @@ def collection_outlook(as_of: date | None = None) -> dict:
             billing_next_month += 1
 
         arrears = get_rent_arrears(p, as_of)
-        if arrears["count"]:
-            overdue_rent += arrears["total"]
+        utilities = utility_outstanding(p)
+        overdue_rent += arrears["total"]
+        overdue_utilities += utilities
+
+        # A tenant owing only electric or water is still behind. Counting
+        # rent alone let the dashboard report money overdue "across 0
+        # tenants", which reads as a fault in the figure.
+        if arrears["count"] or utilities > 0:
             tenants_behind.append({
                 "name": p.user.full_name if p.user else "—",
                 "unit": p.unit.unit_code if p.unit else "—",
                 "months": arrears["count"],
-                "owed": arrears["total"],
+                "owed": round(arrears["total"] + utilities, 2),
                 "profile_id": p.id,
             })
-
-    overdue_utilities = sum(
-        b.total_outstanding for b in db.session.query(UtilityBill).all())
 
     tenants_behind.sort(key=lambda t: t["owed"], reverse=True)
     return {

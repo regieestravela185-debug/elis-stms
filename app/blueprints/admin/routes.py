@@ -2565,18 +2565,41 @@ def mark_utility_bill_paid(bill_id: int):
     undo = request.form.get("undo") == "1"
     now = None if undo else datetime.utcnow()
 
-    if component in ("electric", "both"):
-        bill.electric_paid = not undo
-        bill.electric_paid_at = now
-    if component in ("water", "both"):
-        bill.water_paid = not undo
-        bill.water_paid_at = now
+    # Earlier bills for the same tenant whose charge this one already
+    # carries. Settling a component settles every earlier month of it too:
+    # this bill's amount INCLUDES what rolled forward from them, so leaving
+    # them open would count the same peso twice — once here and once there.
+    earlier = (db.session.query(UtilityBill)
+               .filter(UtilityBill.tenant_profile_id == bill.tenant_profile_id,
+                       UtilityBill.billing_month < bill.billing_month)
+               .all())
+
+    def apply(target, field):
+        setattr(target, f"{field}_paid", not undo)
+        setattr(target, f"{field}_paid_at", now)
+
+    cascaded = 0
+    for field in ("electric", "water"):
+        if component not in (field, "both"):
+            continue
+        apply(bill, field)
+        for prior in earlier:
+            # Undo only reopens THIS bill. An earlier month may have been
+            # settled on its own before this one existed, and reopening it
+            # would assert something the administrator never said.
+            if not undo and not getattr(prior, f"{field}_paid"):
+                apply(prior, field)
+                prior.sync_totals()
+                cascaded += 1
 
     bill.marked_paid_by = None if undo else current_user.id
     bill.sync_totals()
     db.session.commit()
 
     label = {"electric": "Electric", "water": "Water", "both": "Electric and water"}[component]
+    if cascaded:
+        flash(f"{cascaded} earlier unpaid month(s) settled too — this bill "
+              f"already carried their balance.", "info")
     if undo:
         flash(f"{label} marked as unpaid — it will carry into next month.", "info")
     elif bill.is_paid:
