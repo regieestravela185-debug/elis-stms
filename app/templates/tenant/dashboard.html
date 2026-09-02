@@ -464,7 +464,10 @@ a[href^="tel:"]:hover {
     <div class="card">
       <div class="section__header">
         <h3>Utility Bills (Electric & Water)</h3>
-        <p class="muted">Billed twice a month</p>
+        <p class="muted">
+          Billed monthly, starting the month after you moved in{% if first_utility_month_label %} &mdash;
+          your first electric and water bill is for {{ first_utility_month_label }}{% endif %}.
+        </p>
       </div>
       <div class="grid grid--2 mt-16">
         <div>

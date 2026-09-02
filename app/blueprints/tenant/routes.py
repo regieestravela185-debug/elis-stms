@@ -305,6 +305,16 @@ def dashboard():
     from ...ai_utils import compute_water_bill
     water_bill_amount = compute_water_bill(unit.pax_range) if unit else None
 
+    # Utilities begin the month AFTER move-in, so say which month that is
+    # rather than leaving a tenant to wonder why their first month carried
+    # no electric or water bill.
+    from ...billing_utils import first_utility_month
+    _first_um = first_utility_month(profile) if profile else None
+    first_utility_month_label = None
+    if _first_um:
+        _y, _m = (int(x) for x in _first_um.split("-"))
+        first_utility_month_label = date(_y, _m, 1).strftime("%B %Y")
+
     return render_template(
         "tenant/dashboard.html",
         on_time_rate=on_time_rate,
@@ -316,6 +326,7 @@ def dashboard():
         profile=profile,
         unit=unit,
         water_bill_amount=water_bill_amount,
+        first_utility_month_label=first_utility_month_label,
         contract_end_date=contract_end_date,
         days_until_payment=days_until_payment,
         days_remaining=days_remaining,

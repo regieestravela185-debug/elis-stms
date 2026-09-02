@@ -124,21 +124,30 @@
                 <td class="mono"><strong>{{ b.billing_month }}</strong></td>
                 <td class="muted" style="font-size: 13px;">{{ b.due_date.strftime('%b %d, %Y') }}</td>
                 <td>
-                  <span class="mono">&#8369;{{ '{:,.2f}'.format(b.electric_due) }}</span><br>
-                  {% if b.electric_paid %}
-                    <span class="badge badge--available">Paid</span>
-                  {% elif b.electric_due > 0 %}
-                    <span class="badge badge--unpaid">Unpaid</span>
-                  {% else %}
+                  {# Nothing charged reads as "not billed", never as "Paid" —
+                     a tenant seeing "Paid" for a month with no reading would
+                     reasonably think they had been charged and settled it. #}
+                  {% if b.electric_due <= 0 %}
                     <span class="muted" style="font-size: 12px;">not billed</span>
+                  {% else %}
+                    <span class="mono">&#8369;{{ '{:,.2f}'.format(b.electric_due) }}</span><br>
+                    {% if b.electric_paid %}
+                      <span class="badge badge--available">Paid</span>
+                    {% else %}
+                      <span class="badge badge--unpaid">Unpaid</span>
+                    {% endif %}
                   {% endif %}
                 </td>
                 <td>
-                  <span class="mono">&#8369;{{ '{:,.2f}'.format(b.water_due) }}</span><br>
-                  {% if b.water_paid %}
-                    <span class="badge badge--available">Paid</span>
+                  {% if b.water_due <= 0 %}
+                    <span class="muted" style="font-size: 12px;">not billed</span>
                   {% else %}
-                    <span class="badge badge--unpaid">Unpaid</span>
+                    <span class="mono">&#8369;{{ '{:,.2f}'.format(b.water_due) }}</span><br>
+                    {% if b.water_paid %}
+                      <span class="badge badge--available">Paid</span>
+                    {% else %}
+                      <span class="badge badge--unpaid">Unpaid</span>
+                    {% endif %}
                   {% endif %}
                 </td>
                 <td class="mono" style="text-align: right; font-weight: 700; {% if b.total_outstanding > 0 %}color: #b45309;{% else %}color: var(--muted);{% endif %}">
