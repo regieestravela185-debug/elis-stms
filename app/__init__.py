@@ -30,6 +30,14 @@ def create_app(config_object: type[Config] = Config) -> Flask:
     login_manager.init_app(app)
     mail.init_app(app)
     socketio.init_app(app)
+    # Render terminates TLS at its own proxy and forwards the visitor in
+    # X-Forwarded-For. Without this, every request looks like it came from
+    # Render's internal load balancer, so the rate limiter counts the whole
+    # site against ONE bucket and request logs show one address for
+    # everybody. One hop: Render's proxy is the only one in front of us.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     limiter.init_app(app)  # Initialize rate limiter
     
     # Initialize OAuth
