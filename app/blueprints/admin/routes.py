@@ -37,6 +37,7 @@ from ...models import (
     UtilityBill,
     VerificationStatus,
     PAYMENT_STATUSES_NOT_COUNTED,
+    UnitInventoryItem,
 )
 from ...inventory import (ensure_unit_inventory, inventory_summary,
                           INVENTORY_CONDITIONS, CONDITION_KEYS)
@@ -2614,6 +2615,66 @@ def pause_utility_bill_reminders(bill_id: int):
     return redirect(request.referrer or url_for("admin.utility_billing"))
 
 
+@bp.post("/units/<int:unit_id>/inventory/<int:item_id>/repair-ticket")
+@login_required
+def raise_repair_ticket(unit_id: int, item_id: int):
+    """Turn a fixture recorded as damaged or missing into a repair ticket.
+
+    Maintenance is already tracked as a concern, so this raises one rather
+    than inventing a parallel queue — the difference is that it carries the
+    inventory row it came from, so closing it is the cue to update the
+    item's condition, and the final settlement stops charging for it once
+    it is fixed.
+
+    A concern belongs to a tenant, so a vacant unit has nobody to raise it
+    against. That is reported rather than worked around: repairing a vacant
+    unit is scheduling, not a tenant complaint."""
+    _ensure_admin()
+    item = db.session.get(UnitInventoryItem, item_id)
+    if not item or item.unit_id != unit_id:
+        abort(404)
+
+    existing = (db.session.query(Concern)
+                .filter(Concern.unit_inventory_item_id == item.id,
+                        Concern.status != ConcernStatus.RESOLVED,
+                        Concern.is_cancelled.is_(False))
+                .first())
+    if existing:
+        flash(f"A repair ticket for {item.label} is already open.", "info")
+        return redirect(url_for("admin.unit_inventory", unit_id=unit_id))
+
+    profile = (db.session.query(TenantProfile)
+               .filter(TenantProfile.unit_id == unit_id,
+                       TenantProfile.is_active.is_(True))
+               .first())
+    if not profile:
+        flash(f"{item.label} is recorded as {item.condition_label.lower()}, but "
+              f"this unit has no active tenant to raise a concern against. "
+              f"Schedule the repair before the next tenant moves in.", "warning")
+        return redirect(url_for("admin.unit_inventory", unit_id=unit_id))
+
+    concern = Concern(
+        tenant_profile_id=profile.id,
+        subject=f"Repair: {item.label}",
+        description=(
+            f"{item.label} (x{item.quantity}) in unit {item.unit.unit_code} is "
+            f"recorded as {item.condition_label.lower()} in the unit inventory."
+            + (f"\n\nNote: {item.notes}" if item.notes else "")
+            + "\n\nRaised from the unit inventory by the administrator."
+        ),
+        category="maintenance",
+        # Missing means it is not there at all; damaged still functions in
+        # some form, so it waits behind anything missing.
+        priority="high" if item.condition == "missing" else "medium",
+        unit_inventory_item_id=item.id,
+    )
+    db.session.add(concern)
+    db.session.commit()
+    flash(f"Repair ticket raised for {item.label} — tracked under Concerns.",
+          "success")
+    return redirect(url_for("admin.unit_inventory", unit_id=unit_id))
+
+
 @bp.get("/tenants/<int:profile_id>/settlement")
 @login_required
 def tenant_settlement(profile_id: int):
@@ -2768,9 +2829,17 @@ def unit_inventory(unit_id: int):
     if not unit:
         abort(404)
     items = ensure_unit_inventory(unit, commit=True)
+    open_tickets = {
+        c.unit_inventory_item_id: c
+        for c in db.session.query(Concern)
+        .filter(Concern.unit_inventory_item_id.in_([i.id for i in items] or [0]),
+                Concern.status != ConcernStatus.RESOLVED,
+                Concern.is_cancelled.is_(False))
+        .all()
+    }
     return render_template(
         "admin/unit_inventory.html",
-        unit=unit, items=items,
+        unit=unit, items=items, open_tickets=open_tickets,
         conditions=INVENTORY_CONDITIONS,
         summary=inventory_summary(items),
     )

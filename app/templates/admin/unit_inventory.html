@@ -46,6 +46,7 @@
               <th style="width: 20%;">KONDISYON / Condition</th>
               <th style="width: 14%;">Replacement &#8369;</th>
               <th>Notes (optional)</th>
+              <th>Repair</th>
             </tr>
           </thead>
           <tbody>
@@ -77,6 +78,26 @@
                          value="{{ item.notes or '' }}"
                          placeholder="e.g. bottom bunk rail loose">
                 </td>
+                <td>
+                  {# A repair ticket is just a maintenance concern that knows
+                     which fixture it is about, so closing it is the cue to
+                     update the condition here. #}
+                  {% set ticket = open_tickets.get(item.id) %}
+                  {% if ticket %}
+                    <a href="{{ url_for('admin.concerns') }}" class="badge badge--pending"
+                       style="text-decoration: none;" title="Open repair ticket">
+                      Ticket open
+                    </a>
+                  {% elif item.needs_attention and item.quantity %}
+                    <button type="button" class="btn btn--sm btn--ghost js-repair"
+                            data-action="{{ url_for('admin.raise_repair_ticket', unit_id=unit.id, item_id=item.id) }}"
+                            data-label="{{ item.label }}">
+                      Raise ticket
+                    </button>
+                  {% else %}
+                    <span class="muted" style="font-size: 12px;">&mdash;</span>
+                  {% endif %}
+                </td>
               </tr>
             {% endfor %}
           </tbody>
@@ -94,6 +115,23 @@
         <button type="submit" class="btn btn--primary">Save Inventory</button>
       </div>
     </form>
+    <form method="post" id="repairTicketForm" style="display: none;"></form>
   </section>
 </div>
+
+<script>
+  // Raising a ticket is a separate POST from saving the table, so it is
+  // submitted through its own form rather than nested inside the save form
+  // (nested forms are invalid HTML and the inner one is dropped).
+  document.querySelectorAll('.js-repair').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!confirm('Raise a repair ticket for ' + btn.getAttribute('data-label') +
+                   '?\n\nIt is tracked under Concerns. Save any unsaved edits first — ' +
+                   'this leaves the page.')) return;
+      var f = document.getElementById('repairTicketForm');
+      f.action = btn.getAttribute('data-action');
+      f.submit();
+    });
+  });
+</script>
 {% endblock %}

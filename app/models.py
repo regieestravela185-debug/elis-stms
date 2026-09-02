@@ -720,6 +720,13 @@ class Concern(db.Model):
     admin_response_at = db.Column(db.DateTime, nullable=True)  # When admin responded
     admin_response_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # Which admin responded
     attachments_json = db.Column(db.Text, nullable=True)  # JSON array of file paths
+
+    # Set when this concern was raised from a fixture recorded as damaged or
+    # missing in the unit's inventory, so the repair and the item it is about
+    # stay connected — closing the concern is the cue to update the item's
+    # condition, and the settlement stops charging for it once repaired.
+    unit_inventory_item_id = db.Column(
+        db.Integer, db.ForeignKey("unit_inventory_items.id"), nullable=True, index=True)
     is_cancelled = db.Column(db.Boolean, nullable=False, default=False)  # Tenant cancelled
     cancelled_at = db.Column(db.DateTime, nullable=True)
     resolved_at = db.Column(db.DateTime, nullable=True)  # When marked as resolved
@@ -727,6 +734,8 @@ class Concern(db.Model):
     satisfaction_rating = db.Column(db.Integer, nullable=True)  # 1-5 stars after resolution
     satisfaction_feedback = db.Column(db.Text, nullable=True)  # Optional feedback
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    inventory_item = db.relationship("UnitInventoryItem")
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     tenant_profile = db.relationship("TenantProfile")
@@ -741,6 +750,13 @@ class ConcernFollowUp(db.Model):
     concern_id = db.Column(db.Integer, db.ForeignKey("concerns.id"), nullable=False, index=True)
     message = db.Column(db.Text, nullable=False)
     attachments_json = db.Column(db.Text, nullable=True)  # JSON array of file paths
+
+    # Set when this concern was raised from a fixture recorded as damaged or
+    # missing in the unit's inventory, so the repair and the item it is about
+    # stay connected — closing the concern is the cue to update the item's
+    # condition, and the settlement stops charging for it once repaired.
+    unit_inventory_item_id = db.Column(
+        db.Integer, db.ForeignKey("unit_inventory_items.id"), nullable=True, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     concern = db.relationship("Concern", back_populates="follow_ups")
