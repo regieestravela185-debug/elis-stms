@@ -1,0 +1,99 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Standard Unit Inventory{% endblock %}
+
+{% block content %}
+<div class="page">
+  <section class="card" style="padding: 24px;">
+    <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 6px;">
+      <div style="flex: 1; min-width: 260px;">
+        <h2 style="margin: 0 0 4px 0;">Standard Unit Inventory</h2>
+        <p class="muted" style="margin: 0; font-size: 14px;">
+          The residential units are the same studio type, so record the fixtures
+          once here and apply them to all {{ units|length }} of them. Anything
+          particular to one unit &mdash; a damaged door, a missing key &mdash; is
+          corrected afterwards on that unit&rsquo;s own Inventory page.
+        </p>
+      </div>
+      <a href="{{ url_for('admin.units') }}" class="btn btn--ghost btn--sm">&lsaquo; Back to Units</a>
+    </div>
+
+    {% if encoded %}
+      <div class="inv-summary" style="margin-top: 14px;">
+        <span>
+          <strong>{{ encoded|length }}</strong> unit{{ 's' if encoded|length != 1 }}
+          already inventoried
+          ({% for u in encoded[:8] %}{{ u.unit_code }}{{ ", " if not loop.last }}{% endfor %}{% if encoded|length > 8 %}&hellip;{% endif %})
+          &mdash; skipped unless you tick the box below.
+        </span>
+      </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('admin.standard_inventory_apply') }}">
+      <div style="overflow-x: auto; margin-top: 18px;">
+        <table class="table" style="min-width: 640px;">
+          <thead>
+            <tr>
+              <th style="width: 40%;">MGA GAMIT / Item</th>
+              <th style="width: 16%;">BILANG / Quantity</th>
+              <th style="width: 24%;">KONDISYON / Condition</th>
+              <th>Replacement &#8369;</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for label in items %}
+              <tr>
+                <td><strong style="font-size: 14px;">{{ label }}</strong></td>
+                <td>
+                  <input class="input" type="number" min="0" step="1"
+                         name="quantity_{{ loop.index0 }}" value="0"
+                         style="max-width: 96px;">
+                </td>
+                <td>
+                  <select class="input" name="condition_{{ loop.index0 }}">
+                    {% for key, cl in conditions %}
+                      <option value="{{ key }}" {% if key == 'good' %}selected{% endif %}>{{ cl }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input class="input" type="number" min="0" step="0.01"
+                         name="cost_{{ loop.index0 }}" placeholder="0.00"
+                         style="max-width: 120px;">
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 18px; padding: 14px; border-radius: 8px;
+                  border: 1px solid var(--border); background: rgba(148,163,184,.05);">
+        <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
+          <input type="checkbox" name="overwrite" value="1" style="margin-top: 3px;">
+          <span style="font-size: 13px; line-height: 1.55;">
+            <strong>Also overwrite units already inventoried.</strong><br>
+            <span class="muted">
+              Leave this off unless you mean it. A unit whose door is recorded as
+              damaged, or whose bulb count was corrected, would be reset to the
+              figures above &mdash; and that record is what the final settlement
+              charges from.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;
+                  gap: 12px; margin-top: 18px; flex-wrap: wrap;">
+        <p class="muted" style="margin: 0; font-size: 13px; max-width: 520px;">
+          A quantity of zero means the unit does not have that fixture, so it is
+          left off both the Kasunduan and the public listing. The replacement cost
+          is what a damaged item is charged at when a tenant moves out.
+        </p>
+        <button type="submit" class="btn btn--primary">
+          Apply to all {{ units|length }} residential units
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -307,7 +307,11 @@
           <h3>{% if edit_unit %}Edit Unit{% else %}Add New Unit{% endif %}</h3>
           <p class="muted">Create and manage unit listings</p>
 </div>
-        <a href="{{ url_for('admin.export_units') }}" class="btn btn--ghost btn--sm">Export CSV</a>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <a href="{{ url_for('admin.standard_inventory') }}" class="btn btn--ghost btn--sm"
+             title="Record the fixture list once and apply it to every residential unit">Standard Inventory</a>
+          <a href="{{ url_for('admin.export_units') }}" class="btn btn--ghost btn--sm">Export CSV</a>
+</div>
 </div>
 
       <form method="post" action="{% if edit_unit %}{{ url_for('admin.update_unit', unit_id=edit_unit.id) }}{% else %}{{ url_for('admin.create_unit') }}{% endif %}" class="form mt-16" enctype="multipart/form-data">

@@ -41,7 +41,8 @@ from ...models import (
     UnitInventoryItem,
 )
 from ...inventory import (ensure_unit_inventory, inventory_summary,
-                          INVENTORY_CONDITIONS, CONDITION_KEYS)
+                          INVENTORY_CONDITIONS, CONDITION_KEYS,
+                          STANDARD_UNIT_INVENTORY)
 from ...billing_utils import (get_payment_timeline, payment_standing,
                               final_settlement)
 from ...security import sha256_hex
@@ -2904,6 +2905,95 @@ def tenant_utility_bills_partial(profile_id: int):
         .all()
     )
     return render_template("admin/_utility_bills_modal.html", bills=bills, profile=profile)
+
+
+@bp.get("/units/inventory-standard")
+@login_required
+def standard_inventory():
+    """Set the fixture list once and apply it to every residential unit.
+
+    The units are the same studio type, so encoding seventeen items on each
+    of them by hand is the same figures typed five times over. This records
+    them once; anything genuinely particular to one unit — a damaged door,
+    a missing key — is then corrected on that unit's own page."""
+    _ensure_admin()
+    units = (db.session.query(Unit)
+             .filter(Unit.type == "residential", Unit.is_archived.is_(False))
+             .order_by(Unit.unit_code).all())
+
+    # Which units already hold real figures, so the page can say plainly
+    # what an overwrite would discard.
+    encoded = []
+    for u in units:
+        rows = (db.session.query(UnitInventoryItem)
+                .filter(UnitInventoryItem.unit_id == u.id,
+                        UnitInventoryItem.quantity > 0).count())
+        if rows:
+            encoded.append(u)
+
+    return render_template(
+        "admin/standard_inventory.html",
+        items=STANDARD_UNIT_INVENTORY,
+        conditions=INVENTORY_CONDITIONS,
+        units=units, encoded=encoded,
+    )
+
+
+@bp.post("/units/inventory-standard")
+@login_required
+def standard_inventory_apply():
+    """Write the standard figures onto every residential unit.
+
+    Units already carrying figures are skipped unless the administrator
+    asks for them too. That default matters once the system has been in
+    use: a unit whose door is recorded as damaged, or whose bulb count was
+    corrected, should not be silently reset by someone re-running this to
+    add a new unit."""
+    _ensure_admin()
+    overwrite = request.form.get("overwrite") == "1"
+
+    units = (db.session.query(Unit)
+             .filter(Unit.type == "residential", Unit.is_archived.is_(False))
+             .order_by(Unit.unit_code).all())
+
+    # Read the form once — the same figures go to every unit.
+    standard = {}
+    for idx, label in enumerate(STANDARD_UNIT_INVENTORY):
+        try:
+            qty = max(0, int(request.form.get(f"quantity_{idx}") or 0))
+        except ValueError:
+            qty = 0
+        cond = (request.form.get(f"condition_{idx}") or "good").strip()
+        if cond not in CONDITION_KEYS:
+            cond = "good"
+        try:
+            cost = max(0.0, float(request.form.get(f"cost_{idx}") or 0))
+        except ValueError:
+            cost = 0.0
+        standard[label] = (qty, cond, cost)
+
+    applied, skipped = 0, []
+    for unit in units:
+        rows = ensure_unit_inventory(unit)
+        already = any((r.quantity or 0) > 0 for r in rows)
+        if already and not overwrite:
+            skipped.append(unit.unit_code)
+            continue
+        for row in rows:
+            if row.label not in standard:
+                continue  # an item the administrator added by hand; leave it
+            row.quantity, row.condition, row.replacement_cost = standard[row.label]
+        applied += 1
+
+    db.session.commit()
+
+    msg = f"Standard inventory applied to {applied} unit(s)."
+    if skipped:
+        msg += (f" Skipped {len(skipped)} already inventoried "
+                f"({', '.join(skipped[:6])}{'…' if len(skipped) > 6 else ''}) — "
+                f"tick the overwrite box to include them.")
+    flash(msg, "success")
+    return redirect(url_for("admin.units"))
 
 
 @bp.get("/units/<int:unit_id>/inventory")
