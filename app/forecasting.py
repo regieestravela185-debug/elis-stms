@@ -19,7 +19,10 @@ from __future__ import annotations
 import calendar
 from datetime import date
 
-from .billing_utils import get_rent_arrears, utility_outstanding
+from .billing_utils import (get_rent_arrears, utility_outstanding,
+                            load_paid_months, load_latest_bills)
+from sqlalchemy.orm import joinedload
+
 from .extensions import db
 from .models import TenantProfile, Unit, UtilityBill
 
@@ -43,6 +46,7 @@ def contract_expiry_outlook(months_ahead: int = 3, as_of: date | None = None) ->
 
     profiles = (
         db.session.query(TenantProfile)
+        .options(joinedload(TenantProfile.user), joinedload(TenantProfile.unit))
         .filter(TenantProfile.is_active.is_(True),
                 TenantProfile.contract_end.isnot(None),
                 TenantProfile.contract_end >= as_of,
@@ -69,7 +73,15 @@ def contract_expiry_outlook(months_ahead: int = 3, as_of: date | None = None) ->
         })
         bucket["rent_at_risk"] += p.contract_rent
 
+    # Keep each month readable. The full list belongs on Tenant Monitoring,
+    # which is filterable and paginated; the dashboard only has to say how
+    # many and how much.
+    SHOWN_PER_MONTH = 6
     months = sorted(buckets.values(), key=lambda b: b["month"])
+    for bucket in months:
+        bucket["total_tenants"] = len(bucket["tenants"])
+        bucket["hidden"] = max(0, bucket["total_tenants"] - SHOWN_PER_MONTH)
+        bucket["tenants"] = bucket["tenants"][:SHOWN_PER_MONTH]
     return {
         "months": months,
         "total_contracts": len(profiles),
@@ -97,7 +109,15 @@ def collection_outlook(as_of: date | None = None) -> dict:
                           calendar.monthrange(nxt_year, nxt_month)[1])
 
     profiles = (db.session.query(TenantProfile)
+                .options(joinedload(TenantProfile.user), joinedload(TenantProfile.unit))
                 .filter(TenantProfile.is_active.is_(True)).all())
+
+    # Load the payment and billing history for every tenant in two queries
+    # rather than two per tenant. On a remote database the round trips, not
+    # the arithmetic, are what make this page slow.
+    ids = [p.id for p in profiles]
+    paid_by_tenant = load_paid_months(ids)
+    latest_bills = load_latest_bills(ids)
 
     expected_rent = 0.0
     billing_next_month = 0
@@ -110,8 +130,8 @@ def collection_outlook(as_of: date | None = None) -> dict:
             expected_rent += p.contract_rent
             billing_next_month += 1
 
-        arrears = get_rent_arrears(p, as_of)
-        utilities = utility_outstanding(p)
+        arrears = get_rent_arrears(p, as_of, paid_by_tenant.get(p.id, set()))
+        utilities = utility_outstanding(p, latest_bills.get(p.id))
         overdue_rent += arrears["total"]
         overdue_utilities += utilities
 

@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, url_for, Response
 from flask_login import current_user, login_required
 from dateutil.relativedelta import relativedelta
+from sqlalchemy.orm import contains_eager, joinedload
 
 from ...extensions import db
 from ...models import (
@@ -1023,6 +1024,11 @@ def tenant_monitoring():
         db.session.query(TenantProfile)
         .join(User, TenantProfile.user_id == User.id)
         .join(Unit, TenantProfile.unit_id == Unit.id)
+        # The rows are already joined for filtering, but the ORM would still
+        # re-fetch .user and .unit one row at a time when the template reads
+        # them. contains_eager reuses what the join already selected.
+        .options(contains_eager(TenantProfile.user),
+                 contains_eager(TenantProfile.unit))
         .filter(TenantProfile.is_active == True)
     )
 
@@ -1180,8 +1186,16 @@ def tenant_monitoring():
     # How far behind each tenant is, so the row itself answers "have they
     # been paying?" without opening anything. The month-by-month detail is
     # one click away in the Payment History modal.
-    standings = {row["profile"].id: payment_standing(row["profile"])
-                 for row in monitoring_data if row.get("profile")}
+    _profiles = [row["profile"] for row in monitoring_data if row.get("profile")]
+    _ids = [p.id for p in _profiles]
+    from ...billing_utils import load_paid_months, load_latest_bills
+    _paid = load_paid_months(_ids)
+    _bills = load_latest_bills(_ids)
+    standings = {
+        p.id: payment_standing(p, paid_months=_paid.get(p.id, set()),
+                               latest_bill=_bills.get(p.id))
+        for p in _profiles
+    }
 
     return render_template(
         "admin/tenant_monitoring.html",
@@ -2279,7 +2293,10 @@ def payments():
     today = date.today()
     today_dt = dt.combine(today, dt.min.time())  # Convert to datetime for comparison
 
-    tenants = db.session.query(TenantProfile).order_by(TenantProfile.created_at.desc()).limit(200).all()
+    tenants = (db.session.query(TenantProfile)
+               .options(joinedload(TenantProfile.user),
+                        joinedload(TenantProfile.unit).joinedload(Unit.building))
+               .order_by(TenantProfile.created_at.desc()).limit(200).all())
 
     # Confirmed payments only — tenant-submitted proofs awaiting review live
     # in their own "Pending Payment Proofs" section below, and rejected ones
@@ -2411,7 +2428,11 @@ def payments():
     # a single month's rate. Keyed by profile id for the template's data-*
     # attributes; see get_rent_arrears() for how a month counts as unpaid.
     from ...billing_utils import get_rent_arrears
-    rent_arrears = {t.id: get_rent_arrears(t) for t in tenants if t.is_active}
+    from ...billing_utils import load_paid_months
+    _active = [t for t in tenants if t.is_active]
+    _paid_months = load_paid_months([t.id for t in _active])
+    rent_arrears = {t.id: get_rent_arrears(t, paid_months=_paid_months.get(t.id, set()))
+                    for t in _active}
 
     return render_template(
         "admin/payments.html",

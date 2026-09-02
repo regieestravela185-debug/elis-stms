@@ -5,6 +5,10 @@ from datetime import date
 
 from .extensions import db
 from .models import TenantProfile, UtilityBill
+
+# Distinguishes "nothing passed" from "passed None" — a tenant with no
+# bill at all is a real answer, not a missing argument.
+_UNSET = object()
 from .ai_utils import compute_water_bill
 
 
@@ -141,7 +145,53 @@ def billing_month_for(tenant_profile: TenantProfile, when: date) -> str | None:
     return f"{year:04d}-{month:02d}"
 
 
-def get_unpaid_rent_months(tenant_profile: TenantProfile, as_of: date | None = None):
+def load_paid_months(profile_ids) -> dict:
+    """Every tenant's settled rent months, in ONE query.
+
+    get_rent_arrears asks this per tenant, which is fine for one row but
+    becomes a query per tenant on any page that covers them all. Callers
+    working with a whole set of tenants load it once and pass it in.
+    """
+    from .models import Payment, PAYMENT_STATUSES_NOT_COUNTED
+
+    ids = list(profile_ids)
+    if not ids:
+        return {}
+    out: dict = {pid: set() for pid in ids}
+    for pid, month in (db.session.query(Payment.tenant_profile_id,
+                                        Payment.payment_month)
+                       .filter(Payment.tenant_profile_id.in_(ids),
+                               Payment.payment_month.isnot(None),
+                               Payment.is_deposit.is_(False),
+                               Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
+                       .all()):
+        out[pid].add(month)
+    return out
+
+
+def load_latest_bills(profile_ids) -> dict:
+    """Each tenant's newest utility bill, in ONE query.
+
+    The newest bill is the running total — see utility_outstanding — so
+    this is all a caller needs to know what is still owed.
+    """
+    from .models import UtilityBill
+
+    ids = list(profile_ids)
+    if not ids:
+        return {}
+    latest: dict = {}
+    for b in (db.session.query(UtilityBill)
+              .filter(UtilityBill.tenant_profile_id.in_(ids))
+              .order_by(UtilityBill.tenant_profile_id,
+                        UtilityBill.billing_month)
+              .all()):
+        latest[b.tenant_profile_id] = b  # ordered ascending, so last wins
+    return latest
+
+
+def get_unpaid_rent_months(tenant_profile: TenantProfile, as_of: date | None = None,
+                           paid_months=None):
     """Every billing month from the contract start up to the current cycle
     that has no recorded rent payment, oldest first.
 
@@ -165,16 +215,17 @@ def get_unpaid_rent_months(tenant_profile: TenantProfile, as_of: date | None = N
     end = tenant_profile.contract_end
     last = as_of if not end or end > as_of else end
 
-    paid_months = {
-        m for (m,) in db.session.query(Payment.payment_month)
-        .filter(
-            Payment.tenant_profile_id == tenant_profile.id,
-            Payment.payment_month.isnot(None),
-            Payment.is_deposit.is_(False),
-            Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
-        )
-        .all()
-    }
+    if paid_months is None:
+        paid_months = {
+            m for (m,) in db.session.query(Payment.payment_month)
+            .filter(
+                Payment.tenant_profile_id == tenant_profile.id,
+                Payment.payment_month.isnot(None),
+                Payment.is_deposit.is_(False),
+                Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
+            )
+            .all()
+        }
 
     months, cursor = [], f"{start.year:04d}-{start.month:02d}"
     limit = f"{last.year:04d}-{last.month:02d}"
@@ -187,7 +238,8 @@ def get_unpaid_rent_months(tenant_profile: TenantProfile, as_of: date | None = N
     return months
 
 
-def get_rent_arrears(tenant_profile: TenantProfile, as_of: date | None = None) -> dict:
+def get_rent_arrears(tenant_profile: TenantProfile, as_of: date | None = None,
+                     paid_months=None) -> dict:
     """Summary of what the tenant still owes in rent.
 
     Returns months (oldest first), their count, the monthly rate, and the
@@ -195,7 +247,7 @@ def get_rent_arrears(tenant_profile: TenantProfile, as_of: date | None = None) -
     raising the unit's asking price for future tenants never revalues what
     someone already owes.
     """
-    months = get_unpaid_rent_months(tenant_profile, as_of)
+    months = get_unpaid_rent_months(tenant_profile, as_of, paid_months)
     rate = tenant_profile.contract_rent
     return {
         "months": months,
@@ -278,7 +330,7 @@ def get_payment_timeline(tenant_profile: TenantProfile, as_of: date | None = Non
     return rows
 
 
-def utility_outstanding(tenant_profile: TenantProfile) -> float:
+def utility_outstanding(tenant_profile: TenantProfile, latest=_UNSET) -> float:
     """What a tenant still owes on electric and water, in total.
 
     This is the LATEST bill's outstanding, not the sum across bills. Each
@@ -288,20 +340,22 @@ def utility_outstanding(tenant_profile: TenantProfile) -> float:
     """
     from .models import UtilityBill
 
-    latest = (db.session.query(UtilityBill)
-              .filter(UtilityBill.tenant_profile_id == tenant_profile.id)
-              .order_by(UtilityBill.billing_month.desc())
-              .first())
+    if latest is _UNSET:
+        latest = (db.session.query(UtilityBill)
+                  .filter(UtilityBill.tenant_profile_id == tenant_profile.id)
+                  .order_by(UtilityBill.billing_month.desc())
+                  .first())
     return round(latest.total_outstanding, 2) if latest else 0.0
 
 
-def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None) -> dict:
+def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None,
+                     paid_months=None, latest_bill=_UNSET) -> dict:
     """One-line standing for a monitoring row: how far behind, since when,
     and whether utilities are outstanding too."""
     from .models import UtilityBill
 
-    arrears = get_rent_arrears(tenant_profile, as_of)
-    owed_on_utilities = utility_outstanding(tenant_profile)
+    arrears = get_rent_arrears(tenant_profile, as_of, paid_months)
+    owed_on_utilities = utility_outstanding(tenant_profile, latest_bill)
     oldest = arrears["oldest"]
     since = None
     if oldest:

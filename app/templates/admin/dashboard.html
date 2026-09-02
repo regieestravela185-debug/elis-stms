@@ -545,6 +545,9 @@
                 {% for t in m.tenants %}
                   {{ t.unit }} ({{ t.name }}, {{ t.days_left }}d){{ ", " if not loop.last }}
                 {% endfor %}
+                {%- if m.hidden %}
+                  and <a href="{{ url_for('admin.tenant_monitoring') }}">{{ m.hidden }} more</a>
+                {%- endif %}
               </span>
             </div>
           {% endfor %}
