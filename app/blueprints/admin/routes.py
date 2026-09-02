@@ -2032,12 +2032,20 @@ def approve_reservation(reservation_id: int):
     from datetime import datetime
     paid_at_normalized = datetime.utcnow().replace(microsecond=0)
     
+    # Tag the cycle this settles. Without it the payment counts as revenue
+    # but settles no month, so the tenant's very first month reads as unpaid
+    # from the day they move in — payment_month is what every arrears and
+    # outstanding check matches on.
+    from ...billing_utils import billing_month_for
+    first_cycle = billing_month_for(profile, profile.contract_start)
+
     monthly_payment = Payment(
         tenant_profile_id=profile.id,
         amount=profile.contract_rent,
         reference=f"Monthly - {unit.unit_code}",
         notes="First month payment",
         is_deposit=False,
+        payment_month=first_cycle,
         paid_at=paid_at_normalized
     )
     db.session.add(monthly_payment)

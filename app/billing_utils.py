@@ -94,6 +94,29 @@ def _month_add(billing_month: str, delta: int) -> str:
     return f"{index // 12:04d}-{index % 12 + 1:02d}"
 
 
+def billing_month_for(tenant_profile: TenantProfile, when: date) -> str | None:
+    """Which billing cycle a payment made on `when` settles.
+
+    Cycles run from the contract's anniversary day, so a payment belongs
+    to the most recent cycle whose due date has already arrived — a
+    tenant paying on 3 September for a 26th-of-the-month contract is
+    settling the cycle that began 26 August, not the one starting 26
+    September.
+
+    Returns None for a payment dated before the contract began, since
+    there is no cycle for it to settle.
+    """
+    start = tenant_profile.contract_start
+    if not start or when < start:
+        return None
+    year, month = when.year, when.month
+    due_day = min(start.day, calendar.monthrange(year, month)[1])
+    if when.day < due_day:
+        # Before this month's due date, so it settles the previous cycle.
+        return _month_add(f"{year:04d}-{month:02d}", -1)
+    return f"{year:04d}-{month:02d}"
+
+
 def get_unpaid_rent_months(tenant_profile: TenantProfile, as_of: date | None = None):
     """Every billing month from the contract start up to the current cycle
     that has no recorded rent payment, oldest first.
