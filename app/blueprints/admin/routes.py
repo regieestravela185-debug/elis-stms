@@ -2014,6 +2014,13 @@ def approve_reservation(reservation_id: int):
         existing_profile.contract_start = contract_start
         existing_profile.contract_end = contract_end
         existing_profile.is_active = True
+        # This is a new contract on a new unit, so the rent is that unit's,
+        # not whatever the tenant paid on the one they left. contract_rent
+        # is read from here for arrears, reminders and the settlement, so
+        # leaving the old figure would bill a returning tenant at their
+        # previous unit's rate indefinitely.
+        existing_profile.monthly_rent = unit.price_monthly
+        existing_profile.moved_out_on = None  # they are moving in, not out
         profile = existing_profile
     else:
         profile = TenantProfile(user_id=user.id, unit_id=unit.id, contract_start=contract_start,
