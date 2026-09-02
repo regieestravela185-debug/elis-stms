@@ -18,7 +18,22 @@ def _prev_billing_month(billing_month: str) -> str:
     return f"{year:04d}-{month:02d}"
 
 
-def get_or_create_utility_bill(tenant_profile: TenantProfile, billing_month: str) -> UtilityBill:
+def first_utility_month(tenant_profile: TenantProfile) -> str | None:
+    """The first month a tenant is billed for electric and water.
+
+    Utilities start the month AFTER move-in: a tenant who moves in on
+    26 August has no utility bill for August and is first billed in
+    September. Their first month's consumption is not metered separately
+    from the outgoing tenant's, so there is nothing to charge them for.
+    """
+    start = tenant_profile.contract_start
+    if not start:
+        return None
+    return _month_add(f"{start.year:04d}-{start.month:02d}", 1)
+
+
+def get_or_create_utility_bill(tenant_profile: TenantProfile,
+                               billing_month: str) -> UtilityBill | None:
     """Idempotent. Returns the existing UtilityBill for tenant+month if
     present, else creates it: due_date anchored to contract_start.day
     (clamped to the billing month's length, same convention used
@@ -35,10 +50,19 @@ def get_or_create_utility_bill(tenant_profile: TenantProfile, billing_month: str
     growing balance, by design (utilities have no late penalty, unlike
     rent; an unpaid balance just rolls forward).
 
+    Returns None for any month before the tenant's first billable one —
+    utilities begin the month after move-in (see first_utility_month), so
+    the month they moved in has no bill at all. Callers must skip a None
+    rather than render a row for it.
+
     Does not commit — the caller controls the transaction (the admin
     bulk-input page commits once after creating a whole page of rows;
     the reminder job commits once after its whole pass).
     """
+    first = first_utility_month(tenant_profile)
+    if not first or billing_month < first:
+        return None
+
     existing = (
         db.session.query(UtilityBill)
         .filter(

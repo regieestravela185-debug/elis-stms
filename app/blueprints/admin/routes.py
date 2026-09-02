@@ -2479,10 +2479,22 @@ def utility_billing():
         .order_by(Unit.unit_code.asc())
         .all()
     )
-    rows = [{"profile": t, "bill": get_or_create_utility_bill(t, billing_month)} for t in tenants]
+    # A tenant is skipped for any month before their first billable one —
+    # utilities start the month after move-in, so the month they moved in
+    # has no bill and must not appear as an empty row to fill in.
+    rows = []
+    not_yet_billable = []
+    for t in tenants:
+        bill = get_or_create_utility_bill(t, billing_month)
+        if bill is None:
+            not_yet_billable.append(t)
+        else:
+            rows.append({"profile": t, "bill": bill})
     db.session.commit()  # persist any newly-created bill rows
 
-    return render_template("admin/utility_billing.html", rows=rows, billing_month=billing_month)
+    return render_template("admin/utility_billing.html", rows=rows,
+                           not_yet_billable=not_yet_billable,
+                           billing_month=billing_month)
 
 
 @bp.post("/tenants/utility-billing")

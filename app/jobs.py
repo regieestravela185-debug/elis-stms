@@ -163,6 +163,10 @@ def send_utility_bill_reminders(app: Flask) -> dict:
 
             billing_month = today.strftime("%Y-%m")
             bill = get_or_create_utility_bill(profile, billing_month)
+            # None means this tenant is not billed for utilities yet —
+            # their first billable month is the one after they moved in.
+            if bill is None:
+                continue
             # Paused means the tenant has already told the administrator they
             # will settle next month — the balance still rolls forward, we
             # just stop nagging them about it.

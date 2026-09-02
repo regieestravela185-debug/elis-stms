@@ -215,7 +215,28 @@
         </div>
       {% else %}
         <div class="empty-state">
-          <p class="muted">No active residential tenants found.</p>
+          <p class="muted">
+            {% if not_yet_billable %}
+              No residential tenant is billed for this month yet.
+            {% else %}
+              No active residential tenants found.
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
+
+      {% if not_yet_billable %}
+        {# Utilities start the month after move-in, so a tenant's first month
+           has no bill at all. Say so, rather than leaving them silently
+           missing from a page that lists everyone else. #}
+        <div class="inv-summary inv-summary--empty" style="margin-top: 16px;">
+          Not billed for {{ billing_month }} &mdash; utilities begin the month
+          after move-in:
+          {% for t in not_yet_billable %}
+            <strong>{{ t.unit.unit_code if t.unit else '—' }}</strong>
+            ({{ t.user.full_name if t.user else '—' }}, moved in
+            {{ t.contract_start.strftime('%b %d, %Y') if t.contract_start else '—' }}){{ "; " if not loop.last }}
+          {% endfor %}
         </div>
       {% endif %}
     </div>
