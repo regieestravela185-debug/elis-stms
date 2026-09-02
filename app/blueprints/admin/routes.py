@@ -1126,6 +1126,36 @@ def tenant_monitoring():
         for p in notice_profiles:
             notice_items.append({"profile": p, "move_out_notice": notices_by_profile.get(p.id)})
 
+    # The churn score needs four figures per tenant. Asked row by row that is
+    # four round trips each; asked once for the whole page it is four total,
+    # and the page then costs the same whether it lists five tenants or fifty.
+    _page_ids = [t.id for t in tenants]
+    _pending_renewals_by_profile = {
+        r.tenant_profile_id: r
+        for r in db.session.query(RenewalRequest)
+        .filter(RenewalRequest.tenant_profile_id.in_(_page_ids or [0]),
+                RenewalRequest.status == RenewalRequestStatus.PENDING)
+        .all()
+    }
+    _late_by_profile = dict(
+        db.session.query(Payment.tenant_profile_id, func.count(Payment.id))
+        .filter(Payment.tenant_profile_id.in_(_page_ids or [0]),
+                Payment.is_late == True)  # noqa: E712
+        .group_by(Payment.tenant_profile_id).all()
+    )
+    _concerns_by_profile = dict(
+        db.session.query(Concern.tenant_profile_id, func.count(Concern.id))
+        .filter(Concern.tenant_profile_id.in_(_page_ids or [0]),
+                Concern.status != ConcernStatus.RESOLVED)
+        .group_by(Concern.tenant_profile_id).all()
+    )
+    _rating_by_profile = dict(
+        db.session.query(Feedback.tenant_profile_id, func.avg(Feedback.rating))
+        .filter(Feedback.tenant_profile_id.in_(_page_ids or [0]),
+                Feedback.rating.isnot(None))
+        .group_by(Feedback.tenant_profile_id).all()
+    )
+
     monitoring_data = []
     for t in tenants:
         is_commercial = bool(t.unit and "commercial" in (t.unit.type or "").lower())
@@ -1150,23 +1180,13 @@ def tenant_monitoring():
             status = "Moving Out"
 
 
-        # Check for renewal request
-        renewal = db.session.query(RenewalRequest).filter(
-            RenewalRequest.tenant_profile_id == t.id,
-            RenewalRequest.status == RenewalRequestStatus.PENDING
-        ).first()
-
-        # Renewal/churn risk (rule-based heuristic)
-        late_payments = db.session.query(Payment).filter(
-            Payment.tenant_profile_id == t.id, Payment.is_late == True
-        ).count()
-        open_concerns = db.session.query(Concern).filter(
-            Concern.tenant_profile_id == t.id,
-            Concern.status != ConcernStatus.RESOLVED
-        ).count()
-        avg_rating = db.session.query(func.avg(Feedback.rating)).filter(
-            Feedback.tenant_profile_id == t.id, Feedback.rating.isnot(None)
-        ).scalar()
+        # All four read from the page-wide lookups above. A tenant absent
+        # from one simply has none of that thing — no late payments, no open
+        # concerns, no ratings — which is what the defaults say.
+        renewal = _pending_renewals_by_profile.get(t.id)
+        late_payments = _late_by_profile.get(t.id, 0)
+        open_concerns = _concerns_by_profile.get(t.id, 0)
+        avg_rating = _rating_by_profile.get(t.id)
         avg_rating = round(float(avg_rating), 1) if avg_rating else None
         churn = churn_score(days_remaining, late_payments, open_concerns, avg_rating)
 
