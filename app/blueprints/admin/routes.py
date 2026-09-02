@@ -787,8 +787,17 @@ def dashboard():
         "res_cancelled": res_cancelled,
     }
 
+    # Forward-looking figures. Everything else on this page reports what has
+    # already happened; these say what is about to, so the dashboard can be
+    # planned from rather than only read.
+    from ...forecasting import (contract_expiry_outlook, collection_outlook,
+                                occupancy_outlook)
+
     return render_template(
         "admin/dashboard.html",
+        expiry_outlook=contract_expiry_outlook(3),
+        collection=collection_outlook(),
+        occupancy_outlook=occupancy_outlook(),
         cards=cards,
         recent_reservations=recent_reservations,
         blockchain_status=blockchain_status,

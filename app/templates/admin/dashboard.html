@@ -472,6 +472,97 @@
 {% block content %}
   <section class="dash-panel">
     {% include "components/_greeting_banner.html" %}
+
+    {# ---- Looking ahead. Everything else on this page reports what has
+           already happened; these three answer what is about to. ---- #}
+    <div class="card fc-card" style="padding: 22px; margin-bottom: 20px;">
+      <div class="section__header" style="margin-bottom: 14px;">
+        <h3 style="margin: 0; font-size: 17px;">Looking Ahead</h3>
+        <p class="muted" style="margin: 2px 0 0 0; font-size: 13px;">
+          Every figure below is arithmetic on contracts and payments already
+          recorded &mdash; nothing is predicted.
+        </p>
+      </div>
+
+      <div class="fc-grid">
+        {# money already overdue, across everyone #}
+        <div class="fc-tile {{ 'fc-tile--warn' if collection.overdue_total else 'fc-tile--ok' }}">
+          <span class="fc-tile__label">Overdue right now</span>
+          <span class="fc-tile__figure">&#8369;{{ '{:,.2f}'.format(collection.overdue_total) }}</span>
+          {% if collection.overdue_total %}
+            <span class="fc-tile__note">
+              &#8369;{{ '{:,.0f}'.format(collection.overdue_rent) }} rent
+              &middot; &#8369;{{ '{:,.0f}'.format(collection.overdue_utilities) }} electric &amp; water
+              <br>across {{ collection.tenants_behind_count }} tenant{{ 's' if collection.tenants_behind_count != 1 }}
+            </span>
+          {% else %}
+            <span class="fc-tile__note">Everyone is up to date.</span>
+          {% endif %}
+        </div>
+
+        {# what next month bills if nothing changes #}
+        <div class="fc-tile">
+          <span class="fc-tile__label">{{ collection.next_month_label }} rent</span>
+          <span class="fc-tile__figure">&#8369;{{ '{:,.2f}'.format(collection.expected_rent) }}</span>
+          <span class="fc-tile__note">
+            From {{ collection.billing_next_month }} tenant{{ 's' if collection.billing_next_month != 1 }}
+            whose contract still runs.<br>
+            Electric and water are not included &mdash; those are read each month.
+          </span>
+        </div>
+
+        {# occupancy if nobody renews #}
+        <div class="fc-tile">
+          <span class="fc-tile__label">Occupancy</span>
+          <span class="fc-tile__figure">{{ occupancy_outlook.rate_now }}%</span>
+          <span class="fc-tile__note">
+            {{ occupancy_outlook.occupied_now }} of {{ occupancy_outlook.total_units }} units occupied.
+            {% if occupancy_outlook.expiring %}
+              <br>Falls to <strong>{{ occupancy_outlook.rate_if_none_renew }}%</strong>
+              if none of the {{ occupancy_outlook.expiring }} expiring contracts renew.
+            {% else %}
+              <br>No contracts expiring in the next 3 months.
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+      {# contracts ending, month by month #}
+      {% if expiry_outlook.total_contracts %}
+        <div class="fc-expiry">
+          <p style="margin: 0 0 8px 0; font-size: 14px;">
+            <strong>{{ expiry_outlook.total_contracts }} contract{{ 's' if expiry_outlook.total_contracts != 1 }}</strong>
+            end{{ '' if expiry_outlook.total_contracts != 1 else 's' }} through {{ expiry_outlook.horizon_label }} &mdash;
+            <strong style="color: #b45309;">&#8369;{{ '{:,.2f}'.format(expiry_outlook.total_rent_at_risk) }}</strong>
+            of monthly rent depends on them renewing.
+          </p>
+          {% for m in expiry_outlook.months %}
+            <div class="fc-expiry__month">
+              <span class="fc-expiry__label">
+                {{ m.label }} &middot; &#8369;{{ '{:,.0f}'.format(m.rent_at_risk) }}/mo
+              </span>
+              <span class="muted" style="font-size: 12px;">
+                {% for t in m.tenants %}
+                  {{ t.unit }} ({{ t.name }}, {{ t.days_left }}d){{ ", " if not loop.last }}
+                {% endfor %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if collection.tenants_behind %}
+        <div class="fc-behind">
+          <span class="muted" style="font-size: 12px;">Furthest behind:</span>
+          {% for t in collection.tenants_behind %}
+            <a href="{{ url_for('admin.tenant_settlement', profile_id=t.profile_id) }}" class="fc-behind__chip">
+              {{ t.unit }} &middot; {{ t.months }}mo &middot; &#8369;{{ '{:,.0f}'.format(t.owed) }}
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
     <!-- Smart Tools Panel -->
     <div class="card" style="padding: 24px; margin-bottom: 20px;">
       <div class="section__header" style="margin-bottom: 18px;">

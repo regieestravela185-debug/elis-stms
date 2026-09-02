@@ -1469,3 +1469,29 @@ body.page-home .nav__link{
   margin-top: 10px; font-weight: 700; font-size: 17px; color: #16a34a;
   font-variant-numeric: tabular-nums;
 }
+
+/* Dashboard "Looking Ahead" panel. */
+.fc-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.fc-tile {
+  padding: 16px; border-radius: 10px;
+  border: 1px solid var(--border); background: rgba(148,163,184,.05);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.fc-tile--warn { border-color: rgba(180,83,9,.4); background: rgba(245,158,11,.09); }
+.fc-tile--ok { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.07); }
+.fc-tile__label { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.fc-tile__figure { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fc-tile__note { font-size: 12px; line-height: 1.5; color: var(--muted); }
+.fc-expiry { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.fc-expiry__month {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline;
+  padding: 6px 0; border-bottom: 1px dashed var(--border);
+}
+.fc-expiry__label { font-size: 13px; font-weight: 700; min-width: 190px; }
+.fc-behind { margin-top: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fc-behind__chip {
+  font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid rgba(180,83,9,.35); background: rgba(245,158,11,.10);
+  color: #b45309; text-decoration: none;
+}
+.fc-behind__chip:hover { background: rgba(245,158,11,.18); }
