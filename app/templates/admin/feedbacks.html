@@ -187,7 +187,7 @@
                     {{ feedback.tenant_profile.unit.building.code }}-{{ feedback.tenant_profile.unit.unit_number }}
 </span>
                   <span style="font-size: 13px; color: #666;">
-                     {{ feedback.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                     {{ ph(feedback.created_at).strftime('%b %d, %Y at %I:%M %p') }}
 </span>
 </div>
 </div>
@@ -246,7 +246,7 @@
                 <div style="font-size: 12px; color: #065f46; font-weight: 600; margin-bottom: 8px;">
                    ADMIN RESPONSE:
                   {% if feedback.admin_response_at %}
-                    <span style="font-weight: normal;">({{ feedback.admin_response_at.strftime('%b %d, %Y at %I:%M %p') }})</span>
+                    <span style="font-weight: normal;">({{ ph(feedback.admin_response_at).strftime('%b %d, %Y at %I:%M %p') }})</span>
                   {% endif %}
 </div>
                 <div style="font-size: 14px; color: #065f46; line-height: 1.6;">{{ feedback.admin_response }}</div>
@@ -268,7 +268,7 @@
               </form>
             {% else %}
               <div style="text-align: right; font-size: 13px; color: #666;">
-                 Reviewed on {{ feedback.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                 Reviewed on {{ ph(feedback.created_at).strftime('%B %d, %Y at %I:%M %p') }}
 </div>
             {% endif %}
 </div>

@@ -181,17 +181,17 @@
                 <div class="concern-stepper">
                   <div class="concern-step is-done">
                     <div class="concern-step__dot">{{ icons.icon('check-circle', size=14) }}</div>
-                    <div class="concern-step__label">Created<br><span class="muted" style="font-size:11px">{{ concern.created_at.strftime('%b %d') }}</span></div>
+                    <div class="concern-step__label">Created<br><span class="muted" style="font-size:11px">{{ ph(concern.created_at).strftime('%b %d') }}</span></div>
                   </div>
                   <div class="concern-step__line {{ 'is-done' if reached_progress else '' }}"></div>
                   <div class="concern-step {{ 'is-done' if reached_progress else '' }}">
                     <div class="concern-step__dot">{% if reached_progress %}{{ icons.icon('check-circle', size=14) }}{% else %}2{% endif %}</div>
-                    <div class="concern-step__label">In Progress{% if concern.in_progress_at %}<br><span class="muted" style="font-size:11px">{{ concern.in_progress_at.strftime('%b %d') }}</span>{% endif %}</div>
+                    <div class="concern-step__label">In Progress{% if concern.in_progress_at %}<br><span class="muted" style="font-size:11px">{{ ph(concern.in_progress_at).strftime('%b %d') }}</span>{% endif %}</div>
                   </div>
                   <div class="concern-step__line {{ 'is-done' if reached_resolved else '' }}"></div>
                   <div class="concern-step {{ 'is-done' if reached_resolved else '' }}">
                     <div class="concern-step__dot">{% if reached_resolved %}{{ icons.icon('check-circle', size=14) }}{% else %}3{% endif %}</div>
-                    <div class="concern-step__label">Resolved{% if concern.resolved_at %}<br><span class="muted" style="font-size:11px">{{ concern.resolved_at.strftime('%b %d') }}</span>{% endif %}</div>
+                    <div class="concern-step__label">Resolved{% if concern.resolved_at %}<br><span class="muted" style="font-size:11px">{{ ph(concern.resolved_at).strftime('%b %d') }}</span>{% endif %}</div>
                   </div>
                 </div>
               </div>
@@ -228,7 +228,7 @@
                   <div class="kicker">Admin Response</div>
                   <p style="margin-top: 8px; line-height: 1.6;">{{ concern.admin_response }}</p>
                   <div class="muted" style="margin-top: 8px; font-size: 12px;">
-                    By {{ concern.responder.full_name if concern.responder else 'Admin' }} on {{ concern.admin_response_at.strftime('%B %d, %Y at %I:%M %p') if concern.admin_response_at else '' }}
+                    By {{ concern.responder.full_name if concern.responder else 'Admin' }} on {{ ph(concern.admin_response_at).strftime('%B %d, %Y at %I:%M %p') if concern.admin_response_at else '' }}
                   </div>
                 </div>
               {% endif %}
@@ -240,7 +240,7 @@
                   {% for followup in concern.follow_ups %}
                     <div style="background: rgba(59, 130, 246, 0.05); padding: 12px; border-radius: 8px; margin-top: 8px; border-left: 3px solid #3b82f6;">
                       <p style="line-height: 1.6;">{{ followup.message }}</p>
-                      <div class="muted" style="margin-top: 4px; font-size: 11px;">{{ followup.created_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                      <div class="muted" style="margin-top: 4px; font-size: 11px;">{{ ph(followup.created_at).strftime('%b %d, %Y %I:%M %p') }}</div>
                     </div>
                   {% endfor %}
                 </div>

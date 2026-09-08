@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 import re
 from datetime import date, datetime, timedelta
 
@@ -3562,47 +3563,58 @@ def process_deposit(reservation_id: int):
     action = request.form.get("action")
     
     if action == "add_deduction":
-        deduction_amount = float(request.form.get("deduction_amount") or "0")
+        # Three faults met here. The amount was float()'d with no guard, so a
+        # typo was a 500. Deductions were WRITTEN as display text ("• ₱500.00
+        # - reason (date)") but READ back with json.loads, which always threw
+        # and silently reset the list, losing every earlier deduction. And
+        # deposit_amount is NUMERIC, so Python hands back a Decimal —
+        # subtracting a float raised TypeError, which is the internal server
+        # error being reported. Deductions are stored as JSON now, and every
+        # amount is a Decimal from the point it is read.
+        amount_value, amount_error = _parse_money(
+            request.form.get("deduction_amount"), "deduction amount")
         deduction_reason = (request.form.get("deduction_reason") or "").strip()
-        
-        if not deduction_amount or not deduction_reason:
-            flash("Please provide deduction amount and reason.", "warning")
+
+        if amount_error or not amount_value:
+            flash(amount_error or "Please enter a deduction amount above zero.",
+                  "warning")
             return redirect(url_for("admin.deposits"))
-        
-        # Parse existing deductions or create new
+        if not deduction_reason:
+            flash("Please give a reason for the deduction.", "warning")
+            return redirect(url_for("admin.deposits"))
+
+        deposit_amount = Decimal(str(r.deposit_amount or 0))
+        deduction = Decimal(str(amount_value))
+
         deductions = []
         if r.deposit_deductions:
             try:
-                deductions = json.loads(r.deposit_deductions)
-            except:
-                # If it's old format (string), convert to list
-                deductions = []
-        
+                parsed = json.loads(r.deposit_deductions)
+                if isinstance(parsed, list):
+                    deductions = parsed
+            except (ValueError, TypeError):
+                # Rows written before this fix hold display text, not JSON.
+                # Keep them as one historical line rather than dropping them.
+                deductions = [{"amount": None, "reason": r.deposit_deductions,
+                               "date": None, "legacy": True}]
+
         deductions.append({
-            "amount": deduction_amount,
+            "amount": f"{deduction:.2f}",
             "reason": deduction_reason,
-            "date": date.today().isoformat()
+            "date": date.today().isoformat(),
         })
-        
-        # Format deductions for display
-        deduction_lines = []
-        total_deductions = 0
-        for d in deductions:
-            total_deductions += d["amount"]
-            deduction_lines.append(f"• ₱{d['amount']:.2f} - {d['reason']} ({d['date']})")
-        
-        r.deposit_deductions = "\n".join(deduction_lines)
-        
-        # Calculate return amount
-        return_amount = r.deposit_amount - total_deductions
-        r.deposit_return_amount = max(0, return_amount)
-        
-        if total_deductions >= r.deposit_amount:
-            r.deposit_status = "full_return"
-        else:
-            r.deposit_status = "partial_return"
-        
-        flash(f"Deduction of ₱{deduction_amount:.2f} added. Total deductions: ₱{total_deductions:.2f}", "success")
+
+        total_deductions = sum(
+            (Decimal(str(d["amount"])) for d in deductions if d.get("amount")),
+            Decimal("0"))
+
+        r.deposit_deductions = json.dumps(deductions)
+        r.deposit_return_amount = max(Decimal("0"), deposit_amount - total_deductions)
+        r.deposit_status = ("full_return" if total_deductions >= deposit_amount
+                            else "partial_return")
+
+        flash(f"Deduction of \u20b1{deduction:,.2f} added. Total deductions: "
+              f"\u20b1{total_deductions:,.2f} of \u20b1{deposit_amount:,.2f}.", "success")
         
     elif action == "return_deposit":
         # Create payment record for deposit return
@@ -4248,7 +4260,7 @@ def documents():
     
     # Apply search filter
     if search_query:
-        query = query.join(TenantProfile).join(User).join(Unit).filter(
+        query = query.join(TenantProfile, TenantProfile.id == Document.tenant_profile_id).join(User, User.id == TenantProfile.user_id).join(Unit, Unit.id == TenantProfile.unit_id).filter(
             db.or_(
                 Document.title.ilike(f"%{search_query}%"),
                 User.full_name.ilike(f"%{search_query}%"),
@@ -4263,7 +4275,7 @@ def documents():
     # Apply building filter
     if building_filter:
         if not search_query:  # Only join if not already joined
-            query = query.join(TenantProfile).join(Unit)
+            query = query.join(TenantProfile, TenantProfile.id == Document.tenant_profile_id).join(Unit, Unit.id == TenantProfile.unit_id)
         query = query.filter(Unit.building_id == int(building_filter))
     
     # Apply tenant filter
@@ -4285,7 +4297,7 @@ def documents():
         query = query.order_by(Document.title.desc())
     elif sort_by == 'tenant_az':
         if not search_query and not building_filter:  # Only join if not already joined
-            query = query.join(TenantProfile).join(User)
+            query = query.join(TenantProfile, TenantProfile.id == Document.tenant_profile_id).join(User, User.id == TenantProfile.user_id)
         query = query.order_by(User.full_name.asc())
     else:  # newest (default)
         query = query.order_by(Document.uploaded_at.desc())
@@ -4621,7 +4633,7 @@ def renewals():
     
     # Apply search filter
     if search_query:
-        query = query.join(TenantProfile).join(User).join(Unit).filter(
+        query = query.join(TenantProfile, TenantProfile.id == RenewalRequest.tenant_profile_id).join(User, User.id == TenantProfile.user_id).join(Unit, Unit.id == TenantProfile.unit_id).filter(
             db.or_(
                 User.full_name.ilike(f"%{search_query}%"),
                 Unit.unit_code.ilike(f"%{search_query}%")
@@ -4635,7 +4647,7 @@ def renewals():
     # Apply building filter
     if building_filter:
         if not search_query:
-            query = query.join(TenantProfile).join(Unit)
+            query = query.join(TenantProfile, TenantProfile.id == RenewalRequest.tenant_profile_id).join(Unit, Unit.id == TenantProfile.unit_id)
         query = query.filter(Unit.building_id == int(building_filter))
     
     # Apply urgency filter (contracts expiring soon)
@@ -4643,7 +4655,7 @@ def renewals():
         today = date.today()
         urgent_date = today + timedelta(days=30)
         if not search_query and not building_filter:
-            query = query.join(TenantProfile)
+            query = query.join(TenantProfile, TenantProfile.id == RenewalRequest.tenant_profile_id)
         query = query.filter(
             TenantProfile.contract_end.isnot(None),
             TenantProfile.contract_end <= urgent_date,
@@ -4655,11 +4667,11 @@ def renewals():
         query = query.order_by(RenewalRequest.created_at.asc())
     elif sort_by == 'contract_end':
         if not search_query and not building_filter and urgency_filter != 'urgent':
-            query = query.join(TenantProfile)
+            query = query.join(TenantProfile, TenantProfile.id == RenewalRequest.tenant_profile_id)
         query = query.order_by(TenantProfile.contract_end.asc())
     elif sort_by == 'tenant_az':
         if not search_query:
-            query = query.join(TenantProfile).join(User)
+            query = query.join(TenantProfile, TenantProfile.id == RenewalRequest.tenant_profile_id).join(User, User.id == TenantProfile.user_id)
         query = query.order_by(User.full_name.asc())
     else:  # newest (default)
         query = query.order_by(RenewalRequest.created_at.desc())
@@ -5101,7 +5113,7 @@ def feedbacks():
     
     # Apply search filter
     if search_query:
-        query = query.join(TenantProfile).join(User).join(Unit).filter(
+        query = query.join(TenantProfile, TenantProfile.id == Feedback.tenant_profile_id).join(User, User.id == TenantProfile.user_id).join(Unit, Unit.id == TenantProfile.unit_id).filter(
             db.or_(
                 User.full_name.ilike(f"%{search_query}%"),
                 Unit.unit_code.ilike(f"%{search_query}%"),
@@ -5127,7 +5139,7 @@ def feedbacks():
     # Apply building filter
     if building_filter:
         if not search_query:
-            query = query.join(TenantProfile).join(Unit)
+            query = query.join(TenantProfile, TenantProfile.id == Feedback.tenant_profile_id).join(Unit, Unit.id == TenantProfile.unit_id)
         query = query.filter(Unit.building_id == int(building_filter))
     
     # Apply sorting
@@ -5139,7 +5151,7 @@ def feedbacks():
         query = query.order_by(Feedback.rating.asc().nullsfirst())
     elif sort_by == 'tenant_az':
         if not search_query:
-            query = query.join(TenantProfile).join(User)
+            query = query.join(TenantProfile, TenantProfile.id == Feedback.tenant_profile_id).join(User, User.id == TenantProfile.user_id)
         query = query.order_by(User.full_name.asc())
     else:  # newest (default)
         query = query.order_by(Feedback.created_at.desc())
@@ -5325,7 +5337,10 @@ def concerns():
     category_filter = request.args.get('category', '')
     
     # Base query
-    query = db.session.query(Concern).join(TenantProfile).join(User).join(Unit)
+    query = (db.session.query(Concern)
+             .join(TenantProfile, TenantProfile.id == Concern.tenant_profile_id)
+             .join(User, User.id == TenantProfile.user_id)
+             .join(Unit, Unit.id == TenantProfile.unit_id))
     
     # Apply search filter
     if search_query:

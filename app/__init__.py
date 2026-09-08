@@ -38,6 +38,13 @@ def create_app(config_object: type[Config] = Config) -> Flask:
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
+    # Times are stored in UTC and shown in Philippine time. Templates call
+    # ph(x).strftime(...) rather than x.strftime(...), so nothing displays
+    # eight hours out.
+    from .localtime import ph, ph_now
+    app.jinja_env.globals["ph"] = ph
+    app.jinja_env.globals["ph_now"] = ph_now
+
     limiter.init_app(app)  # Initialize rate limiter
     
     # Initialize OAuth
@@ -290,11 +297,14 @@ def create_app(config_object: type[Config] = Config) -> Flask:
 
     @app.template_filter('to_ph')
     def to_ph_filter(value):
-        """Convert UTC datetime to Philippine time (UTC+8) for display."""
-        if not value:
-            return value
-        from datetime import timedelta
-        return value + timedelta(hours=8)
+        """Convert a stored UTC datetime to Philippine time for display.
+
+        This existed but was applied in only six of the app's ~124 time
+        displays, so nearly every timestamp was shown in UTC — eight hours
+        out. It now shares one implementation with the ph() global that
+        the rest of the templates use, so the two cannot drift.
+        """
+        return ph(value)
 
     @app.before_request
     def _invalidate_old_sessions():

@@ -36,7 +36,7 @@
         <div class="grid grid--2 mt-8">
           <div>
             <label class="label">Move-in Date</label>
-            <input class="input" value="{{ profile.contract_start.strftime('%B %d, %Y') if profile.contract_start else 'Not set' }}" disabled />
+            <input class="input" value="{{ ph(profile.contract_start).strftime('%B %d, %Y') if profile.contract_start else 'Not set' }}" disabled />
             <small class="muted">Also the monthly due-date anchor — matches the rest of the system.</small>
           </div>
           <div>

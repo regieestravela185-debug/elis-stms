@@ -3159,7 +3159,7 @@
           <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ announcement.title }}</h3>
           
           <p class="muted" style="font-size: 13px; margin-bottom: 12px;">
-            📅 {{ announcement.created_at.strftime('%B %d, %Y') }}
+            📅 {{ ph(announcement.created_at).strftime('%B %d, %Y') }}
           </p>
           
           <p style="font-size: 14px; line-height: 1.6; color: var(--text);">

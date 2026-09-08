@@ -259,14 +259,14 @@
     <div class="info-grid">
       <div class="info-card">
         <div class="info-card__label">Joined Date</div>
-        <div class="info-card__value">{{ user.created_at.strftime("%B %d, %Y") }}</div>
+        <div class="info-card__value">{{ ph(user.created_at).strftime("%B %d, %Y") }}</div>
 </div>
       
       <div class="info-card">
         <div class="info-card__label">Last Login</div>
         <div class="info-card__value">
           {% if user.last_login_at %}
-            {{ user.last_login_at.strftime("%b %d, %Y %I:%M %p") }}
+            {{ ph(user.last_login_at).strftime("%b %d, %Y %I:%M %p") }}
           {% else %}
             <span style="color: #9ca3af;">Never</span>
           {% endif %}
@@ -307,7 +307,7 @@
             <div class="info-card__label">Contract Start</div>
             <div class="info-card__value">
               {% if tenant_profile.contract_start %}
-                {{ tenant_profile.contract_start.strftime("%b %d, %Y") }}
+                {{ ph(tenant_profile.contract_start).strftime("%b %d, %Y") }}
               {% else %}
                 <span style="color: #9ca3af;">N/A</span>
               {% endif %}
@@ -318,7 +318,7 @@
             <div class="info-card__label">Contract End</div>
             <div class="info-card__value">
               {% if tenant_profile.contract_end %}
-                {{ tenant_profile.contract_end.strftime("%b %d, %Y") }}
+                {{ ph(tenant_profile.contract_end).strftime("%b %d, %Y") }}
               {% else %}
                 <span style="color: #9ca3af;">N/A</span>
               {% endif %}
@@ -345,7 +345,7 @@
           {% for reservation in reservations %}
             <div class="timeline-item">
               <div class="timeline-date">
-                {{ reservation.created_at.strftime("%B %d, %Y at %I:%M %p") }}
+                {{ ph(reservation.created_at).strftime("%B %d, %Y at %I:%M %p") }}
 </div>
               <div class="timeline-content">
                 <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
@@ -401,7 +401,7 @@
               <div class="timeline-item">
                 <div class="timeline-date">
                   {% if payment.paid_at %}
-                    {{ payment.paid_at.strftime("%B %d, %Y at %I:%M %p") }}
+                    {{ ph(payment.paid_at).strftime("%B %d, %Y at %I:%M %p") }}
                   {% else %}
                     Date not available
                   {% endif %}
@@ -453,7 +453,7 @@
           <div style="max-height: 400px; overflow-y: auto;">
             {% for c in concerns %}
               <div class="timeline-item">
-                <div class="timeline-date">{{ c.created_at.strftime("%B %d, %Y") if c.created_at else 'N/A' }}</div>
+                <div class="timeline-date">{{ ph(c.created_at).strftime("%B %d, %Y") if c.created_at else 'N/A' }}</div>
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
@@ -485,7 +485,7 @@
           <div style="max-height: 400px; overflow-y: auto;">
             {% for d in documents %}
               <div class="timeline-item">
-                <div class="timeline-date">{{ d.uploaded_at.strftime("%B %d, %Y") if d.uploaded_at else 'N/A' }}</div>
+                <div class="timeline-date">{{ ph(d.uploaded_at).strftime("%B %d, %Y") if d.uploaded_at else 'N/A' }}</div>
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
@@ -517,7 +517,7 @@
           <div style="max-height: 400px; overflow-y: auto;">
             {% for f in feedbacks %}
               <div class="timeline-item">
-                <div class="timeline-date">{{ f.created_at.strftime("%B %d, %Y") if f.created_at else 'N/A' }}</div>
+                <div class="timeline-date">{{ ph(f.created_at).strftime("%B %d, %Y") if f.created_at else 'N/A' }}</div>
                 <div class="timeline-content">
                   <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">

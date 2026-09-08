@@ -116,7 +116,7 @@
                 
                 <!-- Date -->
                 <span class="muted" style="font-size: 13px;">
-                  {{ inquiry.created_at.strftime('%b %d, %Y %I:%M %p') if inquiry.created_at else 'N/A' }}
+                  {{ ph(inquiry.created_at).strftime('%b %d, %Y %I:%M %p') if inquiry.created_at else 'N/A' }}
 </span>
 </div>
 </div>

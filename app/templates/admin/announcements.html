@@ -448,7 +448,7 @@
                     
                     {% if announcement.expires_at %}
                       <span style="font-size: 11px; color: var(--muted);">
-                         Expires: {{ announcement.expires_at.strftime('%b %d, %Y') }}
+                         Expires: {{ ph(announcement.expires_at).strftime('%b %d, %Y') }}
 </span>
                     {% endif %}
 </div>
@@ -465,7 +465,7 @@
               
               <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border);">
                 <div style="font-size: 12px; color: var(--muted);">
-                   {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                   {{ ph(announcement.created_at).strftime('%B %d, %Y at %I:%M %p') }}
 </div>
                 
                 <div class="announcement-actions">

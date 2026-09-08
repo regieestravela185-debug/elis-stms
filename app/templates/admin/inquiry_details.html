@@ -56,7 +56,7 @@
 </div>
         <div>
           <div class="kicker">Submitted</div>
-          <strong style="font-size: 16px;">{{ inquiry.created_at.strftime('%B %d, %Y at %I:%M %p') if inquiry.created_at else 'N/A' }}</strong>
+          <strong style="font-size: 16px;">{{ ph(inquiry.created_at).strftime('%B %d, %Y at %I:%M %p') if inquiry.created_at else 'N/A' }}</strong>
 </div>
 </div>
 
@@ -102,7 +102,7 @@
                   <span class="muted" style="margin-left: 8px; font-size: 13px;">Admin</span>
 </div>
                 <span class="muted" style="font-size: 13px;">
-                  {{ reply.created_at.strftime('%b %d, %Y %I:%M %p') if reply.created_at else 'N/A' }}
+                  {{ ph(reply.created_at).strftime('%b %d, %Y %I:%M %p') if reply.created_at else 'N/A' }}
 </span>
 </div>
               <p style="margin: 0; line-height: 1.6; white-space: pre-wrap;">{{ reply.message }}</p>

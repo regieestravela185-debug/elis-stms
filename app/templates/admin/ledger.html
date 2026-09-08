@@ -260,8 +260,8 @@
 </div>
         <div class="ledger-hero__item">
           <div class="ledger-hero__label">Date</div>
-          <div class="ledger-hero__value" style="font-size: 14px;">{{ payment.paid_at.strftime('%b %d, %Y') }}</div>
-          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">{{ payment.paid_at.strftime('%I:%M %p') }}</div>
+          <div class="ledger-hero__value" style="font-size: 14px;">{{ ph(payment.paid_at).strftime('%b %d, %Y') }}</div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">{{ ph(payment.paid_at).strftime('%I:%M %p') }}</div>
 </div>
         <div class="ledger-hero__item">
           <div class="ledger-hero__label">Reference</div>
@@ -329,7 +329,7 @@
 
       <div style="margin-top: 20px; padding: 16px; background: rgba(215, 179, 91, 0.08); border-radius: 10px; border: 1px solid rgba(215, 179, 91, 0.2);">
         <div style="font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">LEDGER CREATED</div>
-        <div style="font-size: 15px; font-weight: 600;">{{ ledger.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+        <div style="font-size: 15px; font-weight: 600;">{{ ph(ledger.created_at).strftime('%B %d, %Y at %I:%M %p') }}</div>
 </div>
 </div>
     {% else %}
@@ -395,8 +395,8 @@
                     {% endif %}
 </td>
                   <td class="muted" style="font-size: 12px;">
-                    {{ entry.created_at.strftime('%b %d, %Y') }}
-                    <div style="font-size: 10px; margin-top: 2px;">{{ entry.created_at.strftime('%I:%M %p') }}</div>
+                    {{ ph(entry.created_at).strftime('%b %d, %Y') }}
+                    <div style="font-size: 10px; margin-top: 2px;">{{ ph(entry.created_at).strftime('%I:%M %p') }}</div>
 </td>
                   <td>
                     <span class="status-badge status-badge--verified">

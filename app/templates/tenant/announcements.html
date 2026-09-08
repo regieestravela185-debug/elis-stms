@@ -26,7 +26,7 @@
     <div class="card card--lift">
       <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #3b82f6;">
         {% if stats.latest %}
-          {{ stats.latest.created_at.strftime('%b %d, %Y') }}
+          {{ ph(stats.latest.created_at).strftime('%b %d, %Y') }}
         {% else %}
           No announcements
         {% endif %}
@@ -136,9 +136,9 @@
                   {% endif %}
                 </div>
                 <div class="muted" style="text-align: right; font-size: 0.875rem;">
-                  {{ announcement.created_at.strftime('%B %d, %Y') }}
+                  {{ ph(announcement.created_at).strftime('%B %d, %Y') }}
                   <div style="font-size: 0.75rem; margin-top: 4px;">
-                    {{ announcement.created_at.strftime('%I:%M %p') }}
+                    {{ ph(announcement.created_at).strftime('%I:%M %p') }}
                   </div>
                 </div>
               </div>
@@ -174,7 +174,7 @@
                 <hr style="border: 1px solid #D7B35B; margin: 20px 0;">
                 <h2>{{ announcement.title }}</h2>
                 <p style="color: #666; margin: 10px 0;">
-                  <strong>Date:</strong> {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}<br>
+                  <strong>Date:</strong> {{ ph(announcement.created_at).strftime('%B %d, %Y at %I:%M %p') }}<br>
                   {% if announcement.category %}
                     <strong>Category:</strong> {{ announcement.category|title }}<br>
                   {% endif %}

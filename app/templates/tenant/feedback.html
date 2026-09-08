@@ -313,14 +313,14 @@
                 </div>
                 
                 <p style="font-size: 0.875rem; color: #4b5563;">{{ feedback.comments }}</p>
-                <div class="muted" style="font-size: 0.875rem; margin-top: 8px;">{{ feedback.created_at.strftime('%B %d, %Y') }}</div>
+                <div class="muted" style="font-size: 0.875rem; margin-top: 8px;">{{ ph(feedback.created_at).strftime('%B %d, %Y') }}</div>
 
                 {% if feedback.admin_response %}
                   <div style="background: rgba(215, 179, 91, 0.08); padding: 12px; border-radius: 8px; border-left: 3px solid #D7B35B; margin-top: 12px;">
                     <div class="kicker" style="display: flex; align-items: center; gap: 4px;">{{ icons.icon('message-circle', size=12) }} Management Response</div>
                     <p style="margin-top: 6px; font-size: 0.875rem; line-height: 1.6;">{{ feedback.admin_response }}</p>
                     {% if feedback.admin_response_at %}
-                      <div class="muted" style="margin-top: 6px; font-size: 0.75rem;">{{ feedback.admin_response_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                      <div class="muted" style="margin-top: 6px; font-size: 0.75rem;">{{ ph(feedback.admin_response_at).strftime('%B %d, %Y at %I:%M %p') }}</div>
                     {% endif %}
                   </div>
                 {% endif %}

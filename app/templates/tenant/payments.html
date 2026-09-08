@@ -57,7 +57,7 @@
     <div class="card card--lift">
       <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #f59e0b;">
         {% if stats.next_payment_due %}
-          {{ stats.next_payment_due.strftime('%b %d, %Y') }}
+          {{ ph(stats.next_payment_due).strftime('%b %d, %Y') }}
         {% else %}
           N/A
         {% endif %}
@@ -71,7 +71,7 @@
     <div class="card" style="margin-bottom: 24px; padding: 24px;">
       <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
         <h3 style="margin: 0; font-size: 16px;">This Month's Bill</h3>
-        <span class="muted" style="font-size: 13px;">Due {{ current_utility_bill.due_date.strftime('%b %d, %Y') }}</span>
+        <span class="muted" style="font-size: 13px;">Due {{ ph(current_utility_bill.due_date).strftime('%b %d, %Y') }}</span>
       </div>
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <tr>
@@ -141,7 +141,7 @@
             {% for b in utility_bill_history %}
               <tr>
                 <td class="mono"><strong>{{ b.billing_month }}</strong></td>
-                <td class="muted" style="font-size: 13px;">{{ b.due_date.strftime('%b %d, %Y') }}</td>
+                <td class="muted" style="font-size: 13px;">{{ ph(b.due_date).strftime('%b %d, %Y') }}</td>
                 <td>
                   {# Nothing charged reads as "not billed", never as "Paid" —
                      a tenant seeing "Paid" for a month with no reading would

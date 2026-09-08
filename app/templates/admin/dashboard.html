@@ -623,7 +623,7 @@
                 <div style="flex: 1; min-width: 0;">
                   <div style="font-weight: 700; font-size: 0.9rem;">{{ n.user.full_name if n.user else 'N/A' }}</div>
                   <div class="muted" style="font-size: 0.82rem; margin-top: 3px; line-height: 1.5;">{{ n.message }}</div>
-                  <div class="muted" style="font-size: 0.75rem; margin-top: 6px;">{{ n.sent_at.strftime('%b %d, %Y %I:%M %p') if n.sent_at else 'N/A' }}</div>
+                  <div class="muted" style="font-size: 0.75rem; margin-top: 6px;">{{ ph(n.sent_at).strftime('%b %d, %Y %I:%M %p') if n.sent_at else 'N/A' }}</div>
 </div>
                 {% if n.notification_priority.value in ('urgent', 'high') %}
                   <span class="badge badge--rejected" style="flex-shrink: 0;">{{ n.notification_priority.value }}</span>
@@ -981,7 +981,7 @@
                 <tr class="fade-in-row" data-delay="{{ delay_value }}">
                   <td><strong>{{ profile.user.full_name if profile.user else 'N/A' }}</strong></td>
                   <td class="mono">{{ profile.unit.unit_code if profile.unit else 'N/A' }}</td>
-                  <td>{{ profile.contract_end.strftime('%b %d, %Y') if profile.contract_end else 'N/A' }}</td>
+                  <td>{{ ph(profile.contract_end).strftime('%b %d, %Y') if profile.contract_end else 'N/A' }}</td>
                   <td>
                     {% if days_left <= 3 %}
                       <span style="font-weight: 700; color: #ff5050;">
@@ -1224,7 +1224,7 @@
                         {{ payment.tenant_profile.unit.unit_code if payment.tenant_profile and payment.tenant_profile.unit else 'N/A' }}
 </div>
                       <div class="muted" style="font-size: 0.75rem; margin-top: 5px;">
-                        {{ payment.paid_at.strftime('%b %d, %Y %I:%M %p') if payment.paid_at else 'N/A' }}
+                        {{ ph(payment.paid_at).strftime('%b %d, %Y %I:%M %p') if payment.paid_at else 'N/A' }}
 </div>
 </div>
                     <div style="text-align: right; flex-shrink: 0;">
@@ -1263,7 +1263,7 @@
                         {{ concern.tenant_profile.user.full_name if concern.tenant_profile and concern.tenant_profile.user else 'N/A' }}
 </div>
                       <div class="muted" style="font-size: 0.75rem; margin-top: 5px;">
-                        {{ concern.created_at.strftime('%b %d, %Y') if concern.created_at else 'N/A' }}
+                        {{ ph(concern.created_at).strftime('%b %d, %Y') if concern.created_at else 'N/A' }}
 </div>
 </div>
                     {% if concern.status.value == 'pending' %}
@@ -1311,7 +1311,7 @@
                       {{ feedback.comments[:80] }}{% if feedback.comments|length > 80 %}...{% endif %}
 </div>
                     <div class="muted" style="font-size: 0.75rem; margin-top: 8px;">
-                      {{ feedback.category }} • {{ feedback.created_at.strftime('%b %d, %Y') if feedback.created_at else 'N/A' }}
+                      {{ feedback.category }} • {{ ph(feedback.created_at).strftime('%b %d, %Y') if feedback.created_at else 'N/A' }}
 </div>
 </div>
                   {% if feedback.status.value == 'submitted' %}
@@ -1354,7 +1354,7 @@
                         {{ r.unit.unit_code if r.unit else 'N/A' }}
 </span>
                       <span class="muted" style="font-size: 0.75rem;">
-                        {{ r.created_at.strftime('%b %d, %Y') if r.created_at else 'N/A' }}
+                        {{ ph(r.created_at).strftime('%b %d, %Y') if r.created_at else 'N/A' }}
 </span>
 </div>
 </div>

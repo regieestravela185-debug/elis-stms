@@ -354,7 +354,7 @@
                     <a href="{{ n.url }}" class="notif-item">
                       <span class="notif-item__type notif-item__type--{{ n.type|lower }}">{{ n.type }}</span>
                       <span class="notif-item__title">{{ n.title }}</span>
-                      <span class="notif-item__sub">{{ n.subtitle }}{% if n.time %} • {{ n.time.strftime('%b %d, %I:%M %p') }}{% endif %}</span>
+                      <span class="notif-item__sub">{{ n.subtitle }}{% if n.time %} • {{ ph(n.time).strftime('%b %d, %I:%M %p') }}{% endif %}</span>
                     </a>
                   {% else %}
                     <div class="notif-empty">You're all caught up.</div>

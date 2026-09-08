@@ -310,11 +310,11 @@
               </span>
             </div>
             <div style="font-size: 13px; color: var(--muted); margin-bottom: 10px;">
-              Planned move-out: <strong style="color: var(--text);">{{ notice.planned_move_out_date.strftime('%b %d, %Y') }}</strong>
+              Planned move-out: <strong style="color: var(--text);">{{ ph(notice.planned_move_out_date).strftime('%b %d, %Y') }}</strong>
               {% if notice.planned_move_out_date != notice.original_move_out_date %}
-                <span class="muted">(originally {{ notice.original_move_out_date.strftime('%b %d, %Y') }})</span>
+                <span class="muted">(originally {{ ph(notice.original_move_out_date).strftime('%b %d, %Y') }})</span>
               {% endif %}
-              &middot; Submitted {{ notice.created_at.strftime('%b %d, %Y') }}
+              &middot; Submitted {{ ph(notice.created_at).strftime('%b %d, %Y') }}
             </div>
             {% if notice.notes %}
               <div style="font-size: 13px; margin-bottom: 10px;">"{{ notice.notes }}"</div>
@@ -388,13 +388,13 @@
 </td>
               <td>
                 <span class="muted" style="font-size: 13px;">
-                  {{ item.profile.contract_start.strftime('%b %d, %Y') }}
+                  {{ ph(item.profile.contract_start).strftime('%b %d, %Y') }}
 </span>
 </td>
               <td>
                 {% if item.profile.contract_end %}
                   <span class="muted" style="font-size: 13px;">
-                    {{ item.profile.contract_end.strftime('%b %d, %Y') }}
+                    {{ ph(item.profile.contract_end).strftime('%b %d, %Y') }}
 </span>
                   <div style="font-size: 11px; margin-top: 4px;">
                     {% if item.days_remaining != none %}
@@ -419,7 +419,7 @@
 </div>
                 {% elif item.move_out_notice %}
                   <span style="color: #b8922f; font-weight: 700; font-size: 13px;">
-                    {{ item.move_out_notice.planned_move_out_date.strftime('%b %d, %Y') }}
+                    {{ ph(item.move_out_notice.planned_move_out_date).strftime('%b %d, %Y') }}
 </span>
                   <div style="font-size: 11px; margin-top: 4px; color: #b8922f;">Notice given — pending processing</div>
                 {% else %}

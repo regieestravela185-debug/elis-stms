@@ -241,7 +241,7 @@
               <strong>Unit:</strong> <span class="chip" style="background: rgba(215, 179, 91, 0.15); color: #92400e; font-weight: 700;">{{ doc.tenant_profile.unit.unit_code }}</span>
 </div>
             <div style="margin-bottom: 16px; font-size: 13px; color: #999;">
-               {{ doc.uploaded_at.strftime('%B %d, %Y at %I:%M %p') }}
+               {{ ph(doc.uploaded_at).strftime('%B %d, %Y at %I:%M %p') }}
 </div>
 
             <!-- Viewed Status -->
@@ -253,7 +253,7 @@
           {% endif %}
             <div class="{{ viewed_status_class }}" style="margin-bottom: 16px; padding: 8px; border-radius: 6px; font-size: 13px;">
               {% if doc.is_viewed %}
-                <span class="{{ viewed_text_class }}">Viewed by tenant on {{ doc.viewed_at.strftime('%b %d, %Y') if doc.viewed_at else 'N/A' }}</span>
+                <span class="{{ viewed_text_class }}">Viewed by tenant on {{ ph(doc.viewed_at).strftime('%b %d, %Y') if doc.viewed_at else 'N/A' }}</span>
               {% else %}
                 <span class="{{ viewed_text_class }}">Not yet viewed by tenant</span>
               {% endif %}

@@ -139,7 +139,7 @@
                     {% endif %}
                   </td>
                   <td class="mono ub-total" id="total_{{ bill.id }}">₱{{ '{:,.2f}'.format(bill.total_outstanding + (bill.rent_amount_snapshot|float)) }}</td>
-                  <td>{{ bill.due_date.strftime('%b %d, %Y') }}</td>
+                  <td>{{ ph(bill.due_date).strftime('%b %d, %Y') }}</td>
                   <td>
                     {% if bill.is_paid %}
                       <span class="badge badge--available">Paid</span>
@@ -235,7 +235,7 @@
           {% for t in not_yet_billable %}
             <strong>{{ t.unit.unit_code if t.unit else '—' }}</strong>
             ({{ t.user.full_name if t.user else '—' }}, moved in
-            {{ t.contract_start.strftime('%b %d, %Y') if t.contract_start else '—' }}){{ "; " if not loop.last }}
+            {{ ph(t.contract_start).strftime('%b %d, %Y') if t.contract_start else '—' }}){{ "; " if not loop.last }}
           {% endfor %}
         </div>
       {% endif %}

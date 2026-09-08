@@ -44,7 +44,7 @@
         <div class="card card--lift">
           <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #f59e0b;">
             {% if stats.latest_upload %}
-              {{ stats.latest_upload.strftime('%b %d, %Y') }}
+              {{ ph(stats.latest_upload).strftime('%b %d, %Y') }}
             {% else %}
               N/A
             {% endif %}
@@ -154,7 +154,7 @@
 
             <div style="margin-bottom: 12px; padding: 12px; background: rgba(215, 179, 91, 0.08); border-radius: 8px; border-left: 3px solid #D7B35B;">
               <div style="font-size: 13px; color: #78350f; font-weight: 600;">{{ icons.icon('calendar', size=13) }} Uploaded</div>
-              <div style="font-size: 14px; color: #92400e; margin-top: 4px;">{{ doc.uploaded_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+              <div style="font-size: 14px; color: #92400e; margin-top: 4px;">{{ ph(doc.uploaded_at).strftime('%B %d, %Y at %I:%M %p') }}</div>
             </div>
 
             {% if doc.is_stale_bill %}

@@ -206,11 +206,11 @@
         <div class="grid grid--2 mt-16" style="background: var(--color-bg-light); padding: 16px; border-radius: 8px;">
           <div>
             <div class="kicker">Current Contract</div>
-            <strong>{{ profile.contract_start.strftime('%B %d, %Y') }}</strong>
+            <strong>{{ ph(profile.contract_start).strftime('%B %d, %Y') }}</strong>
           </div>
           <div>
             <div class="kicker">Contract End</div>
-            <strong>{{ profile.contract_end.strftime('%B %d, %Y') if profile.contract_end else '—' }}</strong>
+            <strong>{{ ph(profile.contract_end).strftime('%B %d, %Y') if profile.contract_end else '—' }}</strong>
           </div>
         </div>
 
@@ -236,7 +236,7 @@
         <form method="post" action="{{ url_for('tenant.create_renewal_request') }}" class="form mt-16">
           <div>
             <label class="label">Requested End Date</label>
-            <input class="input" type="date" name="requested_end_date" min="{{ profile.contract_end.strftime('%Y-%m-%d') if profile.contract_end else '' }}" required />
+            <input class="input" type="date" name="requested_end_date" min="{{ ph(profile.contract_end).strftime('%Y-%m-%d') if profile.contract_end else '' }}" required />
             <div class="muted" style="font-size: 0.875rem; margin-top: 4px;">Must be after current contract end date</div>
           </div>
 
@@ -292,7 +292,7 @@
             {% for request in renewal_requests %}
               <div class="request-card">
                 <div class="request-header">
-                  <div class="request-date">{{ request.requested_end_date.strftime('%B %d, %Y') }}</div>
+                  <div class="request-date">{{ ph(request.requested_end_date).strftime('%B %d, %Y') }}</div>
                   <span class="status-badge {{ request.status.value }}">{{ request.status.value|title }}</span>
                 </div>
                 
@@ -301,7 +301,7 @@
                 {% endif %}
 
                 <div class="request-actions">
-                  <button class="btn-icon btn-print" data-request-id="{{ request.id }}" data-end-date="{{ request.requested_end_date.strftime('%B %d, %Y') }}" data-status="{{ request.status.value|title }}" data-notes="{{ request.notes or '' }}" data-created-date="{{ request.created_at.strftime('%B %d, %Y') }}" onclick="printRequest(this.dataset.requestId, this.dataset.endDate, this.dataset.status, this.dataset.notes, this.dataset.createdDate)">
+                  <button class="btn-icon btn-print" data-request-id="{{ request.id }}" data-end-date="{{ ph(request.requested_end_date).strftime('%B %d, %Y') }}" data-status="{{ request.status.value|title }}" data-notes="{{ request.notes or '' }}" data-created-date="{{ ph(request.created_at).strftime('%B %d, %Y') }}" onclick="printRequest(this.dataset.requestId, this.dataset.endDate, this.dataset.status, this.dataset.notes, this.dataset.createdDate)">
                     {{ icons.icon('printer', size=13) }} Print
                   </button>
                   {% if request.status.value == 'pending' %}
@@ -313,10 +313,10 @@
 
                 <div class="request-timeline">
                   <div class="timeline-dot active"></div>
-                  <span>Submitted: {{ request.created_at.strftime('%b %d, %Y') }}</span>
+                  <span>Submitted: {{ ph(request.created_at).strftime('%b %d, %Y') }}</span>
                   {% if request.updated_at and request.updated_at != request.created_at %}
                     <div class="timeline-dot active"></div>
-                    <span>Updated: {{ request.updated_at.strftime('%b %d, %Y') }}</span>
+                    <span>Updated: {{ ph(request.updated_at).strftime('%b %d, %Y') }}</span>
                   {% endif %}
                 </div>
               </div>

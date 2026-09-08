@@ -327,12 +327,12 @@
                     {% endif %}
 </td>
                   <td class="muted" style="font-size: 13px;">
-                    {{ u.created_at.strftime("%b %d, %Y") }}
+                    {{ ph(u.created_at).strftime("%b %d, %Y") }}
 </td>
                   <td class="muted" style="font-size: 13px;">
                     {% if u.last_login_at %}
-                      {{ u.last_login_at.strftime("%b %d, %Y") }}
-                      <div style="font-size: 11px; margin-top: 2px;">{{ u.last_login_at.strftime("%I:%M %p") }}</div>
+                      {{ ph(u.last_login_at).strftime("%b %d, %Y") }}
+                      <div style="font-size: 11px; margin-top: 2px;">{{ ph(u.last_login_at).strftime("%I:%M %p") }}</div>
                     {% else %}
                       <span style="color: #9ca3af;">Never</span>
                     {% endif %}

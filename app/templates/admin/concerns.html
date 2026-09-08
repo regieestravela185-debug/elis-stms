@@ -208,16 +208,16 @@
                 <div class="kicker">Admin Response</div>
                 <p style="margin-top: 8px; line-height: 1.6;">{{ concern.admin_response }}</p>
                 <div class="muted" style="margin-top: 8px; font-size: 12px;">
-                  Responded by {{ concern.responder.full_name if concern.responder else 'Admin' }} on {{ concern.admin_response_at.strftime('%B %d, %Y at %I:%M %p') if concern.admin_response_at else '' }}
+                  Responded by {{ concern.responder.full_name if concern.responder else 'Admin' }} on {{ ph(concern.admin_response_at).strftime('%B %d, %Y at %I:%M %p') if concern.admin_response_at else '' }}
 </div>
 </div>
             {% endif %}
 
             <!-- Timeline -->
             <div class="muted" style="font-size: 12px; margin-bottom: 16px;">
-               Created: {{ concern.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+               Created: {{ ph(concern.created_at).strftime('%B %d, %Y at %I:%M %p') }}
               {% if concern.updated_at and concern.updated_at != concern.created_at %}
-                | Updated: {{ concern.updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                | Updated: {{ ph(concern.updated_at).strftime('%B %d, %Y at %I:%M %p') }}
               {% endif %}
 </div>
 

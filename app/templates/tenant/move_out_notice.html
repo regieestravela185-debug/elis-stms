@@ -72,11 +72,11 @@
           </div>
           <div class="notice-card mt-16" style="margin-bottom: 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <strong style="font-size: 1.1rem;">{{ active_notice.planned_move_out_date.strftime('%B %d, %Y') }}</strong>
+              <strong style="font-size: 1.1rem;">{{ ph(active_notice.planned_move_out_date).strftime('%B %d, %Y') }}</strong>
               <span class="status-badge {{ active_notice.status.value }}">{{ active_notice.status.value|title }}</span>
             </div>
             {% if active_notice.planned_move_out_date != active_notice.original_move_out_date %}
-              <p class="muted" style="font-size: 0.8rem;">Originally requested: {{ active_notice.original_move_out_date.strftime('%B %d, %Y') }} (date was updated by admin)</p>
+              <p class="muted" style="font-size: 0.8rem;">Originally requested: {{ ph(active_notice.original_move_out_date).strftime('%B %d, %Y') }} (date was updated by admin)</p>
             {% endif %}
             {% if active_notice.notes %}
               <p class="muted mt-8" style="font-size: 0.875rem;">{{ active_notice.notes }}</p>
@@ -87,7 +87,7 @@
                 <p style="margin-top: 4px; font-size: 13px; white-space: pre-wrap;">{{ active_notice.admin_response }}</p>
               </div>
             {% endif %}
-            <div class="muted" style="font-size: 0.75rem; margin-top: 12px;">Submitted {{ active_notice.created_at.strftime('%b %d, %Y') }}</div>
+            <div class="muted" style="font-size: 0.75rem; margin-top: 12px;">Submitted {{ ph(active_notice.created_at).strftime('%b %d, %Y') }}</div>
 
             <form method="post" action="{{ url_for('tenant.cancel_move_out_notice', notice_id=active_notice.id) }}" class="mt-16" onsubmit="return confirm('Cancel this move-out notice? You will remain a tenant with no changes to your account.');">
               <button class="btn btn--ghost btn--sm" type="submit" style="color: #ef4444;">{{ icons.icon('x-circle', size=13) }} I'm Not Moving Out Anymore — Cancel</button>
@@ -126,10 +126,10 @@
             {% for notice in past_notices %}
               <div class="notice-card">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <strong style="font-size: 0.95rem;">{{ notice.planned_move_out_date.strftime('%B %d, %Y') }}</strong>
+                  <strong style="font-size: 0.95rem;">{{ ph(notice.planned_move_out_date).strftime('%B %d, %Y') }}</strong>
                   <span class="status-badge {{ notice.status.value }}">{{ notice.status.value|title }}</span>
                 </div>
-                <div class="muted" style="font-size: 0.75rem; margin-top: 6px;">Submitted {{ notice.created_at.strftime('%b %d, %Y') }}</div>
+                <div class="muted" style="font-size: 0.75rem; margin-top: 6px;">Submitted {{ ph(notice.created_at).strftime('%b %d, %Y') }}</div>
               </div>
             {% endfor %}
           </div>

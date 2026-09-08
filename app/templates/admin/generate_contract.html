@@ -36,11 +36,11 @@
         <div class="grid grid--2 mt-8">
           <div>
             <label class="label">Lease Start</label>
-            <input class="input" value="{{ profile.contract_start.strftime('%B %d, %Y') if profile.contract_start else 'Not set' }}" disabled />
+            <input class="input" value="{{ ph(profile.contract_start).strftime('%B %d, %Y') if profile.contract_start else 'Not set' }}" disabled />
           </div>
           <div>
             <label class="label">Lease End</label>
-            <input class="input" value="{{ profile.contract_end.strftime('%B %d, %Y') if profile.contract_end else 'Not set' }}" disabled />
+            <input class="input" value="{{ ph(profile.contract_end).strftime('%B %d, %Y') if profile.contract_end else 'Not set' }}" disabled />
           </div>
         </div>
         <div class="mt-8">

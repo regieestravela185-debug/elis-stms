@@ -9,7 +9,7 @@
         <h2 style="margin: 0 0 4px 0;">Final Settlement</h2>
         <p class="muted" style="margin: 0; font-size: 14px;">
           {{ profile.user.full_name }} &middot; Unit {{ profile.unit.unit_code if profile.unit else '—' }}
-          &middot; moved in {{ profile.contract_start.strftime('%b %d, %Y') if profile.contract_start else '—' }}
+          &middot; moved in {{ ph(profile.contract_start).strftime('%b %d, %Y') if profile.contract_start else '—' }}
         </p>
       </div>
       <a href="{{ url_for('admin.tenant_monitoring') }}" class="btn btn--ghost btn--sm">&lsaquo; Back to Monitoring</a>
@@ -33,11 +33,11 @@
             Record the date you learned they left — the deposit is then held for
             one month while the final charges are totalled.
           {% elif s.is_releasable %}
-            Held since {{ s.moved_out_on.strftime('%b %d, %Y') }}.
-            <strong>The one-month hold ended {{ s.releasable_on.strftime('%b %d, %Y') }}</strong>
+            Held since {{ ph(s.moved_out_on).strftime('%b %d, %Y') }}.
+            <strong>The one-month hold ended {{ ph(s.releasable_on).strftime('%b %d, %Y') }}</strong>
             — the deposit can be released.
           {% else %}
-            Held until <strong>{{ s.releasable_on.strftime('%b %d, %Y') }}</strong>
+            Held until <strong>{{ ph(s.releasable_on).strftime('%b %d, %Y') }}</strong>
             ({{ s.days_until_releasable }} day{{ 's' if s.days_until_releasable != 1 }} to go).
           {% endif %}
         </p>

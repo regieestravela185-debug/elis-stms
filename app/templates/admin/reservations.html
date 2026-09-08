@@ -392,8 +392,8 @@
                     data-name="{{ r.full_name.lower() }}"
                     data-email="{{ r.email.lower() }}">
                   <td class="muted" style="font-size: 12px;">
-                    {{ r.created_at.strftime("%b %d, %Y") }}
-                    <div style="font-size: 10px; margin-top: 2px;">{{ r.created_at.strftime("%I:%M %p") }}</div>
+                    {{ ph(r.created_at).strftime("%b %d, %Y") }}
+                    <div style="font-size: 10px; margin-top: 2px;">{{ ph(r.created_at).strftime("%I:%M %p") }}</div>
 </td>
                   <td>
                     <strong style="font-size: 14px;">{{ r.full_name }}</strong>
@@ -407,10 +407,10 @@
 </td>
                   <td class="mono" style="font-size: 14px; font-weight: 600;">{{ r.unit.unit_code }}</td>
                   <td>
-                    <div style="font-size: 13px;">{{ r.move_in_date.strftime("%b %d, %Y") if r.move_in_date else "—" }}</div>
+                    <div style="font-size: 13px;">{{ ph(r.move_in_date).strftime("%b %d, %Y") if r.move_in_date else "—" }}</div>
 </td>
                   <td class="muted" style="font-size: 13px;">
-                    {{ r.move_out_date.strftime("%b %d, %Y") if r.move_out_date else "—" }}
+                    {{ ph(r.move_out_date).strftime("%b %d, %Y") if r.move_out_date else "—" }}
 </td>
                   <td class="muted" style="font-size: 13px;">
                     {% if duration_days %}

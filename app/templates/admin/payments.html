@@ -265,11 +265,11 @@
                 <div class="muted" style="font-size: 0.78rem; margin-top: 2px;">
                   Unit {{ u.unit_code }} —
                   {% if u.days < 0 %}
-                    <span style="color: #dc2626; font-weight: 700;">{{ -u.days }} day{{ 's' if -u.days != 1 else '' }} overdue</span> (was due {{ u.due_date.strftime('%b %d') }})
+                    <span style="color: #dc2626; font-weight: 700;">{{ -u.days }} day{{ 's' if -u.days != 1 else '' }} overdue</span> (was due {{ ph(u.due_date).strftime('%b %d') }})
                   {% elif u.days == 0 %}
                     <span style="color: #f59e0b; font-weight: 700;">due today</span>
                   {% else %}
-                    due in {{ u.days }} day{{ 's' if u.days != 1 else '' }} ({{ u.due_date.strftime('%b %d') }})
+                    due in {{ u.days }} day{{ 's' if u.days != 1 else '' }} ({{ ph(u.due_date).strftime('%b %d') }})
                   {% endif %}
 </div>
 </div>
@@ -545,8 +545,8 @@
                     data-method="{{ payment.payment_method or 'cash' }}"
                     {% if payment.payment_status == 'voided' %}class="row--voided"{% endif %}>
                   <td class="muted" style="font-size: 12px;">
-                    {{ payment.paid_at.strftime("%b %d, %Y") }}
-                    <div style="font-size: 10px; margin-top: 2px;">{{ payment.paid_at.strftime("%I:%M %p") }}</div>
+                    {{ ph(payment.paid_at).strftime("%b %d, %Y") }}
+                    <div style="font-size: 10px; margin-top: 2px;">{{ ph(payment.paid_at).strftime("%I:%M %p") }}</div>
 </td>
                   <td>
                     <strong style="font-size: 14px;">{{ payment.tenant_profile.user.full_name }}</strong>

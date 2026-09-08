@@ -246,6 +246,33 @@ class Reservation(db.Model):
     deposit_return_date = db.Column(db.Date, nullable=True)
     deposit_notes = db.Column(db.Text, nullable=True)
 
+    @property
+    def deduction_entries(self):
+        """Deductions as a list of {amount, reason, date}.
+
+        They were once stored as the display text they were shown as,
+        which meant they could not be read back — the code that tried
+        json.loads on it discarded every earlier deduction. Rows written
+        then are returned as one historical entry rather than dropped.
+        """
+        import json as _json
+        raw = self.deposit_deductions
+        if not raw:
+            return []
+        try:
+            parsed = _json.loads(raw)
+        except (ValueError, TypeError):
+            return [{"amount": None, "reason": line.lstrip("\u2022 ").strip(),
+                     "date": None, "legacy": True}
+                    for line in str(raw).split("\n") if line.strip()]
+        return parsed if isinstance(parsed, list) else []
+
+    @property
+    def total_deducted(self):
+        from decimal import Decimal
+        return sum((Decimal(str(d["amount"])) for d in self.deduction_entries
+                    if d.get("amount")), Decimal("0"))
+
     # AI-Assisted Identity Verification fields
     selfie_image = db.Column(db.String(255), nullable=True)  # Path to uploaded selfie image
     face_match_score = db.Column(db.Numeric(5, 4), nullable=True)  # Face matching score (0-1)

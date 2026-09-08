@@ -444,10 +444,10 @@
 </td>
                   <td class="mono" style="font-size: 14px; font-weight: 600;">{{ r.unit.unit_code }}</td>
                   <td class="muted" style="font-size: 13px;">
-                    {{ r.move_in_date.strftime("%b %d, %Y") if r.move_in_date else "—" }}
+                    {{ ph(r.move_in_date).strftime("%b %d, %Y") if r.move_in_date else "—" }}
 </td>
                   <td>
-                    <div style="font-size: 13px;">{{ r.move_out_date.strftime("%b %d, %Y") if r.move_out_date else "—" }}</div>
+                    <div style="font-size: 13px;">{{ ph(r.move_out_date).strftime("%b %d, %Y") if r.move_out_date else "—" }}</div>
                     {% if is_expiring %}
                       <span class="warning-badge">{{ days_until }} days</span>
                     {% endif %}
@@ -458,7 +458,12 @@
                   <td>
                     {% if r.deposit_deductions %}
                       <div class="deduction-list">
-                        {{ r.deposit_deductions }}
+                        {% for d in r.deduction_entries %}
+                          <div style="font-size: 12.5px; line-height: 1.5;">
+                            {% if d.amount %}&#8369;{{ '{:,.2f}'.format(d.amount|float) }} &middot; {% endif %}
+                            {{ d.reason }}{% if d.date %} <span class="muted">({{ d.date }})</span>{% endif %}
+                          </div>
+                        {% endfor %}
 </div>
                       <div style="margin-top: 4px; font-weight: 700; color: #ef4444; font-size: 13px;">
                         Total: ₱{{ '{:,.2f}'.format(deducted_amount|float) }}

@@ -54,7 +54,7 @@
               <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 4px;">{{ tenant.user.full_name }}</div>
               <div style="font-size: 13px; color: #666; margin-bottom: 4px;">{{ tenant.unit.unit_code }}</div>
               <div style="font-size: 12px; color: #ef4444; font-weight: 600;">
-                Expires: {{ tenant.contract_end.strftime('%b %d, %Y') }} ({{ (tenant.contract_end - today).days }} days)
+                Expires: {{ ph(tenant.contract_end).strftime('%b %d, %Y') }} ({{ (tenant.contract_end - today).days }} days)
 </div>
 </div>
           {% endfor %}
@@ -148,7 +148,7 @@
                     {{ renewal.tenant_profile.unit.building.code }}-{{ renewal.tenant_profile.unit.unit_number }}
 </span>
                   <span style="font-size: 13px; color: #666;">
-                     Requested {{ renewal.created_at.strftime('%b %d, %Y') }}
+                     Requested {{ ph(renewal.created_at).strftime('%b %d, %Y') }}
 </span>
 </div>
 </div>
@@ -175,7 +175,7 @@
                   <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">CURRENT END DATE</div>
                   <div style="background: white; padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb;">
                     <div style="font-size: 18px; font-weight: 700; color: #1a1a1a;">
-                      {{ renewal.tenant_profile.contract_end.strftime('%b %d, %Y') if renewal.tenant_profile.contract_end else 'N/A' }}
+                      {{ ph(renewal.tenant_profile.contract_end).strftime('%b %d, %Y') if renewal.tenant_profile.contract_end else 'N/A' }}
 </div>
                     {% if days_until_expiry %}
                       {% set urgency_class = 'normal-text' %}
@@ -204,7 +204,7 @@
                   <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">REQUESTED END DATE</div>
                   <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%); padding: 12px; border-radius: 8px; border: 2px solid rgba(16, 185, 129, 0.3);">
                     <div style="font-size: 18px; font-weight: 700; color: #065f46;">
-                      {{ renewal.requested_end_date.strftime('%b %d, %Y') }}
+                      {{ ph(renewal.requested_end_date).strftime('%b %d, %Y') }}
 </div>
                     {% if extension_months > 0 %}
                       <div style="font-size: 11px; color: #065f46; margin-top: 4px; font-weight: 600;">
@@ -241,9 +241,9 @@
             {% else %}
               <div style="text-align: right; font-size: 13px; color: #666;">
                 {% if renewal.status.value == 'approved' %}
-                   Approved on {{ renewal.updated_at.strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
+                   Approved on {{ ph(renewal.updated_at).strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
                 {% else %}
-                   Rejected on {{ renewal.updated_at.strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
+                   Rejected on {{ ph(renewal.updated_at).strftime('%B %d, %Y at %I:%M %p') if renewal.updated_at else 'N/A' }}
                 {% endif %}
 </div>
             {% endif %}

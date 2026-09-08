@@ -28,7 +28,7 @@
             <td class="mono">₱{{ '{:,.2f}'.format(bill.electric_amount|float) }}</td>
             <td class="mono">{% if bill.carried_over_amount %}₱{{ '{:,.2f}'.format(bill.carried_over_amount|float) }}{% else %}—{% endif %}</td>
             <td class="mono" style="font-weight: 700; color: #B8922F;">₱{{ '{:,.2f}'.format(bill.grand_total_with_rent) }}</td>
-            <td>{{ bill.due_date.strftime('%b %d, %Y') }}</td>
+            <td>{{ ph(bill.due_date).strftime('%b %d, %Y') }}</td>
             <td>
               {% if bill.is_paid %}
                 <span class="badge badge--available">Paid</span>

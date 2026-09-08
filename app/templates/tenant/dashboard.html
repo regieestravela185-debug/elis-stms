@@ -293,7 +293,7 @@ a[href^="tel:"]:hover {
       <div style="margin-bottom: 12px; color: #dc2626;">{{ icons.icon('alert-triangle', size=40) }}</div>
       <h2 style="color: #dc2626; margin: 0 0 8px 0; font-size: 22px;">Contract Expired</h2>
       <p style="color: #991b1b; margin: 0 0 4px 0; font-size: 15px;">
-        Your lease contract ended on <strong>{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>.
+        Your lease contract ended on <strong>{{ ph(profile.contract_end).strftime('%B %d, %Y') }}</strong>.
       </p>
       <p style="color: #7f1d1d; margin: 0 0 20px 0; font-size: 13px;">
         Your access is now limited. You can view your payment history, documents, and announcements,
@@ -370,11 +370,11 @@ a[href^="tel:"]:hover {
       <div class="grid grid--3 mt-16">
         <div>
           <div class="kicker">Contract Start</div>
-          <strong>{{ profile.contract_start.strftime('%B %d, %Y') }}</strong>
+          <strong>{{ ph(profile.contract_start).strftime('%B %d, %Y') }}</strong>
         </div>
         <div>
           <div class="kicker">Contract End</div>
-          <strong>{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>
+          <strong>{{ ph(profile.contract_end).strftime('%B %d, %Y') }}</strong>
         </div>
         <div>
           <div class="kicker">Time Remaining</div>
@@ -423,7 +423,7 @@ a[href^="tel:"]:hover {
       {% elif is_expired %}
       <div class="mt-16" style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; border-radius: 8px;">
         <strong style="color: #ef4444; font-size: 16px;">{{ icons.icon('alert-triangle', size=16) }} Contract Expired</strong>
-        <p class="muted" style="margin-top: 8px; font-size: 14px;">Your contract ended on <strong style="color: #ef4444;">{{ profile.contract_end.strftime('%B %d, %Y') }}</strong>. Submit a renewal request to continue your stay, or contact the office for assistance.</p>
+        <p class="muted" style="margin-top: 8px; font-size: 14px;">Your contract ended on <strong style="color: #ef4444;">{{ ph(profile.contract_end).strftime('%B %d, %Y') }}</strong>. Submit a renewal request to continue your stay, or contact the office for assistance.</p>
         <a href="{{ url_for('tenant.renewal') }}" class="btn btn--primary btn--sm mt-8">Request Renewal Now</a>
       </div>
       {% elif days_remaining is not none and days_remaining <= 7 %}
@@ -445,7 +445,7 @@ a[href^="tel:"]:hover {
       <div class="grid grid--2 mt-16">
         <div>
           <div class="kicker">Move-in Date</div>
-          <strong>{{ profile.contract_start.strftime('%B %d, %Y') }}</strong>
+          <strong>{{ ph(profile.contract_start).strftime('%B %d, %Y') }}</strong>
         </div>
         <div>
           <div class="kicker">Status</div>
@@ -672,7 +672,7 @@ a[href^="tel:"]:hover {
                 </span>
               </div>
               <p class="muted" style="font-size: 13px;">{{ concern.description[:80] }}{% if concern.description|length > 80 %}...{% endif %}</p>
-              <p class="muted" style="font-size: 12px; margin-top: 8px;">{{ icons.icon('calendar', size=12) }} {{ concern.created_at.strftime('%b %d, %Y') }}</p>
+              <p class="muted" style="font-size: 12px; margin-top: 8px;">{{ icons.icon('calendar', size=12) }} {{ ph(concern.created_at).strftime('%b %d, %Y') }}</p>
               {% if concern.admin_response %}
                 <div style="margin-top: 8px; padding: 8px; background: rgba(59, 130, 246, 0.05); border-radius: 4px;">
                   <p style="font-size: 12px; color: #3b82f6;"><strong>Admin:</strong> {{ concern.admin_response[:60] }}{% if concern.admin_response|length > 60 %}...{% endif %}</p>
@@ -762,7 +762,7 @@ a[href^="tel:"]:hover {
                   {{ announcement.category|replace('_', ' ')|title }}
                 </span>
               {% endif %}
-              <p class="muted mt-8" style="font-size: 0.875rem;">{{ icons.icon('calendar', size=12) }} {{ announcement.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+              <p class="muted mt-8" style="font-size: 0.875rem;">{{ icons.icon('calendar', size=12) }} {{ ph(announcement.created_at).strftime('%B %d, %Y at %I:%M %p') }}</p>
               <p style="margin-top: 8px; font-size: 0.875rem; line-height: 1.6;">{{ announcement.content[:150] }}{% if announcement.content|length > 150 %}...{% endif %}</p>
               <a href="{{ url_for('tenant.announcements') }}" class="btn btn--ghost btn--sm mt-8">Read More →</a>
             </div>
@@ -789,21 +789,21 @@ a[href^="tel:"]:hover {
           <div style="margin-bottom: 12px; padding-left: 16px; border-left: 2px solid #D7B35B;">
             <strong>Concern Submitted</strong>
             <p class="muted" style="font-size: 0.875rem;">{{ concern.subject }}</p>
-            <p class="muted" style="font-size: 0.75rem;">{{ concern.created_at.strftime('%B %d, %Y') }}</p>
+            <p class="muted" style="font-size: 0.75rem;">{{ ph(concern.created_at).strftime('%B %d, %Y') }}</p>
           </div>
         {% endfor %}
         {% for feedback in recent_feedbacks %}
           <div style="margin-bottom: 12px; padding-left: 16px; border-left: 2px solid #D7B35B;">
             <strong>Feedback Sent</strong>
             <p class="muted" style="font-size: 0.875rem;">{{ feedback.category|title }}</p>
-            <p class="muted" style="font-size: 0.75rem;">{{ feedback.created_at.strftime('%B %d, %Y') }}</p>
+            <p class="muted" style="font-size: 0.75rem;">{{ ph(feedback.created_at).strftime('%B %d, %Y') }}</p>
           </div>
         {% endfor %}
         {% for renewal in recent_renewals %}
           <div style="margin-bottom: 12px; padding-left: 16px; border-left: 2px solid #D7B35B;">
             <strong>Renewal Requested</strong>
-            <p class="muted" style="font-size: 0.875rem;">{{ renewal.requested_end_date.strftime('%B %d, %Y') }}</p>
-            <p class="muted" style="font-size: 0.75rem;">{{ renewal.created_at.strftime('%B %d, %Y') }}</p>
+            <p class="muted" style="font-size: 0.875rem;">{{ ph(renewal.requested_end_date).strftime('%B %d, %Y') }}</p>
+            <p class="muted" style="font-size: 0.75rem;">{{ ph(renewal.created_at).strftime('%B %d, %Y') }}</p>
           </div>
         {% endfor %}
         {% if not recent_concerns and not recent_feedbacks and not recent_renewals %}
@@ -944,7 +944,7 @@ a[href^="tel:"]:hover {
         </div>
         <div>
           <div class="kicker">Return Date</div>
-          <h3 class="mono">{{ deposit_info.return_date.strftime('%B %d, %Y') if deposit_info.return_date else 'Pending' }}</h3>
+          <h3 class="mono">{{ ph(deposit_info.return_date).strftime('%B %d, %Y') if deposit_info.return_date else 'Pending' }}</h3>
         </div>
       </div>
 
