@@ -138,12 +138,10 @@ def dashboard():
     
     deposit_info = None
     if reservation:
-        deductions_list = []
-        if reservation.deposit_deductions:
-            try:
-                deductions_list = json.loads(reservation.deposit_deductions)
-            except Exception:
-                deductions_list = []
+        # Read through the model property so this page and the admin page
+        # agree, and so rows written in the old display-text format are
+        # still shown rather than dropped.
+        deductions_list = reservation.deduction_entries
                 
         deposit_info = {
             "amount": float(reservation.deposit_amount),

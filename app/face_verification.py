@@ -613,4 +613,12 @@ def verify_identity(id_image_path: str, selfie_image_path: str) -> dict:
 
 # Export availability flags
 FACE_VERIFICATION_AVAILABLE = INSIGHTFACE_AVAILABLE
+
+# Fake-ID detection is ELA, sensor noise, EXIF, format and QR checks — PIL,
+# numpy and OpenCV, none of which involve face recognition. It was gated
+# behind INSIGHTFACE_AVAILABLE, and insightface is not in requirements.txt,
+# so on the deployed server the import always failed and EVERY uploaded ID
+# went unanalysed: the admin saw "Not analyzed" and a forged ID passed
+# unchallenged. Gate it on what it actually needs.
+FAKE_ID_DETECTION_AVAILABLE = PIL_AVAILABLE
 LIVENESS_DETECTION_AVAILABLE = MEDIAPIPE_AVAILABLE

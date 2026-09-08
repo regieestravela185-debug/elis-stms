@@ -25,6 +25,7 @@ from ...models import (
     UnitStatus,
     VerificationResult,
     VerificationStatus,
+    TenantProfile,
 )
 from ...ocr import scan_id_fields
 
@@ -33,11 +34,13 @@ try:
         verify_identity, 
         detect_fake_id,
         FACE_VERIFICATION_AVAILABLE,
+        FAKE_ID_DETECTION_AVAILABLE,
         LIVENESS_DETECTION_AVAILABLE,
     )
 except Exception as _face_verification_import_error:  # broader than ImportError: a missing system lib (e.g. opencv) can raise other errors too
     print(f"WARNING: face_verification unavailable, fake-ID/ID-authenticity checks disabled: {_face_verification_import_error!r}")
     FACE_VERIFICATION_AVAILABLE = False
+    FAKE_ID_DETECTION_AVAILABLE = False
     LIVENESS_DETECTION_AVAILABLE = False
     verify_identity = None
     detect_fake_id = None
@@ -90,6 +93,22 @@ def reserve_post(unit_id: int):
         abort(404)
     if unit.status != UnitStatus.AVAILABLE:
         flash("Unit is not available.", "warning")
+        return redirect(url_for("public.home") + "#units")
+
+    # One tenant holds one unit here. Someone already renting could still
+    # fill in and submit this form; the administrator then could not approve
+    # it, so the reservation simply sat there and nobody was told why. Say it
+    # at the point they try. Browsing and viewing stay open — this only
+    # blocks a second reservation.
+    held = (db.session.query(TenantProfile)
+            .filter(TenantProfile.user_id == current_user.id,
+                    TenantProfile.is_active.is_(True))
+            .first())
+    if held and held.unit_id != unit.id:
+        where = held.unit.unit_code if held.unit else "a unit"
+        flash(f"You are currently renting {where}. A tenant may hold only one "
+              f"unit at a time, so please arrange your move-out first if you "
+              f"would like to transfer.", "warning")
         return redirect(url_for("public.home") + "#units")
 
     full_name = (request.form.get("full_name") or "").strip()
@@ -171,7 +190,9 @@ def reserve_post(unit_id: int):
     fake_detection_data = {}
 
     # Fake ID detection on the uploaded ID (uses the LOCAL file)
-    if id_local_path and FACE_VERIFICATION_AVAILABLE and detect_fake_id:
+    # Gated on the fake-ID checks' own dependencies, not on face
+    # recognition — see FAKE_ID_DETECTION_AVAILABLE.
+    if id_local_path and FAKE_ID_DETECTION_AVAILABLE and detect_fake_id:
         fake_detection_data = detect_fake_id(id_local_path)
         fake_id_flag = fake_detection_data.get("is_fake", False)
         id_authenticity_score = 1.0 - fake_detection_data.get("fake_score", 0.0)
@@ -304,7 +325,7 @@ def api_verify_id():
         
         # Run advanced fake ID detection
         fake_check = {"fake_score": 0.0, "is_fake": False, "reasons": []}
-        if detect_fake_id:
+        if FAKE_ID_DETECTION_AVAILABLE and detect_fake_id:
             fake_check = detect_fake_id(str(save_path))
         
         return jsonify({

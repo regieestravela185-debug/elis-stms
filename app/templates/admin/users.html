@@ -346,12 +346,12 @@
                         </form>
                       {% elif u.is_archived %}
                         <span class="badge" style="background: rgba(156, 163, 175, 0.15); color: #6b7280; font-size: 10px;" title="{{ u.archive_reason or 'Archived' }}">Archived{% if u.archive_reason %} — {{ u.archive_reason }}{% endif %}</span>
-                        <form method="post" action="{{ url_for('admin.unarchive_user', user_id=u.id) }}" style="display: inline;">
+                        <form method="post" action="{{ url_for('admin.unarchive_user', user_id=u.id) }}" style="display: inline;" onsubmit="return confirm('Restore this user? They will appear in the active list again.');">
                           <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px;" onclick="return confirm('Restore {{ u.full_name }} from archive?')">Restore</button>
                         </form>
                       {% else %}
                         <button type="button" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #ef4444;" data-user-id="{{ u.id }}" data-user-name="{{ u.full_name }}" onclick="openBanModal(this.dataset.userId, this.dataset.userName)">Ban</button>
-                        <form method="post" action="{{ url_for('admin.archive_user', user_id=u.id) }}" style="display: inline;">
+                        <form method="post" action="{{ url_for('admin.archive_user', user_id=u.id) }}" style="display: inline;" onsubmit="return confirm('Archive this user? They will be hidden from the active list and will not be able to sign in.');">
                           <button type="submit" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 4px 8px; color: #6b7280;" onclick="return confirm('Archive {{ u.full_name }}? This will hide them from active lists and free their unit if they are a tenant.')">Archive</button>
                         </form>
                       {% endif %}

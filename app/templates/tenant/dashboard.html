@@ -954,7 +954,7 @@ a[href^="tel:"]:hover {
         <div class="card mt-8" style="background: var(--bg);">
           {% for deduction in deposit_info.deductions_list %}
           <div style="padding: 8px; border-left: 3px solid var(--danger); margin-bottom: 8px;">
-            <strong>₱{{ "{:,.2f}".format(deduction.amount) }}</strong> - {{ deduction.reason }}
+            {% if deduction.amount %}<strong>&#8369;{{ "{:,.2f}".format(deduction.amount|float) }}</strong> - {% endif %}{{ deduction.reason }}
             <p class="muted" style="font-size: 0.75rem;">{{ deduction.date }}</p>
           </div>
           {% endfor %}

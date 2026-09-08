@@ -853,7 +853,10 @@
      only the status changes — so the blockchain chain stays intact. -->
 <div class="modal" id="voidPaymentModal" hidden>
   <div class="modal__backdrop" onclick="closeVoidModal()"></div>
-  <div class="modal__panel" style="max-width: 520px;">
+  <!-- modal__card, not modal__panel: the latter has no CSS, so the card
+       had no positioning and the absolutely-placed backdrop covered it —
+       the dialog opened but nothing inside it could be clicked. -->
+  <div class="modal__card" style="width: min(520px, 100%);">
     <button type="button" class="modal__x" onclick="closeVoidModal()">&times;</button>
     <h3 class="modal__title">Void this payment</h3>
     <p class="muted" id="voidSummary" style="margin-top: -6px; font-size: 13px;"></p>
