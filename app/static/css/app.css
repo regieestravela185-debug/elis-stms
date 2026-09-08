@@ -1495,3 +1495,68 @@ body.page-home .nav__link{
   color: #b45309; text-decoration: none;
 }
 .fc-behind__chip:hover { background: rgba(245,158,11,.18); }
+
+/* Result of a unit enquiry, shown in the modal instead of an alert box. */
+.inquiry-note {
+  padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5;
+  margin-bottom: 10px;
+}
+.inquiry-note--ok  { background: rgba(34,197,94,.10);  border: 1px solid rgba(34,197,94,.32);  color: #15803d; }
+.inquiry-note--bad { background: rgba(220,38,38,.08);  border: 1px solid rgba(220,38,38,.30);  color: #b91c1c; }
+
+/* Sticky admin/tenant sidebar.
+   The rail scrolled away with the page, so on a long table the navigation
+   was only reachable by scrolling back to the top. It now stays put and
+   scrolls on its own when its links outrun the viewport. Below 980px the
+   rail is already a slide-out drawer (position: fixed), so this applies
+   only at desktop widths. */
+@media (min-width: 981px) {
+  .dash__side {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .dash__side::-webkit-scrollbar { width: 6px; }
+  .dash__side::-webkit-scrollbar-thumb {
+    background: rgba(20,20,23,.16); border-radius: 999px;
+  }
+}
+
+/* Non-clickable surfaces must not behave like buttons.
+   Testers reported hunting for clicks on cards that lift and shadow on
+   hover but do nothing. Only things that actually act keep the effect. */
+.card:not(.card--lift):not(a):not(button):hover,
+.home-stat:hover,
+.feature-strip:hover,
+.about-prose:hover,
+.contact-card:hover,
+.how-step:hover {
+  transform: none !important;
+  box-shadow: 0 1px 2px rgba(20,20,23,.03), 0 12px 28px rgba(20,20,23,.04) !important;
+  cursor: default;
+}
+a:hover, button:hover, .btn:hover,
+.card--lift:hover, [role="button"]:hover, [onclick]:hover { cursor: pointer; }
+
+/* A button mid-submit reads as busy instead of ignoring the second click. */
+.is-submitting {
+  opacity: .62;
+  pointer-events: none;
+  cursor: progress !important;
+}
+
+/* A login or registration message that appears above the fold but out of
+   sight was being missed; a short pulse draws the eye once. */
+@keyframes alertAttention {
+  0%, 100% { transform: translateY(0); }
+  30%      { transform: translateY(-3px); }
+  60%      { transform: translateY(1px); }
+}
+.alert--attention {
+  animation: alertAttention .5s ease 2;
+  box-shadow: 0 0 0 3px rgba(215, 179, 91, .28);
+}

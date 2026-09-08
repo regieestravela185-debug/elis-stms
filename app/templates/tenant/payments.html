@@ -1,6 +1,25 @@
 {% extends "dashboard_base.html" %}
 {% import "components/_icons.html" as icons %}
-{% block title %}Payment History | STMS{% endblock %}
+{% block title %}Payment History | STMS
+<script>
+  // Print used to open the same tab as Download. It now loads the receipt
+  // hidden and calls print() on it, so the dialog comes up directly.
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('.js-print-receipt');
+    if (!btn) return;
+    var url = btn.getAttribute('data-receipt-url');
+    var frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    frame.src = url;
+    frame.onload = function () {
+      try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+      catch (err) { window.open(url, '_blank', 'noopener'); }
+      setTimeout(function () { frame.remove(); }, 60000);
+    };
+    document.body.appendChild(frame);
+  });
+</script>
+{% endblock %}
 
 {% block sidebar %}
   {% include "components/_sidebar_tenant.html" %}
@@ -413,12 +432,15 @@
                 </button>
               {% endif %}
             {% else %}
-              <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--primary btn--sm">
+              <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id, download=1) }}"
+                 data-download-label="receipt #{{ payment.id }} (PDF)"
+                 class="btn btn--primary btn--sm">
                 {{ icons.icon('download', size=13) }} Download Receipt
               </a>
-              <a href="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}" target="_blank" class="btn btn--ghost btn--sm">
+              <button type="button" class="btn btn--ghost btn--sm js-print-receipt"
+                      data-receipt-url="{{ url_for('tenant.payment_receipt', payment_id=payment.id) }}">
                 {{ icons.icon('printer', size=13) }} Print Receipt
-              </a>
+              </button>
               {% if payment.proof_file %}
                 <a href="{{ media_url(payment.proof_file) }}" target="_blank" class="btn btn--ghost btn--sm">
                   {{ icons.icon('eye', size=13) }} View Submitted Proof

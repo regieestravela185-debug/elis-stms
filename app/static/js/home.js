@@ -10,12 +10,22 @@
     requestAnimationFrame(() => first && first.focus());
   }
 
+  // Which modal to reopen once Terms or Privacy is dismissed.
+  let returnToModal = null;
+
   function closeModals() {
     ["#modalLogin", "#modalRegister", "#modalVerifyOtp", "#modalReserve", "#modalUnitDetails", "#modalUnitInquiry", "#modalBuildingUnits", "#modalForgotPassword", "#modalResetPassword", "#modalTerms", "#modalPrivacy"].forEach((id) => {
       const el = $(id);
       if (el) el.hidden = true;
     });
     document.body.style.overflow = "";
+  }
+
+  function closeModalsAndReturn() {
+    const back = returnToModal;
+    returnToModal = null;
+    closeModals();
+    if (back) { openModal(back); applyFormFeedback(back); }
   }
 
   document.addEventListener("click", (e) => {
@@ -33,7 +43,7 @@
       applyFormFeedback("#modalRegister");
     }
     if (t.classList && t.classList.contains("js-modal-close")) {
-      closeModals();
+      closeModalsAndReturn();
     }
     if (t.classList && t.classList.contains("js-switch-register")) {
       closeModals();
@@ -255,20 +265,21 @@
       openModal("#modalForgotPassword");
       applyFormFeedback("#modalForgotPassword");
     }
-    if (t.closest(".js-open-terms")) {
+    // Terms and Privacy are read FROM another modal (usually Register), so
+    // closing them has to put that one back. Closing everything left the
+    // user staring at the page with their half-filled form gone.
+    if (t.closest(".js-open-terms") || t.closest(".js-open-privacy")) {
       e.preventDefault();
+      const openNow = ["#modalRegister", "#modalLogin", "#modalReserve"]
+        .find((id) => { const el = $(id); return el && !el.hidden; });
+      returnToModal = openNow || null;
       closeModals();
-      openModal("#modalTerms");
-    }
-    if (t.closest(".js-open-privacy")) {
-      e.preventDefault();
-      closeModals();
-      openModal("#modalPrivacy");
+      openModal(t.closest(".js-open-terms") ? "#modalTerms" : "#modalPrivacy");
     }
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeModals();
+    if (e.key === "Escape") closeModalsAndReturn();
   });
 
   // ?auth=login|register|verify|forgot_password|reset_password|terms|privacy from auth redirects
@@ -285,6 +296,19 @@
   function applyFormFeedback(modalId) {
     const modal = document.querySelector(modalId);
     if (!modal) return;
+
+    // The message renders above the fields, which on a short screen can sit
+    // out of view when the modal opens — testers reported not seeing why a
+    // login had failed. Bring it into view and mark it for a moment.
+    const note = modal.querySelector(".alert");
+    if (note) {
+      requestAnimationFrame(() => {
+        note.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        note.classList.add("alert--attention");
+        setTimeout(() => note.classList.remove("alert--attention"), 1600);
+      });
+    }
+
     const hasDanger = !!document.querySelector(".flash-stack .flash--danger");
     const hasSuccess = !!document.querySelector(".flash-stack .flash--success");
     const inputs = modal.querySelectorAll(".input");
@@ -403,21 +427,29 @@
   const panel = $("#chatPanel");
   const closeBtn = $("#chatClose");
 
+  // The goodbye plays for 1.5s before the panel hides. Tapping the button
+  // again during that window used to run the whole close a second time —
+  // another goodbye, another timer — and a timer from the previous close
+  // would then shut the panel the user had just reopened. Easy to hit on a
+  // phone, where the button is small and double taps are common.
+  let chatCloseTimer = null;
+
   function openChat() {
     if (!panel) return;
+    if (chatCloseTimer) { clearTimeout(chatCloseTimer); chatCloseTimer = null; }
     panel.hidden = false;
     const inp = $("#chatInput");
     inp && inp.focus();
   }
 
   function closeChat() {
-    if (!panel) return;
-    // Show goodbye then close after delay
+    if (!panel || chatCloseTimer) return;   // already saying goodbye
     if (typeof removeFollowUp === "function") removeFollowUp();
     appendChatBubble("Bot", "Salamat sa pag-chat! Kung may tanong ka pa, bumalik ka lang. Have a great day! 😊");
     const log = document.getElementById("chatLog");
     if (log) log.scrollTop = log.scrollHeight;
-    setTimeout(() => {
+    chatCloseTimer = setTimeout(() => {
+      chatCloseTimer = null;
       panel.hidden = true;
       resetChat();
     }, 1500);

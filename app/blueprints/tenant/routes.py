@@ -1135,7 +1135,13 @@ def payment_receipt(payment_id: int):
     
     response = make_response(buffer.getvalue())
     response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'inline; filename=receipt_{payment.id}.pdf'
+    # Download and Print pointed at this same URL and both opened a tab, so
+    # the two buttons did exactly the same thing. ?download=1 now saves the
+    # file; without it the PDF opens inline, which is what Print wants.
+    disposition = "attachment" if request.args.get("download") == "1" else "inline"
+    response.headers['Content-Disposition'] = (
+        f'{disposition}; filename=receipt_{payment.id}.pdf'
+    )
     
     return response
 

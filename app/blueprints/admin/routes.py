@@ -2083,8 +2083,19 @@ def approve_reservation(reservation_id: int):
     contract_start = r.move_in_date or date.today()
     contract_end = r.move_out_date
 
-    # Create / replace tenant profile
+    # One tenant holds one unit at Elis. Approving a second reservation for
+    # someone already renting used to MOVE them — silently ending the first
+    # tenancy and its billing. Refuse it and say which unit they hold; a
+    # genuine transfer is a move-out on the old unit first.
     existing_profile = db.session.query(TenantProfile).filter_by(user_id=user.id).first()
+    if (existing_profile and existing_profile.is_active
+            and existing_profile.unit_id != unit.id):
+        held = existing_profile.unit.unit_code if existing_profile.unit else "another unit"
+        flash(f"{user.full_name} already rents {held}. A tenant may hold only "
+              f"one unit, so process the move-out on {held} before approving "
+              f"this reservation.", "warning")
+        return redirect(url_for("admin.reservations"))
+
     if existing_profile:
         existing_profile.unit_id = unit.id
         existing_profile.contract_start = contract_start

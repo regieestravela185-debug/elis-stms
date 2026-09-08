@@ -2,7 +2,10 @@
    already renders these same flashed messages inside the modal card itself (home.html).
    Skip the floating top toast in that case so the message isn't shown twice / lost behind
    the modal — let it show once, in context, inside the modal. #}
-{% set _modal_has_own_flash = request.endpoint == 'public.home' and (request.args.get('auth') in ['login', 'register'] or request.args.get('show_login') == '1') %}
+{# Every auth modal renders these same messages inside its own card, so
+   the toast has to stand down for all of them — not just login and
+   register. Verify and forgot-password were showing the message twice. #}
+{% set _modal_has_own_flash = request.endpoint == 'public.home' and (request.args.get('auth') in ['login', 'register', 'verify', 'forgot', 'reset'] or request.args.get('show_login') == '1') %}
 {% if not _modal_has_own_flash %}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}

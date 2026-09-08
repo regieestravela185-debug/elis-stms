@@ -8,6 +8,9 @@
 
   <div class="side-group__label">Overview</div>
   <a class="side-link side-link--dashboard {% if request.path.startswith('/tenant/dashboard') %}is-active{% endif %}" href="{{ url_for('tenant.dashboard') }}"><span>Dashboard</span></a>
+  {# A tenant can still look at what is available — the public listing was
+     reachable but nothing in the portal linked back to it. #}
+  <a class="side-link side-link--browse" href="{{ url_for('public.home') }}#units"><span>Browse Units</span></a>
 
   <div class="side-group__label">Requests</div>
   {% if is_expired %}
@@ -76,6 +79,7 @@
 
 /* Colorful gradient backgrounds for ACTIVE menu items only */
 .side-link--dashboard.is-active,
+.side-link--browse.is-active,
 .side-link--concerns.is-active,
 .side-link--payments.is-active,
 .side-link--announcements.is-active,

@@ -5,6 +5,7 @@
 
 {% block head %}
   <script defer src="{{ url_for('static', filename='js/home.js') }}?v=3"></script>
+  <script defer src="{{ url_for('static', filename='js/submit_guard.js') }}?v=1"></script>
   <style>
     /* ============================================================
        PREMIUM HERO — bold, cinematic, high-end real-estate feel
@@ -752,8 +753,8 @@
     /* Residential: force a balanced 2x2 instead of an uneven 3+1 wrap. */
     .building-grid--pairs {
       display: grid;
-      grid-template-columns: repeat(2, minmax(260px, 340px));
-      justify-content: center;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      
     }
 
     @media (max-width: 640px) {
@@ -3409,7 +3410,7 @@
       </div>
       <div class="card card--lift contact-card home-enhanced-card">
         <h3>Address</h3>
-        <p class="muted">The Elis Center, #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</p>
+        <p class="muted">The Elis Center, <a href="https://www.google.com/maps/search/?api=1&amp;query=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna" target="_blank" rel="noopener noreferrer">#2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</a></p>
       </div>
       <div class="card card--lift contact-card home-enhanced-card">
         <h3>Facebook</h3>
@@ -3431,26 +3432,19 @@
           rel="noopener noreferrer"
         >Open in Google Maps</a>
       </div>
-      <a
-        class="map-link"
-        href="https://www.google.com/maps/search/?api=1&query=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Open The Elis Center location in Google Maps"
-      >
-        <div class="map-embed" aria-hidden="true">
-          <iframe
-            title="The Elis Center (Calamba) map preview"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            src="https://www.google.com/maps?q=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna&output=embed"
-          ></iframe>
-          <div class="map-cta">
-            <span class="map-cta__badge">Click to open Google Maps</span>
-          </div>
-        </div>
-      </a>
-      <p class="muted" style="margin:10px 0 0">Tip: click the map preview to open Google Maps with a pinned search.</p>
+      <!-- The preview used to sit inside a link with a "Click to open Google
+           Maps" badge over it. An iframe handles its own clicks, so the link
+           never fired and the badge promised something that could not
+           happen. The embedded map is interactive on its own, and the button
+           above the card opens it in Google Maps. -->
+      <div class="map-embed">
+        <iframe
+          title="The Elis Center (Calamba) map"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://www.google.com/maps?q=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna&output=embed"
+        ></iframe>
+      </div>
     </div>
   </section>
 
@@ -3482,7 +3476,7 @@
           <li><strong>Phone:</strong> 0918-912-6340</li>
           <li><strong>Phone:</strong> 0918-920-5645</li>
           <li><strong>Hours:</strong> Mon–Sat • 9:00 AM – 6:00 PM</li>
-          <li><strong>Address:</strong> #2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</li>
+          <li><strong>Address:</strong> <a href="https://www.google.com/maps/search/?api=1&amp;query=The%20Elis%20Center%2C%20%232%20Purok%201%20Brgy.%20Milagrosa%2C%20Calamba%20City%2C%20Laguna" target="_blank" rel="noopener noreferrer">#2 Purok 1 Brgy. Milagrosa, Calamba City, Laguna</a></li>
           <li><strong>Facebook:</strong> <a href="https://www.facebook.com/profile.php?id=100063700727817" target="_blank" rel="noopener noreferrer">ELIS Business Center | Calamba</a></li>
         </ul>
       </div>
@@ -3941,7 +3935,18 @@
         .legal-content strong {
           color: #D7B35B;
         }
-      </style>
+    
+    /* The four residential buildings sat two-up at a capped 340px each,
+       so a 1140px page showed 680px of content and 200px of empty margin
+       on either side. They run across the full width now and step down
+       as the window narrows. */
+    @media (max-width: 1040px) {
+      .building-grid--pairs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .building-grid--pairs { grid-template-columns: minmax(0, 1fr); }
+    }
+  </style>
 
       <!-- Google OAuth Button -->
       <a href="{{ url_for('auth.google_login') }}" class="btn-social-modal">
@@ -4086,6 +4091,7 @@
           <textarea name="message" class="input" rows="4" required placeholder="Tell us about your interest in this unit..."></textarea>
         </div>
         
+        <div id="unitInquiryMessage" class="inquiry-note" hidden></div>
         <button class="btn btn--primary w-full" type="submit">Send Inquiry</button>
       </form>
     </div>
@@ -4118,15 +4124,52 @@
       
       // Handle unit inquiry form submission
       if (unitInquiryForm) {
-        unitInquiryForm.addEventListener('submit', function(e) {
+        unitInquiryForm.addEventListener('submit', async function (e) {
           e.preventDefault();
-          const formData = new FormData(this);
-          const data = Object.fromEntries(formData);
-          
-          // Here you would typically send this to the server
-          // For now, just show an alert
-          alert('Inquiry sent for unit: ' + data.unit_code + '\n\nThank you for your interest! Our team will contact you soon.');
-          document.getElementById('modalUnitInquiry').hidden = true;
+
+          // This used to alert "Inquiry sent" and post nothing, so the
+          // enquiry never reached the admin. /inquiry/submit already
+          // existed — the form was simply never wired to it.
+          const form = this;
+          const btn = form.querySelector('button[type="submit"]');
+          const note = document.getElementById('unitInquiryMessage');
+          const formData = new FormData(form);
+          formData.set('subject', 'Unit enquiry — ' + (formData.get('unit_code') || ''));
+
+          if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+          if (note) { note.hidden = true; }
+
+          try {
+            const res = await fetch('/inquiry/submit', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              if (note) {
+                note.className = 'inquiry-note inquiry-note--ok';
+                note.textContent = data.message;
+                note.hidden = false;
+              }
+              form.reset();
+              setTimeout(function () {
+                document.getElementById('modalUnitInquiry').hidden = true;
+                if (note) { note.hidden = true; }
+              }, 2200);
+            } else {
+              // The tester's point: a failure must say so, not claim success.
+              if (note) {
+                note.className = 'inquiry-note inquiry-note--bad';
+                note.textContent = (data && data.message) || 'Your enquiry could not be sent. Please try again.';
+                note.hidden = false;
+              }
+            }
+          } catch (err) {
+            if (note) {
+              note.className = 'inquiry-note inquiry-note--bad';
+              note.textContent = 'Your enquiry could not be sent. Please check your connection and try again.';
+              note.hidden = false;
+            }
+          } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Send Inquiry'; }
+          }
         });
       }
       

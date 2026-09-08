@@ -121,9 +121,38 @@
   // spinner / URL bar), but beforeunload only ever fires on a genuine
   // navigation — never a false start — so it's safe to bridge the gap with
   // the same bar for visual consistency while the next page loads.
+  // A download link fires beforeunload but never navigates — the browser
+  // saves the file and stays put — so the bar started and nothing ever
+  // stopped it. That is the export spinner that hung at the top of the
+  // page. Downloads opt out; real navigations still get the bar.
+  var skipNextUnloadBar = false;
   window.addEventListener("beforeunload", function () {
+    if (skipNextUnloadBar) { skipNextUnloadBar = false; return; }
     begin();
   });
+
+  function isDownloadLink(a) {
+    if (!a) return false;
+    if (a.hasAttribute("download") || a.hasAttribute("data-download")) return true;
+    return /\/export(\/|$|\?)|\.csv(\?|$)/i.test(a.getAttribute("href") || "");
+  }
+
+  document.addEventListener("click", function (e) {
+    var a = e.target && e.target.closest && e.target.closest("a[href]");
+    if (!isDownloadLink(a)) return;
+
+    // Asked for by the testers: say what is about to be saved rather than
+    // having a file appear unannounced.
+    var what = a.getAttribute("data-download-label") || "this file";
+    if (!window.confirm("Download " + what + "?")) {
+      e.preventDefault();
+      return;
+    }
+    skipNextUnloadBar = true;
+    // Safety net: if the browser did navigate after all, let the bar work
+    // again shortly rather than staying suppressed for the session.
+    setTimeout(function () { skipNextUnloadBar = false; }, 4000);
+  }, true);
 
   window.STMSLoader = { begin: begin, end: end };
 })();
