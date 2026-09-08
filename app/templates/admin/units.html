@@ -269,8 +269,12 @@
 {% endblock %}
 
 {% block content %}
-  <div id="buildingFloorLimitsData" data-floor-limits="{{ building_floor_limits|tojson }}" style="display: none;"></div>
-  <div id="buildingUnitTypesData" data-unit-types="{{ building_unit_types|tojson }}" style="display: none;"></div>
+  {# tojson emits double quotes, which closed these attributes at the first
+     key — the value arrived as "{", JSON.parse threw, and everything below
+     it in the page's script died with it, filters and sorting included.
+     Single-quoted attributes hold it safely (tojson escapes any apostrophe). #}
+  <div id="buildingFloorLimitsData" data-floor-limits='{{ building_floor_limits|tojson }}' style="display: none;"></div>
+  <div id="buildingUnitTypesData" data-unit-types='{{ building_unit_types|tojson }}' style="display: none;"></div>
   <section class="dash-panel">
     <!-- Statistics Cards -->
     <div class="units-stats">
