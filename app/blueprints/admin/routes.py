@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import contains_eager, joinedload
 
 from ...extensions import db
+from ...upload_validation import validate_upload, DOCUMENT_TYPES, IMAGE_TYPES
 from ...models import (
     ActivityLog,
     Announcement,
@@ -201,6 +202,32 @@ def _get_building_unit_type(building_id: int) -> str | None:
     if building.code in ("B1", "B2", "B3", "B4"):
         return "residential"
     return None
+
+
+def _parse_money(raw, field="amount", *, maximum=99_999_999.99):
+    """Read a peso amount from a form, or say what is wrong with it.
+
+    float() is more permissive than the field it fills. "1e999" becomes
+    inf, "1e40" a number NUMERIC(12,2) cannot hold, and "-5" a negative
+    price — all of which the previous try/except let through to fail at
+    the database as an internal server error. Returns (value, error).
+    """
+    import math
+
+    text = (str(raw) if raw is not None else "").strip()
+    if not text:
+        return None, f"Please enter a {field}."
+    try:
+        value = float(text)
+    except (TypeError, ValueError):
+        return None, f"That {field} is not a number."
+    if not math.isfinite(value):
+        return None, f"That {field} is not a real number."
+    if value < 0:
+        return None, f"The {field} cannot be negative."
+    if value > maximum:
+        return None, f"That {field} is too large. The most allowed is {maximum:,.2f}."
+    return round(value, 2), None
 
 
 def _is_rent_payment_late(profile: TenantProfile, paid_at: datetime, payment_month: str = "") -> bool:
@@ -1555,10 +1582,13 @@ def create_unit():
         flash(f"Unit number '{unit_number}' already exists in this building. Please choose a different number.", "warning")
         return redirect(url_for("admin.units"))
 
-    try:
-        price_monthly = float(price_monthly)
-    except ValueError:
-        flash("Invalid price amount.", "warning")
+    # float() accepts more than the field is meant to hold: "1e999" becomes
+    # inf and "1e40" a number far past NUMERIC(12,2), and both sailed through
+    # the old try/except to fail at the database as a 500. A negative price
+    # passed too. Check the value is a real, sane amount of money.
+    price_monthly, price_error = _parse_money(price_monthly, "price")
+    if price_error:
+        flash(price_error, "warning")
         return redirect(url_for("admin.units"))
 
     floor = int(floor) if floor else None
@@ -1580,6 +1610,12 @@ def create_unit():
 
     # Handle image uploads (maximum 4 images)
     image_files = request.files.getlist("images")
+    for _img in image_files:
+        if _img and _img.filename:
+            _ok, _why = validate_upload(_img, IMAGE_TYPES, label="unit photo")
+            if not _ok:
+                flash(_why, "warning")
+                return redirect(request.referrer or url_for("admin.units"))
     image_urls = []
     if image_files:
         # Limit to 4 images
@@ -1701,10 +1737,9 @@ def update_unit(unit_id: int):
         flash(f"Unit number '{unit_number}' already exists in this building. Please choose a different number.", "warning")
         return redirect(url_for("admin.edit_unit", unit_id=unit_id))
 
-    try:
-        price_monthly = float(price_monthly)
-    except ValueError:
-        flash("Invalid price amount.", "warning")
+    price_monthly, price_error = _parse_money(price_monthly, "price")
+    if price_error:
+        flash(price_error, "warning")
         return redirect(url_for("admin.edit_unit", unit_id=unit_id))
 
     floor = int(floor) if floor else None
@@ -1726,6 +1761,12 @@ def update_unit(unit_id: int):
 
     # Handle image uploads (maximum 4 images)
     image_files = request.files.getlist("images")
+    for _img in image_files:
+        if _img and _img.filename:
+            _ok, _why = validate_upload(_img, IMAGE_TYPES, label="unit photo")
+            if not _ok:
+                flash(_why, "warning")
+                return redirect(request.referrer or url_for("admin.units"))
     if image_files:
         upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
         Path(upload_folder).mkdir(parents=True, exist_ok=True)
@@ -4302,6 +4343,11 @@ def upload_document():
     title = (request.form.get("title") or "").strip()
     document_type = (request.form.get("document_type") or "").strip()
     file = request.files.get("file")
+    if file and file.filename:
+        _ok, _why = validate_upload(file, DOCUMENT_TYPES, label="document")
+        if not _ok:
+            flash(_why, "warning")
+            return redirect(url_for("admin.documents"))
 
     if not tenant_profile_id or not title or not document_type or not file:
         flash("Please fill all fields and select a file.", "warning")

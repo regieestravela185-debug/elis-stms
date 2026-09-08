@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
+from ...upload_validation import validate_upload, DOCUMENT_TYPES, IMAGE_TYPES
 from ...models import Role, Unit, UnitStatus
 from ...ocr import scan_id_fields
 
@@ -69,6 +70,10 @@ def admin_metrics():
 @login_required
 def ocr_id():
     upload = request.files.get("id_upload")
+    if upload and upload.filename:
+        _ok, _why = validate_upload(upload, DOCUMENT_TYPES, label="ID")
+        if not _ok:
+            return jsonify({"ok": False, "error": _why}), 400
     if not upload or not upload.filename:
         return jsonify({"id_type": "", "id_number": "", "message": "No file uploaded"}), 400
 

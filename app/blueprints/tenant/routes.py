@@ -6,6 +6,7 @@ import re
 from ...security import hash_password
 
 from ...extensions import db
+from ...upload_validation import validate_upload, DOCUMENT_TYPES, IMAGE_TYPES
 from ...models import (
     Announcement, AnnouncementRead, Concern, ConcernFollowUp, ConcernStatus, Document, Feedback, FeedbackStatus,
     MoveOutNotice, MoveOutNoticeStatus,
@@ -484,6 +485,11 @@ def create_concern():
         
         for file in files:
             if file and file.filename:
+                # accept="..." is only a picker hint; check the real bytes
+                _ok, _why = validate_upload(file, DOCUMENT_TYPES, label="attachment")
+                if not _ok:
+                    flash(_why, "warning")
+                    return redirect(request.referrer or url_for("tenant.concerns"))
                 from werkzeug.utils import secure_filename
                 import os
                 from datetime import datetime
@@ -582,6 +588,11 @@ def add_concern_follow_up(concern_id: int):
         
         for file in files:
             if file and file.filename:
+                # accept="..." is only a picker hint; check the real bytes
+                _ok, _why = validate_upload(file, DOCUMENT_TYPES, label="attachment")
+                if not _ok:
+                    flash(_why, "warning")
+                    return redirect(request.referrer or url_for("tenant.concerns"))
                 from werkzeug.utils import secure_filename
                 import os
                 from datetime import datetime
@@ -897,6 +908,11 @@ def submit_payment_proof():
     payment_month = (request.form.get("payment_month") or "").strip()
     notes = (request.form.get("notes") or "").strip()
     proof = request.files.get("proof")
+    if proof and proof.filename:
+        ok, why = validate_upload(proof, DOCUMENT_TYPES, label="proof of payment")
+        if not ok:
+            flash(why, "warning")
+            return redirect(url_for("tenant.payments"))
 
     try:
         amount_val = float(amount)

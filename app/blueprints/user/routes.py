@@ -12,6 +12,7 @@ from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
 from ...extensions import db
+from ...upload_validation import validate_upload, DOCUMENT_TYPES, IMAGE_TYPES
 from ...models import (
     Building,
     DepositStatus,
@@ -137,6 +138,14 @@ def reserve_post(unit_id: int):
             return redirect(url_for("public.home") + "#units")
 
     upload = request.files.get("id_upload")
+    # accept="image/*" is a hint to the file picker, not a rule: a scripted
+    # request could send anything. Check the extension, the declared type
+    # and the file's own leading bytes before it is stored or OCR'd.
+    if upload and upload.filename:
+        ok, why = validate_upload(upload, DOCUMENT_TYPES, label="ID")
+        if not ok:
+            flash(why, "warning")
+            return redirect(request.referrer or url_for("public.home"))
     upload_path = None
     id_local_path = None      # local file (for OCR / fake-ID detection)
     ocr_result: dict[str, str] = {"id_type": "", "id_number": ""}
@@ -277,6 +286,9 @@ def api_verify_id():
     upload = request.files.get("id_upload")
     if not upload or not upload.filename:
         return jsonify({"ok": False, "error": "No ID file uploaded."}), 400
+    ok, why = validate_upload(upload, DOCUMENT_TYPES, label="ID")
+    if not ok:
+        return jsonify({"ok": False, "error": why}), 400
     
     # Save to temp location for analysis
     filename = secure_filename(upload.filename)
@@ -340,6 +352,11 @@ def api_verify_face():
     _ensure_user_role()
     
     id_upload = request.files.get("id_upload")
+    if id_upload and id_upload.filename:
+        ok, why = validate_upload(id_upload, DOCUMENT_TYPES, label="ID")
+        if not ok:
+            flash(why, "warning")
+            return redirect(request.referrer or url_for("public.home"))
     selfie_data_url = request.form.get("selfie_data_url", "")
     
     if not id_upload or not id_upload.filename:

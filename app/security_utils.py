@@ -54,7 +54,7 @@ def is_locked_out(identifier, attempt_type='login'):
     locked_until = attempt_data.get('locked_until')
     
     if locked_until and datetime.utcnow() < locked_until:
-        remaining = (locked_until - datetime.utcnow()).seconds // 60 + 1
+        remaining = int((locked_until - datetime.utcnow()).total_seconds()) // 60 + 1
         return True, remaining
     
     # Lockout expired, clean up
@@ -80,7 +80,7 @@ def record_failed_attempt(identifier, attempt_type='login'):
     attempt_data = failed_attempts[key]
     
     # Reset counter if attempts are outside the window
-    if (now - attempt_data['last_attempt']).seconds > (ATTEMPT_WINDOW_MINUTES * 60):
+    if (now - attempt_data['last_attempt']).total_seconds() > (ATTEMPT_WINDOW_MINUTES * 60):
         attempt_data['count'] = 0
         attempt_data['first_attempt'] = now
     
@@ -210,10 +210,10 @@ def cleanup_old_attempts():
     for key, data in failed_attempts.items():
         # Remove if lockout expired and no recent attempts
         if data.get('locked_until') and now > data['locked_until']:
-            if (now - data['last_attempt']).seconds > (ATTEMPT_WINDOW_MINUTES * 60 * 2):
+            if (now - data['last_attempt']).total_seconds() > (ATTEMPT_WINDOW_MINUTES * 60 * 2):
                 expired_keys.append(key)
         # Remove if last attempt was long ago and not locked
-        elif (now - data['last_attempt']).seconds > (ATTEMPT_WINDOW_MINUTES * 60 * 2):
+        elif (now - data['last_attempt']).total_seconds() > (ATTEMPT_WINDOW_MINUTES * 60 * 2):
             expired_keys.append(key)
     
     for key in expired_keys:
