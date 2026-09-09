@@ -4384,16 +4384,18 @@
               body: formData
             });
             
-            console.log('OTP Response status:', response.status);
-            console.log('OTP Response headers:', response.headers.get('content-type'));
-            
-            // Check if response is JSON
+            // The rate limiter answers with an HTML error page, which is not
+            // a server fault and should not be reported as one.
+            if (response.status === 429) {
+              showAlert('Too many attempts. Please wait a few minutes before trying again.', 'danger');
+              otpInput.value = '';
+              return;
+            }
+
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
               console.error('Non-JSON response received:', await response.text());
               showAlert('❌ Server error. Please try again or contact support.', 'danger');
-              otpVerifyBtn.disabled = false;
-              otpVerifyBtn.textContent = 'Verify';
               return;
             }
             
@@ -4443,30 +4445,44 @@
           otpResendBtn.textContent = 'Sending...';
           
           try {
+            // Ask for JSON and report exactly what the server says. This used
+            // to POST for HTML and scrape it for a flash message, falling back
+            // to "OTP resent! Check your email." whenever it found none — so a
+            // send the mail service refused still read as a success.
             const response = await fetch('{{ url_for("auth.resend_otp") }}', {
-              method: 'POST'
+              method: 'POST',
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+              }
             });
-            
-            const text = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, 'text/html');
-            const flashMsg = doc.querySelector('.flash-stack .alert');
-            
-            if (flashMsg) {
-              const msgText = flashMsg.textContent.trim();
-              const isSuccess = flashMsg.classList.contains('flash--success');
-              showAlert(msgText, isSuccess ? 'success' : 'info');
-            } else {
-              showAlert('OTP resent! Check your email.', 'success');
+
+            if (response.status === 429) {
+              showAlert('Too many resend requests. Please wait a few minutes before trying again.', 'danger');
+              return;
             }
-            
-            // Update target email if available
-            const targetEmail = doc.querySelector('#otpTargetEmail');
-            if (targetEmail) {
-              document.getElementById('otpTargetEmail').textContent = targetEmail.textContent;
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+              console.error('Non-JSON resend response:', await response.text());
+              showAlert('The server did not answer properly. Please try again in a moment.', 'danger');
+              return;
+            }
+
+            const data = await response.json();
+            if (data.success) {
+              showAlert(data.message || 'A new code is on its way.', 'success');
+              if (data.redirect) {
+                setTimeout(() => { window.location.href = data.redirect; }, 1200);
+              }
+            } else {
+              showAlert(data.message || 'The code could not be sent. Please try again.', 'danger');
+              if (data.redirect) {
+                setTimeout(() => { window.location.href = data.redirect; }, 1800);
+              }
             }
           } catch (error) {
-            showAlert('Failed to resend OTP. Please try again.', 'danger');
+            showAlert('Network error. Please check your connection and try again.', 'danger');
           } finally {
             otpResendBtn.disabled = false;
             otpResendBtn.textContent = 'Resend OTP';

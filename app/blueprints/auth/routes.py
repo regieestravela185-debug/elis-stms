@@ -27,17 +27,25 @@ def load_user(user_id: str):
 
 
 def _send_otp_email(recipient_email: str, otp_code: str) -> tuple[bool, str | None]:
-    """Send OTP email using Brevo HTTP API (works on Render free tier)"""
+    """Send the OTP and report whether it actually left. Returns (ok, error).
+
+    This used to call the fire-and-forget sender and then return True
+    unconditionally, so a refused send still told the user "OTP sent.
+    Check your email" — the one failure that looks identical to a slow
+    inbox. send_otp_email is synchronous now and says what happened.
+    """
     if not recipient_email or not otp_code:
         return False, "Missing recipient or OTP code"
-    
+
     try:
         from app.email_helper import send_otp_email
-        # Extract name from email (before @)
         recipient_name = recipient_email.split('@')[0].capitalize()
-        send_otp_email(recipient_email, recipient_name, otp_code)
-        current_app.logger.info("OTP email sent to %s", recipient_email)
-        return True, None
+        ok, err = send_otp_email(recipient_email, recipient_name, otp_code)
+        if ok:
+            current_app.logger.info("OTP email sent to %s", recipient_email)
+        else:
+            current_app.logger.warning("OTP email NOT sent to %s: %s", recipient_email, err)
+        return ok, err
     except Exception as exc:
         current_app.logger.exception("OTP email send failed to %s: %s", recipient_email, str(exc))
         return False, str(exc)
@@ -379,8 +387,12 @@ def verify_otp_post():
 
     existing = db.session.query(User).filter_by(email=email).first()
     if existing and existing.is_email_verified:
-        flash("Email is already registered. Please login.", "warning")
+        msg = "Email is already registered. Please login."
         session.pop("pending_registration", None)
+        if is_ajax:
+            return jsonify({"success": False, "message": msg,
+                            "redirect": url_for('public.home', auth='login')}), 400
+        flash(msg, "warning")
         return _home_auth_modal("login")
     if existing and not existing.is_email_verified:
         try:
@@ -402,17 +414,22 @@ def verify_otp_post():
             login_user(existing, remember=True)
             session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
             
-            flash("✅ Registration completed! Your email has been verified. Welcome to ELIS STMS!", "success")
-            
-            if existing.role == Role.USER:
-                return redirect(url_for("public.home"))
-            else:
-                return _redirect_by_role(existing)
-                
+            msg = "✅ Registration completed! Your email has been verified. Welcome to ELIS STMS!"
+            target = (url_for("public.home") if existing.role == Role.USER
+                      else url_for("admin.dashboard") if existing.role == Role.ADMIN
+                      else url_for("tenant.dashboard"))
+            if is_ajax:
+                return jsonify({"success": True, "message": msg, "redirect": target}), 200
+            flash(msg, "success")
+            return redirect(target)
+
         except Exception as e:
             db.session.rollback()
-            print(f"❌ Error updating user: {e}")
-            flash("Verification failed. Please try again.", "danger")
+            current_app.logger.exception("Error updating user during OTP verify: %s", e)
+            msg = "Verification failed. Please try again."
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 500
+            flash(msg, "danger")
             return _home_auth_modal("verify")
 
     user = User(
@@ -440,68 +457,91 @@ def verify_otp_post():
         login_user(user, remember=True)
         session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
         
-        # Success message
-        flash("✅ Registration completed! Your email has been verified. Welcome to ELIS STMS!", "success")
-        
-        # Redirect to user dashboard (for Role.USER)
-        if user.role == Role.USER:
-            return redirect(url_for("public.home"))  # Users go to homepage
-        else:
-            return _redirect_by_role(user)
-            
+        msg = "✅ Registration completed! Your email has been verified. Welcome to ELIS STMS!"
+        target = (url_for("public.home") if user.role == Role.USER
+                  else url_for("admin.dashboard") if user.role == Role.ADMIN
+                  else url_for("tenant.dashboard"))
+        if is_ajax:
+            return jsonify({"success": True, "message": msg, "redirect": target}), 200
+        flash(msg, "success")
+        return redirect(target)
+
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error saving user to database: {e}")
-        flash("Registration failed. Please try again or contact support.", "danger")
+        current_app.logger.exception("Error saving user during OTP verify: %s", e)
+        msg = "Registration failed. Please try again or contact support."
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 500
+        flash(msg, "danger")
         return _home_auth_modal("register")
 
 
 @bp.post("/resend-otp")
 @limiter.limit("3 per 10 minutes")  # Limit OTP resend requests
 def resend_otp():
+    """Issue a fresh OTP and say plainly whether the mail actually went.
+
+    The old version always reported success, because the send was fire and
+    forget — and the page it answered with was HTML that the caller then
+    scraped for a flash message, falling back to "OTP resent! Check your
+    email." whenever it found none. A refused send therefore reached the
+    user as a success. It now answers JSON, and the message reflects what
+    the mail service actually did.
+    """
+    is_ajax = (request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+               or request.accept_mimetypes.accept_json)
+
+    def answer(ok, msg, category, status=200, redirect_to=None):
+        if is_ajax:
+            body = {"success": ok, "message": msg}
+            if redirect_to:
+                body["redirect"] = redirect_to
+            return jsonify(body), status
+        flash(msg, category)
+        return redirect(redirect_to) if redirect_to else _home_auth_modal("verify")
+
+    def deliver(email, otp):
+        sent, mail_err = _send_otp_email(email, otp)
+        if sent:
+            msg = "A new code is on its way. Please check your email."
+            if _dev_mode():
+                msg += f" (DEV OTP: {otp})"
+            return answer(True, msg, "info")
+        msg = f"The code could not be sent — {mail_err or 'unknown error'}."
+        if _dev_mode():
+            msg += f" (DEV OTP: {otp})"
+        return answer(False, msg, "warning", 502)
+
     if current_user.is_authenticated and not current_user.is_email_verified:
         user: User = current_user  # type: ignore
-        
-        # Check if locked out
+
         is_locked, lock_msg = check_rate_limit(user.email, 'otp')
         if is_locked:
-            flash(lock_msg, "danger")
-            return _home_auth_modal("verify")
-        
+            return answer(False, lock_msg, "danger", 429)
+
         user.otp_code = generate_otp_code()
         user.otp_expires_at = otp_expiry(10)
         db.session.commit()
-        sent, mail_err = _send_otp_email(user.email, user.otp_code)
-        if sent:
-            msg = "OTP sent. Check your email."
-            if _dev_mode():
-                msg += f" Sent to {user.email}. (DEV OTP: {user.otp_code})"
-            flash(msg, "info")
-        else:
-            flash(f"Email send failed: {mail_err or 'unknown error'} (DEV OTP: {user.otp_code}).", "warning")
-        return _home_auth_modal("verify")
+        return deliver(user.email, user.otp_code)
+
     if current_user.is_authenticated and current_user.is_email_verified:
-        return _redirect_by_role(current_user)
+        target = (url_for("admin.dashboard") if current_user.role == Role.ADMIN
+                  else url_for("tenant.dashboard") if current_user.role == Role.TENANT
+                  else url_for("public.home"))
+        return answer(True, "Your email is already verified.", "info",
+                      redirect_to=target)
 
     pending = session.get("pending_registration")
     if not pending:
-        flash("No pending registration found. Please register first.", "warning")
-        return _home_auth_modal("register")
+        return answer(False, "No pending registration found. Please register first.",
+                      "warning", 400,
+                      redirect_to=url_for('public.home', auth='register'))
 
     otp = generate_otp_code()
     pending["otp_code"] = otp
     pending["otp_expires_at"] = otp_expiry(10).isoformat()
     session["pending_registration"] = pending
-    target_email = (pending.get("email") or "").strip().lower()
-    sent, mail_err = _send_otp_email(target_email, otp)
-    if sent:
-        msg = "OTP sent. Check your email."
-        if _dev_mode():
-            msg += f" Sent to {target_email}. (DEV OTP: {otp})"
-        flash(msg, "info")
-    else:
-        flash(f"OTP refreshed but email send failed: {mail_err or 'unknown error'} (DEV OTP: {otp}).", "warning")
-    return _home_auth_modal("verify")
+    return deliver((pending.get("email") or "").strip().lower(), otp)
 
 
 @bp.post("/logout")

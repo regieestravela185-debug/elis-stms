@@ -7,63 +7,81 @@ import threading
 from flask import current_app
 
 
+PLACEHOLDER_SENDER = "no-reply@example.com"
+
+
+def send_email_sync(subject, recipient_email, recipient_name, html_content,
+                    text_content=None, *, timeout=12):
+    """Send one email through Brevo and say whether it actually went.
+
+    Returns (ok, error). The async wrapper below throws its result away,
+    which is fine for a reminder but wrong for anything a person is
+    waiting on — an OTP the caller reports as "sent" when Brevo refused it
+    leaves the user staring at an inbox with nothing in it and no way to
+    tell that anything failed.
+    """
+    app = current_app._get_current_object()
+
+    api_key = app.config.get("BREVO_API_KEY")
+    if not api_key:
+        return False, "email is not configured on the server (BREVO_API_KEY is missing)"
+
+    sender_email = app.config.get("BREVO_SENDER_EMAIL") or ""
+    if not sender_email or sender_email == PLACEHOLDER_SENDER:
+        # Brevo refuses a sender it has not verified, so this is a
+        # misconfiguration that looks exactly like "the mail never arrived".
+        return False, ("the sender address is not configured on the server "
+                       "(BREVO_SENDER_EMAIL is still the placeholder)")
+
+    payload = {
+        "sender": {"name": "ELIS Smart Tenant Management", "email": sender_email},
+        "to": [{"email": recipient_email, "name": recipient_name}],
+        "subject": subject,
+        "htmlContent": html_content,
+    }
+    if text_content:
+        payload["textContent"] = text_content
+
+    headers = {"accept": "application/json", "api-key": api_key,
+               "content-type": "application/json"}
+
+    try:
+        r = requests.post("https://api.brevo.com/v3/smtp/email",
+                          json=payload, headers=headers, timeout=timeout)
+    except Exception as exc:
+        app.logger.warning("Brevo request failed for %s: %s", recipient_email, exc)
+        return False, f"could not reach the mail service ({exc.__class__.__name__})"
+
+    if r.status_code == 201:
+        app.logger.info("Email sent to %s (%s)", recipient_email, subject)
+        return True, None
+
+    detail = ""
+    try:
+        detail = (r.json() or {}).get("message", "")
+    except Exception:
+        detail = r.text[:200]
+    app.logger.warning("Brevo rejected mail to %s: %s %s",
+                       recipient_email, r.status_code, detail)
+    return False, f"the mail service refused it ({r.status_code}: {detail or 'no detail'})"
+
+
 def send_email_async(subject, recipient_email, recipient_name, html_content, text_content=None):
     """
-    Send email asynchronously using Brevo HTTP API
-    Works on Render free tier (SMTP blocked but HTTPS allowed)
+    Send email in the background using Brevo HTTP API.
+    Works on Render free tier (SMTP blocked but HTTPS allowed).
+
+    Fire and forget: the caller is told nothing about the outcome. Use it
+    for notices nobody is waiting on. For anything a user is waiting for,
+    call send_email_sync and report what it returns.
     """
     def send_email_thread(app, subject, recipient_email, recipient_name, html_content, text_content):
         with app.app_context():
-            try:
-                api_key = app.config.get('BREVO_API_KEY')
-                if not api_key:
-                    print("ERROR: BREVO_API_KEY not configured")
-                    return
-                
-                # Get sender email from config (use Brevo login email)
-                sender_email = app.config.get('BREVO_SENDER_EMAIL', 'no-reply@example.com')
-                
-                # Brevo API endpoint
-                url = "https://api.brevo.com/v3/smtp/email"
-                
-                # Prepare email data
-                payload = {
-                    "sender": {
-                        "name": "ELIS Smart Tenant Management",
-                        "email": sender_email
-                    },
-                    "to": [
-                        {
-                            "email": recipient_email,
-                            "name": recipient_name
-                        }
-                    ],
-                    "subject": subject,
-                    "htmlContent": html_content
-                }
-                
-                # Add text content if provided
-                if text_content:
-                    payload["textContent"] = text_content
-                
-                # Send request
-                headers = {
-                    "accept": "application/json",
-                    "api-key": api_key,
-                    "content-type": "application/json"
-                }
-                
-                response = requests.post(url, json=payload, headers=headers, timeout=10)
-                
-                if response.status_code == 201:
-                    print(f"✅ Email sent successfully to {recipient_email}")
-                else:
-                    print(f"❌ Failed to send email: {response.status_code} - {response.text}")
-                    
-            except Exception as e:
-                print(f"❌ Email sending error: {e}")
-    
-    # Run in background thread
+            ok, err = send_email_sync(subject, recipient_email, recipient_name,
+                                      html_content, text_content)
+            if not ok:
+                print(f"Email to {recipient_email} not sent: {err}")
+
     app = current_app._get_current_object()
     thread = threading.Thread(
         target=send_email_thread,
@@ -74,7 +92,11 @@ def send_email_async(subject, recipient_email, recipient_name, html_content, tex
 
 
 def send_otp_email(recipient_email, recipient_name, otp_code):
-    """Send OTP verification email"""
+    """Send the OTP and report whether it actually went. Returns (ok, error).
+
+    Sent synchronously, unlike the rest: someone is sitting on the
+    verification screen waiting for this one, so "sent" has to mean sent.
+    """
     subject = "Your OTP Code - ELIS STMS"
     
     text_content = f"""
@@ -133,7 +155,8 @@ ELIS Smart Tenant Management System
 </html>
 """
     
-    send_email_async(subject, recipient_email, recipient_name, html_content, text_content)
+    return send_email_sync(subject, recipient_email, recipient_name,
+                           html_content, text_content)
 
 
 def send_password_reset_email(recipient_email, recipient_name, reset_token, reset_url):
