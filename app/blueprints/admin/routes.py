@@ -2715,6 +2715,7 @@ def upload_electric_bill(bill_id: int):
     month = request.form.get("billing_month") or bill.billing_month
     note = (request.form.get("electric_note") or "").strip()
     bill.electric_note = note[:500] or None
+    attached = False
 
     upload = request.files.get("electric_bill")
     if upload and upload.filename:
@@ -2745,6 +2746,7 @@ def upload_electric_bill(bill_id: int):
         bill.electric_bill_path = stored
         bill.electric_bill_name = upload.filename[:255]
         bill.electric_bill_uploaded_at = datetime.utcnow()
+        attached = True
         flash("Electricity bill attached — the tenant can now see it on their Payments page.", "success")
     elif note:
         flash("Note saved.", "success")
@@ -2753,7 +2755,53 @@ def upload_electric_bill(bill_id: int):
         return redirect(url_for("admin.utility_billing", month=month))
 
     db.session.commit()
+
+    # Telling the tenant is the point of attaching it. The monthly reminder
+    # carries the bill too, but that goes out seven days before the due
+    # date — a bill attached afterwards, usually because the tenant asked
+    # why the charge is high, would otherwise sit on a page they have no
+    # reason to reopen.
+    if request.form.get("notify") == "1":
+        _notify_electric_bill(bill, attached)
+
     return redirect(url_for("admin.utility_billing", month=month))
+
+
+def _notify_electric_bill(bill, attached: bool) -> None:
+    """Email and in-app push for a newly attached electricity bill.
+
+    Never raises: a mail provider being down must not lose the upload that
+    has already been committed.
+    """
+    from ...email_helper import send_electric_bill_attached_email
+    from ...socket_events import emit_utility_bill_notification
+    from ...jobs import _absolute
+
+    profile = bill.tenant_profile
+    user = profile.user if profile else None
+    if not user:
+        return
+
+    unit_code = profile.unit.unit_code if profile.unit else "N/A"
+    try:
+        if user.email:
+            send_electric_bill_attached_email(
+                user.full_name, user.email, unit_code, bill.billing_month,
+                float(bill.electric_amount or 0),
+                bill_url=_absolute(bill.electric_bill_url),
+                note=bill.electric_note,
+            )
+        emit_utility_bill_notification(user.id, {
+            "title": f"Electricity bill for {bill.billing_month} — Unit {unit_code}",
+            "subtitle": ("The bill is on your Payments page" if attached
+                         else "A note was added to your electricity charge"),
+        })
+        flash("The tenant was notified by email and in the app.", "success")
+    except Exception as exc:  # pragma: no cover
+        current_app.logger.warning("Electricity bill notice failed for bill %s: %s",
+                                   bill.id, exc)
+        flash("Saved, but the tenant could not be notified just now. "
+              "They will still see it on their Payments page.", "warning")
 
 
 @bp.post("/tenants/utility-bills/<int:bill_id>/electric-bill/remove")

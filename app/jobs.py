@@ -117,6 +117,20 @@ def send_renewal_reminder_now(app: Flask, tenant_profile_id: int) -> bool:
         return True
 
 
+def _absolute(url: str | None) -> str | None:
+    """A link that still works once the mail has left the site.
+
+    An attachment stored on Supabase — which is where uploads go whenever
+    it is configured, and always in production — already carries its full
+    URL. A local-disk fallback is a site-relative path, and a relative path
+    in an inbox is a dead link, so it is left out of the mail rather than
+    sent broken. The tenant still sees it on their Payments page.
+    """
+    if url and (url.startswith("http://") or url.startswith("https://")):
+        return url
+    return None
+
+
 def _send_utility_bill_reminder(profile: TenantProfile, bill: UtilityBill) -> None:
     """Shared send step used by both the daily job and the manual trigger —
     email + in-app push, then stamp reminder_sent_at (caller commits)."""
@@ -130,6 +144,8 @@ def _send_utility_bill_reminder(profile: TenantProfile, bill: UtilityBill) -> No
         electric_paid=bill.electric_paid, water_paid=bill.water_paid,
         carried_over_electric=float(bill.carried_over_electric or 0),
         carried_over_water=float(bill.carried_over_water or 0),
+        electric_bill_url=_absolute(bill.electric_bill_url),
+        electric_note=bill.electric_note,
     )
     still_owed = " and ".join(bill.unpaid_components) or "Balance"
     emit_utility_bill_notification(user.id, {

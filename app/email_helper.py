@@ -640,16 +640,21 @@ def send_utility_bill_reminder_email(
     rent_amount, electric_amount, water_amount, carried_over_amount,
     electric_paid=False, water_paid=False,
     carried_over_electric=0, carried_over_water=0,
+    electric_bill_url=None, electric_note=None,
 ):
     """Monthly Rent + Electric + Water reminder, 7 days before due date.
     Unlike rent, utilities have no late penalty — an unpaid balance simply
     carries into next month's bill, so the carried-over line (and any
     "previous balance" language) only appears when there actually is one.
 
-    Electric and water are settled independently, so each line states its
-    own status: a component already paid is shown as settled and is left
-    out of the total, and each carry-over is shown against the component
-    it came from rather than as one unattributed lump."""
+    Electricity and water are settled independently, so each line states
+    its own status: a component already paid is shown as settled and is
+    left out of the total, and each carry-over is shown against the
+    component it came from rather than as one unattributed lump.
+
+    When the administrator has attached the electricity bill, the link and
+    the reading note travel with the reminder — the question a high charge
+    prompts is best answered in the same message that announces it."""
     from datetime import date
 
     electric_due = float(electric_amount) + float(carried_over_electric)
@@ -671,6 +676,32 @@ def send_utility_bill_reminder_email(
     electric_note = _status(electric_paid, float(carried_over_electric))
     water_note = _status(water_paid, float(carried_over_water))
 
+    # The attached bill, when there is one. Built as whole blocks so the
+    # reminder stays a clean three-line breakdown when there is not.
+    proof_text, proof_html = "", ""
+    if electric_bill_url or electric_note:
+        bits = []
+        if electric_note:
+            bits.append(f"Electricity reading: {electric_note}")
+        if electric_bill_url:
+            bits.append(f"View the electricity bill: {electric_bill_url}")
+        proof_text = "\n" + "\n".join(bits) + "\n"
+
+        note_html = (f'<p style="margin: 0 0 10px 0; color: #666666; font-size: 13px; '
+                     f'line-height: 1.6;">{electric_note}</p>' if electric_note else "")
+        link_html = (f'<a href="{electric_bill_url}" '
+                     f'style="color: #B8922F; font-weight: 600; text-decoration: underline; '
+                     f'font-size: 14px;">View the electricity bill</a>'
+                     if electric_bill_url else "")
+        proof_html = f'''
+            <div style="background: rgba(215, 179, 91, 0.09); border: 1px dashed #D7B35B;
+                        border-radius: 8px; padding: 16px 18px; margin: 0 0 24px 0;">
+                <p style="margin: 0 0 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 700;">
+                    Your electricity bill
+                </p>
+                {note_html}{link_html}
+            </div>'''
+
     if days_remaining <= 0:
         subject = "Bill Due Today - The Elis Center"
         due_text = "is due today"
@@ -687,7 +718,7 @@ Monthly Rent: ₱{rent_amount:,.2f}
 Electricity: ₱{electric_due:,.2f}{electric_note}
 Water: ₱{water_due:,.2f}{water_note}
 Total Amount Due: ₱{total:,.2f}
-
+{proof_text}
 Please settle your payment before the due date. If you have already paid, you may disregard this reminder.
 
 Thank you,
@@ -741,8 +772,97 @@ The Elis Center Management
                     </tr>
                 </table>
             </div>
+            {proof_html}
             <p style="margin: 0 0 24px 0; color: #666666; line-height: 1.6;">
                 Please settle your payment before the due date above. If you have already paid, you may disregard this reminder.
+            </p>
+        </div>
+        <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+            <p style="margin: 0; color: #999999; font-size: 12px;">&copy; {date.today().year} The Elis Center. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_electric_bill_attached_email(
+    tenant_name, tenant_email, unit_code, billing_month,
+    electric_amount, bill_url=None, note=None,
+):
+    """Tell a tenant their electricity bill for the month is viewable.
+
+    The monthly reminder carries the bill too, but it goes out seven days
+    before the due date — an administrator attaching the bill afterwards,
+    usually because the tenant asked why the charge is high, would
+    otherwise be answering into a page the tenant has no reason to reopen.
+    """
+    from datetime import date, datetime
+
+    try:
+        month_label = datetime.strptime(billing_month, "%Y-%m").strftime("%B %Y")
+    except (ValueError, TypeError):
+        month_label = billing_month or "this month"
+
+    subject = f"Your {month_label} Electricity Bill - The Elis Center"
+
+    note_line = f"\nReading: {note}\n" if note else ""
+    link_line = f"\nView the bill: {bill_url}\n" if bill_url else ""
+    text_content = f"""
+Dear {tenant_name},
+
+The electricity bill behind your {month_label} charge for Unit {unit_code} is now on your account.
+
+Electricity charged: ₱{float(electric_amount or 0):,.2f}
+{note_line}{link_line}
+You can also see it any time under Payments in your account.
+
+Thank you,
+The Elis Center Management
+"""
+
+    note_html = (f'<p style="margin: 0 0 10px 0; color: #666666; font-size: 13px; '
+                 f'line-height: 1.6;">{note}</p>' if note else "")
+    link_html = (f'<a href="{bill_url}" style="color: #B8922F; font-weight: 600; '
+                 f'text-decoration: underline; font-size: 14px;">View the bill</a>'
+                 if bill_url else "")
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electricity Bill</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">The Elis Center</h1>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Commercial and Residences</p>
+        </div>
+        <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px; font-weight: 600;">Your {month_label} Electricity Bill</h2>
+            <p style="margin: 0 0 16px 0; color: #666666; line-height: 1.6;">Dear <strong>{tenant_name}</strong>,</p>
+            <p style="margin: 0 0 20px 0; color: #666666; line-height: 1.6;">
+                The electricity bill behind your <strong>{month_label}</strong> charge for
+                <strong>Unit {unit_code}</strong> is now on your account.
+            </p>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; border-left: 4px solid #D7B35B; margin: 0 0 24px 0;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #666666;">Electricity charged</td>
+                        <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-size: 18px; font-weight: 700;">₱{float(electric_amount or 0):,.2f}</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="background: rgba(215, 179, 91, 0.09); border: 1px dashed #D7B35B; border-radius: 8px; padding: 16px 18px; margin: 0 0 24px 0;">
+                {note_html}{link_html}
+            </div>
+            <p style="margin: 0; color: #666666; line-height: 1.6;">
+                You can also see it any time under <strong>Payments</strong> in your account.
             </p>
         </div>
         <div style="background: #fdfdfd; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
