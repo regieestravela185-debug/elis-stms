@@ -50,22 +50,24 @@ def home():
     from ...models import Feedback
     from sqlalchemy import func
     
-    unit_ratings = {}
-    for unit in units:
-        avg_rating = db.session.query(func.avg(Feedback.rating)).filter(
-            Feedback.unit_id == unit.id,
-            Feedback.rating.isnot(None)
-        ).scalar()
-        
-        rating_count = db.session.query(Feedback).filter(
-            Feedback.unit_id == unit.id,
-            Feedback.rating.isnot(None)
-        ).count()
-        
-        unit_ratings[unit.id] = {
-            'avg': round(float(avg_rating), 1) if avg_rating else 0,
-            'count': rating_count
-        }
+    # One grouped query for every unit's rating, not two per unit.
+    # The homepage lists 18 units, so this loop was issuing 36 separate
+    # round trips to the database — barely noticeable from a machine next
+    # to it, and about forty seconds from the web host, where each trip
+    # pays real network latency. It is the whole page's load time.
+    unit_ratings = {u.id: {'avg': 0, 'count': 0} for u in units}
+    if units:
+        rows = (db.session.query(Feedback.unit_id,
+                                 func.avg(Feedback.rating),
+                                 func.count(Feedback.id))
+                .filter(Feedback.unit_id.in_([u.id for u in units]),
+                        Feedback.rating.isnot(None))
+                .group_by(Feedback.unit_id).all())
+        for unit_id, avg_rating, rating_count in rows:
+            unit_ratings[unit_id] = {
+                'avg': round(float(avg_rating), 1) if avg_rating else 0,
+                'count': rating_count or 0,
+            }
     
     # What each unit actually includes, read once for the whole page rather
     # than per unit. Only items with a quantity are listed — a zero means the

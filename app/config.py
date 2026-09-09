@@ -36,6 +36,21 @@ class Config:
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Supabase's pooler closes idle connections, and the web host puts the
+    # service to sleep between visits, so a pooled connection is very often
+    # already dead by the time the next request reaches for it. Without a
+    # pre-ping that surfaces as a stalled query rather than a quick
+    # reconnect. Recycling well inside the pooler's own idle timeout keeps
+    # the pool from handing out connections that are about to be dropped.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+        "pool_size": 5,
+        "max_overflow": 5,
+        "pool_timeout": 20,
+        "connect_args": {"connect_timeout": 10},
+    }
+
     REMEMBER_COOKIE_DURATION = timedelta(days=14)
 
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "app/static/uploads")
