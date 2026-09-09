@@ -4,6 +4,62 @@
 {% block head %}
   <style>
     /* Enhanced Payments Page Styles */
+    /* Revenue for a chosen period — one month, or a range of them */
+    .rev-period {
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 28px;
+      background: var(--bg);
+    }
+    .rev-period__head {
+      display: flex; align-items: flex-start; gap: 14px;
+      flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .rev-period__form {
+      display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+    }
+    .rev-period__field { display: flex; flex-direction: column; gap: 5px; }
+    .rev-period__field .label {
+      font-size: 12px; font-weight: 600; letter-spacing: .02em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .rev-period__field input {
+      min-width: 165px;
+    }
+    .rev-period__presets {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;
+      padding-top: 12px; border-top: 1px dashed var(--border);
+      align-items: center;
+    }
+    .rev-period__result {
+      margin-top: 16px; padding: 16px 18px; border-radius: 12px;
+      background: rgba(215, 179, 91, .10);
+      border: 1px solid rgba(215, 179, 91, .45);
+    }
+    .rev-period__figure {
+      font-size: 30px; font-weight: 800; line-height: 1.15;
+      color: var(--text);
+    }
+    .rev-period__caption { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .rev-period__months {
+      width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px;
+    }
+    .rev-period__months th, .rev-period__months td {
+      padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left;
+    }
+    .rev-period__months th {
+      font-size: 12px; text-transform: uppercase; letter-spacing: .02em;
+      color: var(--muted); font-weight: 600;
+    }
+    .rev-period__months td:last-child,
+    .rev-period__months th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+    @media (max-width: 640px) {
+      .rev-period__field input { min-width: 0; width: 100%; }
+      .rev-period__field { width: 100%; }
+      .rev-period__form { align-items: stretch; }
+    }
+
     .payments-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -356,6 +412,90 @@
         <div class="stat-card__label">Tenants Paid</div>
 </div>
 </div>
+
+    <!-- Revenue for a chosen period. "Total Revenue" above answers how much
+         has ever come in; this answers August alone, or September to December. -->
+    <section class="rev-period">
+      <div class="rev-period__head">
+        <div style="flex: 1; min-width: 240px;">
+          <h3 style="margin: 0 0 3px 0; font-size: 17px;">Revenue for a period</h3>
+          <p class="muted" style="margin: 0; font-size: 13px;">
+            Pick one month or a range of them &mdash; the totals above cover all
+            time. Confirmed payments only; voided and rejected ones are left out.
+          </p>
+        </div>
+      </div>
+
+      <form method="get" action="{{ url_for('admin.payments') }}" class="rev-period__form">
+        {# carry the table's own filters so choosing a period does not reset them #}
+        {% for key, value in request.args.items() %}
+          {% if key not in ['rev_from', 'rev_to'] %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+          {% endif %}
+        {% endfor %}
+        <div class="rev-period__field">
+          <label class="label" for="revFrom">From</label>
+          <input class="input" type="date" id="revFrom" name="rev_from"
+                 value="{{ payment_stats.rev_from }}">
+        </div>
+        <div class="rev-period__field">
+          <label class="label" for="revTo">To</label>
+          <input class="input" type="date" id="revTo" name="rev_to"
+                 value="{{ payment_stats.rev_to }}">
+        </div>
+        <button type="submit" class="btn btn--primary">Show revenue</button>
+        {% if payment_stats.has_period %}
+          <a href="{{ url_for('admin.payments') }}" class="btn btn--ghost">Clear</a>
+        {% endif %}
+      </form>
+
+      <div class="rev-period__presets">
+        <span class="muted" style="font-size: 12px; text-transform: uppercase;
+                                   letter-spacing: .02em; font-weight: 600;">Quick</span>
+        {% for label, pfrom, pto in payment_stats.rev_presets %}
+          <a class="btn btn--ghost btn--sm"
+             href="{{ url_for('admin.payments', rev_from=pfrom, rev_to=pto) }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+
+      {% if payment_stats.has_period %}
+        <div class="rev-period__result">
+          <div class="rev-period__figure">&#8369;{{ '{:,.2f}'.format(payment_stats.period_revenue) }}</div>
+          <div class="rev-period__caption">
+            {% if payment_stats.rev_from and payment_stats.rev_to %}
+              {{ payment_stats.rev_from_label }} to {{ payment_stats.rev_to_label }}
+            {% elif payment_stats.rev_from %}
+              from {{ payment_stats.rev_from_label }} onward
+            {% else %}
+              up to {{ payment_stats.rev_to_label }}
+            {% endif %}
+            &middot; {{ payment_stats.period_count }}
+            payment{{ 's' if payment_stats.period_count != 1 }}
+          </div>
+
+          {% if payment_stats.period_months|length > 1 %}
+            <table class="rev-period__months">
+              <thead>
+                <tr><th>Month</th><th>Payments</th><th>Revenue</th></tr>
+              </thead>
+              <tbody>
+                {% for m in payment_stats.period_months %}
+                  <tr>
+                    <td>{{ m.label }}</td>
+                    <td>{{ m.count }}</td>
+                    <td>&#8369;{{ '{:,.2f}'.format(m.amount) }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% elif not payment_stats.period_count %}
+            <p class="muted" style="margin: 10px 0 0 0; font-size: 13px;">
+              No confirmed payments fall in this period.
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+    </section>
 
     <!-- Add Payment Form -->
     <div class="add-payment-card">

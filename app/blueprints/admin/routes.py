@@ -2442,12 +2442,75 @@ def payments():
     last_month_revenue = _confirmed.filter(Payment.paid_at >= last_month_start_dt, Payment.paid_at < last_month_end_dt).with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
     tenants_paid_count = _confirmed.with_entities(_func.count(_func.distinct(Payment.tenant_profile_id))).scalar()
 
+    # Revenue over a chosen period. "Total revenue" answers how much has
+    # ever come in, which is not the question being asked of it — what is
+    # wanted is August alone, or September through December. Dates arrive
+    # as YYYY-MM-DD from the pickers; the end date is inclusive, so a range
+    # of the same day covers that whole day.
+    rev_from_raw = (request.args.get('rev_from') or '').strip()
+    rev_to_raw = (request.args.get('rev_to') or '').strip()
+
+    def _as_date(text):
+        try:
+            return dt.strptime(text, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return None
+
+    rev_from = _as_date(rev_from_raw)
+    rev_to = _as_date(rev_to_raw)
+    # An inverted range is a slip, not an empty result: read it the way it
+    # was meant rather than reporting zero.
+    if rev_from and rev_to and rev_from > rev_to:
+        rev_from, rev_to = rev_to, rev_from
+
+    period_q = _confirmed
+    if rev_from:
+        period_q = period_q.filter(Payment.paid_at >= dt.combine(rev_from, dt.min.time()))
+    if rev_to:
+        period_q = period_q.filter(Payment.paid_at < dt.combine(rev_to + timedelta(days=1), dt.min.time()))
+
+    period_revenue = period_q.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
+    period_count = period_q.with_entities(_func.count(Payment.id)).scalar()
+
+    # Month-by-month inside the chosen period, so a range of several months
+    # shows where the money actually came from rather than one lump sum.
+    period_months = []
+    if rev_from or rev_to:
+        rows = (period_q
+                .with_entities(_func.to_char(Payment.paid_at, 'YYYY-MM').label('m'),
+                               _func.coalesce(_func.sum(Payment.amount), 0),
+                               _func.count(Payment.id))
+                .group_by('m').order_by('m').all())
+        for month, amount, count in rows:
+            period_months.append({
+                'month': month,
+                'label': dt.strptime(month, '%Y-%m').strftime('%B %Y'),
+                'amount': float(amount or 0),
+                'count': count or 0,
+            })
+
     payment_stats = {
         'total_revenue': float(total_revenue or 0),
         'this_month_revenue': float(this_month_revenue or 0),
         'last_month_revenue': float(last_month_revenue or 0),
         'tenants_paid': tenants_paid_count or 0,
+        'period_revenue': float(period_revenue or 0),
+        'period_count': period_count or 0,
+        'period_months': period_months,
+        'rev_from': rev_from.isoformat() if rev_from else '',
+        'rev_to': rev_to.isoformat() if rev_to else '',
+        'rev_from_label': rev_from.strftime('%b %d, %Y') if rev_from else '',
+        'rev_to_label': rev_to.strftime('%b %d, %Y') if rev_to else '',
+        'has_period': bool(rev_from or rev_to),
     }
+
+    # One-click periods, so the common questions do not need the pickers.
+    _lm_end = today.replace(day=1) - timedelta(days=1)
+    payment_stats['rev_presets'] = [
+        ('This month', today.replace(day=1).isoformat(), today.isoformat()),
+        ('Last month', _lm_end.replace(day=1).isoformat(), _lm_end.isoformat()),
+        ('This year', today.replace(month=1, day=1).isoformat(), today.isoformat()),
+    ]
 
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
 
@@ -2630,6 +2693,86 @@ def utility_billing_save():
     db.session.commit()
     flash(f"Saved utility bills for {len(updated_ids)} tenant(s).", "success")
     return redirect(url_for("admin.utility_billing", month=billing_month))
+
+
+@bp.post("/tenants/utility-bills/<int:bill_id>/electric-bill")
+@login_required
+def upload_electric_bill(bill_id: int):
+    """Attach the electricity bill to one month's charge.
+
+    Units are submetered, so a tenant's electricity is a share of one
+    Meralco bill and "why is mine this high" cannot be answered by the
+    figure alone. The bill used to travel over Messenger, where it was
+    detached from the charge and lost. Uploading it here puts the proof on
+    the tenant's own Payments page, next to the amount it explains.
+    """
+    _ensure_admin()
+    bill = db.session.get(UtilityBill, bill_id)
+    if not bill:
+        flash("Utility bill not found.", "error")
+        return redirect(url_for("admin.utility_billing"))
+
+    month = request.form.get("billing_month") or bill.billing_month
+    note = (request.form.get("electric_note") or "").strip()
+    bill.electric_note = note[:500] or None
+
+    upload = request.files.get("electric_bill")
+    if upload and upload.filename:
+        ok, why = validate_upload(upload, DOCUMENT_TYPES, label="electricity bill")
+        if not ok:
+            flash(why, "warning")
+            return redirect(url_for("admin.utility_billing", month=month))
+
+        from pathlib import Path
+        from werkzeug.utils import secure_filename
+
+        from ... import supabase_storage
+
+        safe_month = bill.billing_month.replace("-", "")
+        filename = secure_filename(f"electricity_{bill.tenant_profile_id}_{safe_month}_{upload.filename}")
+        if supabase_storage.is_enabled():
+            stored = supabase_storage.upload_file_storage(upload, f"utility_bills/{filename}")
+        else:
+            upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
+            Path(upload_folder).mkdir(parents=True, exist_ok=True)
+            upload.save(str(Path(upload_folder) / filename))
+            stored = f"uploads/{filename}"
+
+        if not stored:
+            flash("The bill could not be stored. Please try again.", "error")
+            return redirect(url_for("admin.utility_billing", month=month))
+
+        bill.electric_bill_path = stored
+        bill.electric_bill_name = upload.filename[:255]
+        bill.electric_bill_uploaded_at = datetime.utcnow()
+        flash("Electricity bill attached — the tenant can now see it on their Payments page.", "success")
+    elif note:
+        flash("Note saved.", "success")
+    else:
+        flash("Choose a bill image or PDF, or write a note, before saving.", "info")
+        return redirect(url_for("admin.utility_billing", month=month))
+
+    db.session.commit()
+    return redirect(url_for("admin.utility_billing", month=month))
+
+
+@bp.post("/tenants/utility-bills/<int:bill_id>/electric-bill/remove")
+@login_required
+def remove_electric_bill(bill_id: int):
+    """Detach a bill uploaded against the wrong month or tenant."""
+    _ensure_admin()
+    bill = db.session.get(UtilityBill, bill_id)
+    if not bill:
+        flash("Utility bill not found.", "error")
+        return redirect(url_for("admin.utility_billing"))
+
+    month = request.form.get("billing_month") or bill.billing_month
+    bill.electric_bill_path = None
+    bill.electric_bill_name = None
+    bill.electric_bill_uploaded_at = None
+    db.session.commit()
+    flash("Attachment removed.", "success")
+    return redirect(url_for("admin.utility_billing", month=month))
 
 
 @bp.post("/tenants/utility-bills/<int:bill_id>/notify")
@@ -3019,11 +3162,16 @@ def standard_inventory_apply():
         cond = (request.form.get(f"condition_{idx}") or "good").strip()
         if cond not in CONDITION_KEYS:
             cond = "good"
-        try:
-            cost = max(0.0, float(request.form.get(f"cost_{idx}") or 0))
-        except ValueError:
-            cost = 0.0
-        standard[label] = (qty, cond, cost)
+        def _money(name):
+            raw = request.form.get(name)
+            if raw is None or str(raw).strip() == "":
+                return 0.0
+            value, err = _parse_money(raw, field="cost")
+            return 0.0 if err else value
+
+        cost = _money(f"cost_{idx}")
+        repair = _money(f"repair_{idx}")
+        standard[label] = (qty, cond, cost, repair)
 
     applied, skipped = 0, []
     for unit in units:
@@ -3035,7 +3183,8 @@ def standard_inventory_apply():
         for row in rows:
             if row.label not in standard:
                 continue  # an item the administrator added by hand; leave it
-            row.quantity, row.condition, row.replacement_cost = standard[row.label]
+            (row.quantity, row.condition,
+             row.replacement_cost, row.repair_cost) = standard[row.label]
         applied += 1
 
     db.session.commit()
@@ -3103,15 +3252,30 @@ def unit_inventory_save(unit_id: int):
         if condition not in CONDITION_KEYS:
             condition = row.condition
         note = (request.form.get(f"notes_{row_id}") or "").strip()[:255] or None
-        try:
-            cost = max(0.0, float(request.form.get(f"cost_{row_id}") or 0))
-        except ValueError:
-            cost = float(row.replacement_cost or 0)
 
-        if (row.quantity, row.condition, row.notes, float(row.replacement_cost or 0)) != \
-                (quantity, condition, note, cost):
+        # Two prices, because the conditions are charged differently: `fair`
+        # against the repair cost, `damaged` and `missing` against the
+        # replacement cost. _parse_money rejects "1e999" and the like, which
+        # a bare float() would happily turn into infinity.
+        def _cost(name, current):
+            # Blank clears the price to zero — an item can stop being priced.
+            # Anything unreadable leaves the stored figure alone rather than
+            # silently zeroing a price the administrator did set.
+            raw = request.form.get(name)
+            if raw is None or str(raw).strip() == "":
+                return 0.0
+            value, err = _parse_money(raw, field="cost")
+            return float(current or 0) if err else value
+
+        cost = _cost(f"cost_{row_id}", row.replacement_cost)
+        repair = _cost(f"repair_{row_id}", row.repair_cost)
+
+        if (row.quantity, row.condition, row.notes,
+                float(row.replacement_cost or 0), float(row.repair_cost or 0)) != \
+                (quantity, condition, note, cost, repair):
             row.quantity, row.condition, row.notes = quantity, condition, note
             row.replacement_cost = cost
+            row.repair_cost = repair
             changed += 1
 
     db.session.commit()
