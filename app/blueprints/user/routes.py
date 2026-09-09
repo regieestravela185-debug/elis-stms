@@ -29,21 +29,40 @@ from ...models import (
 )
 from ...ocr import scan_id_fields
 
-try:
-    from ...face_verification import (
-        verify_identity, 
-        detect_fake_id,
-        FACE_VERIFICATION_AVAILABLE,
-        FAKE_ID_DETECTION_AVAILABLE,
-        LIVENESS_DETECTION_AVAILABLE,
-    )
-except Exception as _face_verification_import_error:  # broader than ImportError: a missing system lib (e.g. opencv) can raise other errors too
-    print(f"WARNING: face_verification unavailable, fake-ID/ID-authenticity checks disabled: {_face_verification_import_error!r}")
-    FACE_VERIFICATION_AVAILABLE = False
-    FAKE_ID_DETECTION_AVAILABLE = False
-    LIVENESS_DETECTION_AVAILABLE = False
-    verify_identity = None
-    detect_fake_id = None
+# face_verification pulls in OpenCV and NumPy, which together cost about
+# 527 MB of resident memory and 25 seconds to import. Loading that at
+# startup put the whole process over the 512 MB the web host allows, so it
+# was killed and restarted on virtually every request — roughly a minute
+# of delay on every page, including static files. It is needed only when a
+# reservation actually carries an ID image, so it is loaded on first use
+# and then cached.
+_face_module = None
+
+
+def _face():
+    """The face_verification module, imported on first use.
+
+    Returns a stand-in whose availability flags are all False when the
+    import fails, so callers can read the flags without guarding.
+    """
+    global _face_module
+    if _face_module is None:
+        try:
+            from ... import face_verification as _fv
+            _face_module = _fv
+        except Exception as exc:  # a missing system lib raises more than ImportError
+            print(f"WARNING: face_verification unavailable, fake-ID/ID-authenticity "
+                  f"checks disabled: {exc!r}")
+
+            class _Unavailable:
+                FACE_VERIFICATION_AVAILABLE = False
+                FAKE_ID_DETECTION_AVAILABLE = False
+                LIVENESS_DETECTION_AVAILABLE = False
+                verify_identity = None
+                detect_fake_id = None
+
+            _face_module = _Unavailable()
+    return _face_module
 
 bp = Blueprint("user", __name__, url_prefix="/user")
 
@@ -192,8 +211,9 @@ def reserve_post(unit_id: int):
     # Fake ID detection on the uploaded ID (uses the LOCAL file)
     # Gated on the fake-ID checks' own dependencies, not on face
     # recognition — see FAKE_ID_DETECTION_AVAILABLE.
-    if id_local_path and FAKE_ID_DETECTION_AVAILABLE and detect_fake_id:
-        fake_detection_data = detect_fake_id(id_local_path)
+    _fv = _face() if id_local_path else None
+    if _fv and _fv.FAKE_ID_DETECTION_AVAILABLE and _fv.detect_fake_id:
+        fake_detection_data = _fv.detect_fake_id(id_local_path)
         fake_id_flag = fake_detection_data.get("is_fake", False)
         id_authenticity_score = 1.0 - fake_detection_data.get("fake_score", 0.0)
         if fake_id_flag:
@@ -325,8 +345,9 @@ def api_verify_id():
         
         # Run advanced fake ID detection
         fake_check = {"fake_score": 0.0, "is_fake": False, "reasons": []}
-        if FAKE_ID_DETECTION_AVAILABLE and detect_fake_id:
-            fake_check = detect_fake_id(str(save_path))
+        _fv = _face()
+        if _fv.FAKE_ID_DETECTION_AVAILABLE and _fv.detect_fake_id:
+            fake_check = _fv.detect_fake_id(str(save_path))
         
         return jsonify({
             "ok": not fake_check.get("is_fake", False),
@@ -411,7 +432,8 @@ def api_verify_face():
     
     try:
         # Run face verification
-        if not FACE_VERIFICATION_AVAILABLE or not verify_identity:
+        _fv = _face()
+        if not _fv.FACE_VERIFICATION_AVAILABLE or not _fv.verify_identity:
             return jsonify({
                 "ok": True,
                 "match": True,
@@ -420,7 +442,7 @@ def api_verify_face():
                 "manual_review": True,
             })
         
-        result = verify_identity(str(id_path), str(selfie_path))
+        result = _fv.verify_identity(str(id_path), str(selfie_path))
         
         if not result.get("success"):
             return jsonify({

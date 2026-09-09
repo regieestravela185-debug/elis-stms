@@ -5,7 +5,6 @@ from flask import Blueprint, abort, current_app, flash, jsonify, redirect, rende
 from flask_login import current_user
 from ...extensions import db
 from ...models import Building, Unit, Announcement, ChatLog
-from ...nlp_chatbot import process_chat_message
 
 bp = Blueprint("public", __name__)
 
@@ -555,6 +554,11 @@ def chatbot():
         )
 
     # Default - Use NLP chatbot as fallback
+    # Imported here, not at module load: nltk and rapidfuzz cost about
+    # 148 MB of resident memory, which the homepage does not need and the
+    # host cannot spare.
+    from ...nlp_chatbot import process_chat_message
+
     nlp_result = process_chat_message(msg, user_role)
     reply = nlp_result.get("response", both(
         "Pwede mong tanungin: presyo (general), lokasyon, viewing schedule, requirements, oras ng office, "

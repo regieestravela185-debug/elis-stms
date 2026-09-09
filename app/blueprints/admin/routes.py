@@ -48,7 +48,6 @@ from ...inventory import (ensure_unit_inventory, inventory_summary,
 from ...billing_utils import (get_payment_timeline, payment_standing,
                               final_settlement)
 from ...security import sha256_hex
-from ...predictive_analytics import update_tenant_risk_profile
 from ...ph_holidays import holidays_by_date
 from ...smart_notifications import get_notification_system, NotificationPriority, NotificationType
 from ...models import NotificationHistory
@@ -599,6 +598,10 @@ def update_risk_profiles():
         
         # Update tenant risk profile
         if payment_data:
+            # Imported here, not at module load: pandas costs about 158 MB
+            # of resident memory, and only this one call needs it.
+            from ...predictive_analytics import update_tenant_risk_profile
+
             analysis = update_tenant_risk_profile(tenant, payment_data)
             if analysis:
                 updated_count += 1
