@@ -1444,8 +1444,64 @@ body.page-home .nav__link{
 }
 .inv-summary--empty { display: block; color: var(--muted); line-height: 1.55; }
 .inv-summary__warn { color: #b45309; }
+.inv-summary__watch { color: #a16207; }
 .inv-summary__ok { color: #16a34a; }
 .row--attention td { background: rgba(245, 158, 11, .08); }
+
+/* Inventory pricing: what a condition costs, and the totals it rolls into.
+   A `fair` item is repaired rather than replaced, so its outcome and its
+   figure are kept visually apart from damaged and missing. */
+.inv-th-hint {
+  font-size: 10px; font-weight: 400; text-transform: none;
+  letter-spacing: 0; color: var(--muted); margin-top: 1px;
+}
+.inv-outcome {
+  display: inline-block; font-size: 11.5px; font-weight: 600; line-height: 1.35;
+  padding: 3px 8px; border-radius: 999px; border: 1px solid transparent;
+}
+.inv-outcome--ok {
+  color: #15803d; border-color: rgba(34, 197, 94, .35); background: rgba(34, 197, 94, .09);
+}
+.inv-outcome--watch {
+  color: #a16207; border-color: rgba(217, 119, 6, .40); background: rgba(245, 158, 11, .12);
+}
+.inv-outcome--charge {
+  color: #b91c1c; border-color: rgba(220, 38, 38, .35); background: rgba(220, 38, 38, .08);
+}
+.inv-outcome__warn { font-size: 10.5px; color: #b45309; margin-top: 4px; line-height: 1.35; }
+.inv-line { font-weight: 700; font-size: 13.5px; }
+.inv-line__calc { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+
+.inv-total {
+  margin-top: 22px; padding: 18px 20px; border-radius: 12px;
+  border: 2px solid rgba(215, 179, 91, .45);
+  background: rgba(215, 179, 91, .07);
+}
+.inv-total__head { margin: 0 0 14px 0; font-size: 16px; }
+.inv-total__grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px;
+}
+.inv-total__cell {
+  padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg);
+}
+.inv-total__cell--sum { border-color: rgba(215, 179, 91, .6); }
+.inv-total__label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .03em; color: var(--muted); line-height: 1.35;
+}
+.inv-total__value {
+  font-size: 20px; font-weight: 800; margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.inv-total__value--big { font-size: 26px; color: #B8922F; }
+.inv-total__hint { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.inv-total__foot {
+  display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+  margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);
+  font-size: 12.5px; color: var(--muted);
+}
+.inv-total__warn { color: #b45309; }
 
 /* Payment History: standing summary at the top of the modal. */
 .ph-standing { padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5; }

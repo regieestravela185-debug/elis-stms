@@ -30,13 +30,15 @@
 
     <form method="post" action="{{ url_for('admin.standard_inventory_apply') }}">
       <div style="overflow-x: auto; margin-top: 18px;">
-        <table class="table" style="min-width: 640px;">
+        <table class="table" style="min-width: 900px;">
           <thead>
             <tr>
-              <th style="width: 40%;">MGA GAMIT / Item</th>
-              <th style="width: 16%;">BILANG / Quantity</th>
-              <th style="width: 24%;">KONDISYON / Condition</th>
-              <th>Replacement &#8369;</th>
+              <th style="width: 32%;">MGA GAMIT / Item</th>
+              <th style="width: 13%;">BILANG / Quantity</th>
+              <th style="width: 21%;">KONDISYON / Condition</th>
+              <th style="width: 13%;">Replacement &#8369;<div class="inv-th-hint">each</div></th>
+              <th style="width: 13%;">Repair &#8369;<div class="inv-th-hint">each</div></th>
+              <th style="text-align: right;">Value</th>
             </tr>
           </thead>
           <tbody>
@@ -56,9 +58,19 @@
                   </select>
                 </td>
                 <td>
-                  <input class="input" type="number" min="0" step="0.01"
+                  <input class="input si-cost" type="number" min="0" step="0.01"
                          name="cost_{{ loop.index0 }}" placeholder="0.00"
-                         style="max-width: 120px;">
+                         data-row="{{ loop.index0 }}" style="max-width: 110px;"
+                         title="What one costs to buy again — charged when the item is damaged or missing">
+                </td>
+                <td>
+                  <input class="input" type="number" min="0" step="0.01"
+                         name="repair_{{ loop.index0 }}" placeholder="0.00"
+                         style="max-width: 110px;"
+                         title="What one costs to put right — charged when the item is only fair">
+                </td>
+                <td style="text-align: right;">
+                  <span class="mono si-line" id="siLine{{ loop.index0 }}">&mdash;</span>
                 </td>
               </tr>
             {% endfor %}
@@ -82,12 +94,45 @@
         </label>
       </div>
 
+      {# A running total of what one unit's contents are worth, so the
+         figures can be sanity-checked against a deposit before they are
+         written to every unit. #}
+      <div class="inv-total" style="margin-top: 18px;">
+        <h3 class="inv-total__head">Summary per unit</h3>
+        <div class="inv-total__grid">
+          <div class="inv-total__cell">
+            <div class="inv-total__label">Item types with a quantity</div>
+            <div class="inv-total__value" id="siTypes">0</div>
+          </div>
+          <div class="inv-total__cell">
+            <div class="inv-total__label">Pieces per unit</div>
+            <div class="inv-total__value" id="siPieces">0</div>
+          </div>
+          <div class="inv-total__cell inv-total__cell--sum">
+            <div class="inv-total__label">Halaga / Value at replacement price</div>
+            <div class="inv-total__value inv-total__value--big" id="siValue">&#8369;0.00</div>
+            <div class="inv-total__hint">per unit, &times; {{ units|length }} units below</div>
+          </div>
+          <div class="inv-total__cell">
+            <div class="inv-total__label">All {{ units|length }} units combined</div>
+            <div class="inv-total__value" id="siGrand">&#8369;0.00</div>
+          </div>
+        </div>
+        <div class="inv-total__foot">
+          <span>
+            The two prices are charged differently at move-out:
+            <strong>Katamtaman / Fair</strong> is repaired, so it is charged the
+            repair cost only, while <strong>May sira / Damaged</strong> and
+            <strong>Wala / Missing</strong> carry the replacement cost.
+          </span>
+        </div>
+      </div>
+
       <div style="display: flex; justify-content: space-between; align-items: center;
                   gap: 12px; margin-top: 18px; flex-wrap: wrap;">
         <p class="muted" style="margin: 0; font-size: 13px; max-width: 520px;">
           A quantity of zero means the unit does not have that fixture, so it is
-          left off both the Kasunduan and the public listing. The replacement cost
-          is what a damaged item is charged at when a tenant moves out.
+          left off both the Kasunduan and the public listing.
         </p>
         <button type="submit" class="btn btn--primary">
           Apply to all {{ units|length }} residential units
@@ -96,4 +141,40 @@
     </form>
   </section>
 </div>
+
+<script>
+  // The value only makes sense once quantity and price are both in, so it
+  // is recomputed as either is typed rather than waiting for a save.
+  (function () {
+    var unitCount = {{ units|length }};
+    var peso = function (n) {
+      return '\u20B1' + n.toLocaleString('en-US', {minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2});
+    };
+
+    function recalc() {
+      var types = 0, pieces = 0, value = 0;
+      document.querySelectorAll('.si-cost').forEach(function (costEl) {
+        var idx = costEl.getAttribute('data-row');
+        var qtyEl = document.querySelector('[name="quantity_' + idx + '"]');
+        var qty = parseInt(qtyEl && qtyEl.value, 10) || 0;
+        var cost = parseFloat(costEl.value) || 0;
+        var line = qty * cost;
+        var out = document.getElementById('siLine' + idx);
+        if (out) out.innerHTML = line > 0 ? peso(line) : '&mdash;';
+        if (qty > 0) { types += 1; pieces += qty; }
+        value += line;
+      });
+      document.getElementById('siTypes').textContent = types;
+      document.getElementById('siPieces').textContent = pieces;
+      document.getElementById('siValue').textContent = peso(value);
+      document.getElementById('siGrand').textContent = peso(value * unitCount);
+    }
+
+    document.querySelectorAll('input[type="number"]').forEach(function (el) {
+      el.addEventListener('input', recalc);
+    });
+    recalc();
+  })();
+</script>
 {% endblock %}

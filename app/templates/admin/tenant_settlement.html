@@ -62,7 +62,7 @@
             <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(s.rent.total) }}</td>
           </tr>
           <tr>
-            <td>Unpaid electric</td>
+            <td>Unpaid electricity</td>
             <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(s.electric_owed) }}</td>
           </tr>
           <tr>
@@ -70,15 +70,28 @@
             <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(s.water_owed) }}</td>
           </tr>
 
+          {# Each fixture is charged by what its condition calls for, not one
+             blanket rule: fair is repaired, damaged and missing carry the
+             item's full value. The outcome is named on the line so the
+             tenant is not told a repair was a replacement. #}
           {% for d in s.damaged %}
             <tr {% if not d.is_priced %}class="row--attention"{% endif %}>
               <td>
                 {{ d.label }} &times;{{ d.quantity }}
                 <span class="muted" style="font-size: 12px;">&middot; {{ d.condition }}</span>
+                <div style="margin-top: 3px;">
+                  <span class="inv-outcome inv-outcome--{{ 'watch' if d.basis == 'repair' else 'charge' }}">{{ d.outcome }}</span>
+                  {% if d.is_priced %}
+                    <span class="muted" style="font-size: 11.5px; margin-left: 6px;">
+                      {{ d.quantity }} &times; &#8369;{{ '{:,.2f}'.format(d.unit_cost) }}
+                      {{ d.basis }} cost
+                    </span>
+                  {% endif %}
+                </div>
                 {% if d.notes %}<div class="muted" style="font-size: 12px;">{{ d.notes }}</div>{% endif %}
                 {% if not d.is_priced %}
                   <div style="font-size: 12px; color: #b45309;">
-                    No replacement cost recorded — reported but not charged.
+                    No {{ d.basis }} cost recorded — reported but not charged.
                     <a href="{{ url_for('admin.unit_inventory', unit_id=profile.unit_id) }}">Set it in the inventory</a>.
                   </div>
                 {% endif %}
@@ -86,6 +99,16 @@
               <td class="mono" style="text-align: right; font-weight: 700;">&#8369;{{ '{:,.2f}'.format(d.line_total) }}</td>
             </tr>
           {% endfor %}
+
+          {% if s.repair_owed and s.replace_owed %}
+            <tr>
+              <td class="muted" style="font-size: 12.5px; padding-left: 14px;">
+                &mdash; of which repairs &#8369;{{ '{:,.2f}'.format(s.repair_owed) }},
+                replacements &#8369;{{ '{:,.2f}'.format(s.replace_owed) }}
+              </td>
+              <td></td>
+            </tr>
+          {% endif %}
 
           <tr>
             <td style="border-top: 2px solid var(--border); font-weight: 700;">Total charges</td>
@@ -105,7 +128,7 @@
 
     {% if not s.damaged %}
       <p class="muted" style="font-size: 13px; margin-top: 10px;">
-        No fixtures are marked damaged or missing.
+        No fixtures are marked fair, damaged or missing.
         <a href="{{ url_for('admin.unit_inventory', unit_id=profile.unit_id) }}">Check the unit inventory</a>
         before closing this settlement.
       </p>

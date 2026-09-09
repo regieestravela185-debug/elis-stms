@@ -20,12 +20,18 @@
       <div class="inv-summary">
         <span><strong>{{ summary.total_items }}</strong> item types</span>
         <span><strong>{{ summary.total_units }}</strong> pieces in total</span>
-        {% if summary.attention_count %}
+        {% if summary.replace_lines %}
           <span class="inv-summary__warn">
-            <strong>{{ summary.attention_count }}</strong> damaged or missing
+            <strong>{{ summary.replace_lines|length }}</strong> damaged or missing
           </span>
-        {% else %}
-          <span class="inv-summary__ok">Nothing damaged or missing</span>
+        {% endif %}
+        {% if summary.repair_lines %}
+          <span class="inv-summary__watch">
+            <strong>{{ summary.repair_lines|length }}</strong> for repair only
+          </span>
+        {% endif %}
+        {% if not summary.repair_lines and not summary.replace_lines %}
+          <span class="inv-summary__ok">Everything in order</span>
         {% endif %}
       </div>
     {% else %}
@@ -38,15 +44,18 @@
 
     <form method="post" action="{{ url_for('admin.unit_inventory_save', unit_id=unit.id) }}">
       <div style="overflow-x: auto; margin-top: 18px;">
-        <table class="table" style="min-width: 720px;">
+        <table class="table" style="min-width: 1180px;">
           <thead>
             <tr>
-              <th style="width: 34%;">MGA GAMIT / Item</th>
-              <th style="width: 14%;">BILANG / Quantity</th>
-              <th style="width: 20%;">KONDISYON / Condition</th>
-              <th style="width: 14%;">Replacement &#8369;</th>
-              <th>Notes (optional)</th>
-              <th>Repair</th>
+              <th style="width: 17%;">MGA GAMIT / Item</th>
+              <th style="width: 7%;">BILANG / Quantity</th>
+              <th style="width: 14%;">KONDISYON / Condition</th>
+              <th style="width: 10%;">Replacement &#8369;<div class="inv-th-hint">each</div></th>
+              <th style="width: 10%;">Repair &#8369;<div class="inv-th-hint">each</div></th>
+              <th style="width: 14%;">Ano ang mangyayari / Outcome</th>
+              <th style="width: 10%; text-align: right;">Amount</th>
+              <th style="width: 12%;">Notes (optional)</th>
+              <th style="width: 6%;">Ticket</th>
             </tr>
           </thead>
           <tbody>
@@ -58,7 +67,7 @@
                 <td>
                   <input class="input" type="number" min="0" step="1"
                          name="quantity_{{ item.id }}" value="{{ item.quantity }}"
-                         style="max-width: 96px;">
+                         style="max-width: 100%;">
                 </td>
                 <td>
                   <select class="input" name="condition_{{ item.id }}">
@@ -71,7 +80,38 @@
                   <input class="input" type="number" min="0" step="0.01"
                          name="cost_{{ item.id }}"
                          value="{{ '%.2f'|format(item.replacement_cost|float) if item.replacement_cost else '' }}"
-                         placeholder="0.00" style="max-width: 110px;">
+                         placeholder="0.00" style="max-width: 100%;"
+                         title="What one costs to buy again — charged when the item is damaged or missing">
+                </td>
+                <td>
+                  <input class="input" type="number" min="0" step="0.01"
+                         name="repair_{{ item.id }}"
+                         value="{{ '%.2f'|format(item.repair_cost|float) if item.repair_cost else '' }}"
+                         placeholder="0.00" style="max-width: 100%;"
+                         title="What one costs to put right — charged when the item is only fair">
+                </td>
+
+                {# What the recorded condition actually means. `fair` is
+                   repaired rather than replaced, so it must never read as
+                   "for replacement" — that was the whole complaint. #}
+                {% set p = item.priced %}
+                <td>
+                  <span class="inv-outcome inv-outcome--{{ p.tone }}">{{ p.outcome }}</span>
+                  {% if p.chargeable and not p.is_priced %}
+                    <div class="inv-outcome__warn">
+                      no {{ p.basis }} cost set &mdash; not charged
+                    </div>
+                  {% endif %}
+                </td>
+                <td style="text-align: right;">
+                  {% if p.chargeable and p.is_priced %}
+                    <span class="mono inv-line">&#8369;{{ '{:,.2f}'.format(p.line_total) }}</span>
+                    <div class="inv-line__calc">
+                      {{ p.quantity }} &times; &#8369;{{ '{:,.2f}'.format(p.unit_cost) }}
+                    </div>
+                  {% else %}
+                    <span class="muted" style="font-size: 12px;">&mdash;</span>
+                  {% endif %}
                 </td>
                 <td>
                   <input class="input" type="text" name="notes_{{ item.id }}"
@@ -104,13 +144,63 @@
         </table>
       </div>
 
+      {# The running total. Repairs are kept apart from replacements on
+         purpose: added together they would read as though every worn item
+         were being charged at the price of a new one. #}
+      <div class="inv-total">
+        <h3 class="inv-total__head">Summary</h3>
+        <div class="inv-total__grid">
+          <div class="inv-total__cell">
+            <div class="inv-total__label">Item types recorded</div>
+            <div class="inv-total__value">{{ summary.total_items }}</div>
+            <div class="inv-total__hint">{{ summary.total_units }} piece{{ 's' if summary.total_units != 1 }} in total</div>
+          </div>
+          <div class="inv-total__cell">
+            <div class="inv-total__label">Ipapaayos / To repair</div>
+            <div class="inv-total__value">&#8369;{{ '{:,.2f}'.format(summary.repair_total) }}</div>
+            <div class="inv-total__hint">
+              {{ summary.repair_lines|length }} item type{{ 's' if summary.repair_lines|length != 1 }} recorded fair
+            </div>
+          </div>
+          <div class="inv-total__cell">
+            <div class="inv-total__label">Babayaran o papalitan / Charged or replaced</div>
+            <div class="inv-total__value">&#8369;{{ '{:,.2f}'.format(summary.replace_total) }}</div>
+            <div class="inv-total__hint">
+              {{ summary.replace_lines|length }} item type{{ 's' if summary.replace_lines|length != 1 }} damaged or missing
+            </div>
+          </div>
+          <div class="inv-total__cell inv-total__cell--sum">
+            <div class="inv-total__label">Kabuuan / Total chargeable</div>
+            <div class="inv-total__value inv-total__value--big">&#8369;{{ '{:,.2f}'.format(summary.charge_total) }}</div>
+            <div class="inv-total__hint">what the final settlement would charge today</div>
+          </div>
+        </div>
+
+        <div class="inv-total__foot">
+          <span>
+            Whole inventory at replacement price:
+            <strong>&#8369;{{ '{:,.2f}'.format(summary.inventory_value) }}</strong>
+          </span>
+          {% if summary.unpriced_count %}
+            <span class="inv-total__warn">
+              {{ summary.unpriced_count }} item{{ 's' if summary.unpriced_count != 1 }}
+              cost{{ '' if summary.unpriced_count != 1 else 's' }} something but
+              has no price set, so nothing is charged for
+              {{ 'them' if summary.unpriced_count != 1 else 'it' }} yet.
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
-        <p class="muted" style="margin: 0; font-size: 13px; max-width: 560px;">
-          Record the condition as it is at move-in. At move-out you compare
+        <p class="muted" style="margin: 0; font-size: 13px; max-width: 620px;">
+          Record the condition as it is at move-in; at move-out you compare
           against this, so anything the tenant damaged is evidenced rather than
-          argued. The replacement cost is what a damaged item is charged at in
-          the final settlement &mdash; leave it blank and the damage is still
-          reported, just not automatically charged.
+          argued. The two prices are charged differently &mdash;
+          <strong>Katamtaman / Fair</strong> is repaired, so it is charged the
+          repair cost only, while <strong>May sira / Damaged</strong> and
+          <strong>Wala / Missing</strong> carry the replacement cost. Leave a
+          price blank and the item is still reported, just not charged.
         </p>
         <button type="submit" class="btn btn--primary">Save Inventory</button>
       </div>

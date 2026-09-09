@@ -3162,11 +3162,16 @@ def standard_inventory_apply():
         cond = (request.form.get(f"condition_{idx}") or "good").strip()
         if cond not in CONDITION_KEYS:
             cond = "good"
-        try:
-            cost = max(0.0, float(request.form.get(f"cost_{idx}") or 0))
-        except ValueError:
-            cost = 0.0
-        standard[label] = (qty, cond, cost)
+        def _money(name):
+            raw = request.form.get(name)
+            if raw is None or str(raw).strip() == "":
+                return 0.0
+            value, err = _parse_money(raw, field="cost")
+            return 0.0 if err else value
+
+        cost = _money(f"cost_{idx}")
+        repair = _money(f"repair_{idx}")
+        standard[label] = (qty, cond, cost, repair)
 
     applied, skipped = 0, []
     for unit in units:
@@ -3178,7 +3183,8 @@ def standard_inventory_apply():
         for row in rows:
             if row.label not in standard:
                 continue  # an item the administrator added by hand; leave it
-            row.quantity, row.condition, row.replacement_cost = standard[row.label]
+            (row.quantity, row.condition,
+             row.replacement_cost, row.repair_cost) = standard[row.label]
         applied += 1
 
     db.session.commit()
@@ -3247,15 +3253,29 @@ def unit_inventory_save(unit_id: int):
             condition = row.condition
         note = (request.form.get(f"notes_{row_id}") or "").strip()[:255] or None
 
-        try:
-            cost = max(0.0, float(request.form.get(f"cost_{row_id}") or 0))
-        except ValueError:
-            cost = float(row.replacement_cost or 0)
+        # Two prices, because the conditions are charged differently: `fair`
+        # against the repair cost, `damaged` and `missing` against the
+        # replacement cost. _parse_money rejects "1e999" and the like, which
+        # a bare float() would happily turn into infinity.
+        def _cost(name, current):
+            # Blank clears the price to zero — an item can stop being priced.
+            # Anything unreadable leaves the stored figure alone rather than
+            # silently zeroing a price the administrator did set.
+            raw = request.form.get(name)
+            if raw is None or str(raw).strip() == "":
+                return 0.0
+            value, err = _parse_money(raw, field="cost")
+            return float(current or 0) if err else value
 
-        if (row.quantity, row.condition, row.notes, float(row.replacement_cost or 0)) != \
-                (quantity, condition, note, cost):
+        cost = _cost(f"cost_{row_id}", row.replacement_cost)
+        repair = _cost(f"repair_{row_id}", row.repair_cost)
+
+        if (row.quantity, row.condition, row.notes,
+                float(row.replacement_cost or 0), float(row.repair_cost or 0)) != \
+                (quantity, condition, note, cost, repair):
             row.quantity, row.condition, row.notes = quantity, condition, note
             row.replacement_cost = cost
+            row.repair_cost = repair
             changed += 1
 
     db.session.commit()

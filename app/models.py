@@ -470,6 +470,11 @@ class UnitInventoryItem(db.Model):
     # unpriced — damage is then reported but not auto-charged.
     replacement_cost = db.Column(db.Numeric(12, 2), nullable=False, default=0)
 
+    # What it costs to REPAIR one of these. An item worn to "fair" is put
+    # right rather than written off, so charging it the replacement price
+    # would overcharge the tenant for ordinary wear. Zero means unpriced.
+    repair_cost = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+
     # Standard items keep their position from STANDARD_UNIT_INVENTORY;
     # anything the administrator adds sorts after them.
     sort_order = db.Column(db.Integer, nullable=False, default=999)
@@ -489,6 +494,32 @@ class UnitInventoryItem(db.Model):
     def needs_attention(self) -> bool:
         from .inventory import CONDITION_NEEDS_ATTENTION
         return self.condition in CONDITION_NEEDS_ATTENTION
+
+    @property
+    def priced(self) -> dict:
+        """This row's condition, what happens to it, and what it costs.
+
+        See price_item() in app/inventory.py — the three chargeable
+        conditions are priced differently on purpose: fair against the
+        repair cost, damaged and missing against the replacement cost.
+        """
+        from .inventory import price_item
+        return price_item(self)
+
+    @property
+    def outcome_label(self) -> str:
+        from .inventory import condition_outcome
+        return condition_outcome(self.condition)["outcome"]
+
+    @property
+    def line_total(self) -> float:
+        """Quantity times whichever cost this condition is charged at."""
+        return self.priced["line_total"]
+
+    @property
+    def value_total(self) -> float:
+        """What these are worth at replacement price, condition aside."""
+        return round(float(self.replacement_cost or 0) * (self.quantity or 0), 2)
 
 
 # Statuses that must never count as money received: a tenant-submitted

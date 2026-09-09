@@ -374,12 +374,17 @@ def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None,
 def final_settlement(tenant_profile: TenantProfile, as_of: date | None = None) -> dict:
     """Everything owed when a tenant leaves, set against their deposit.
 
-    Three charges are totalled: rent months never paid, electric and water
-    left outstanding, and fixtures recorded as damaged or missing priced at
-    their replacement cost. The administrator used to type each of these in
-    by hand as a free-text deduction; here they are read from the records
-    that already hold them, so the figures can be checked rather than
-    taken on trust.
+    Three charges are totalled: rent months never paid, electricity and
+    water left outstanding, and fixtures whose recorded condition costs
+    something. The administrator used to type each of these in by hand as a
+    free-text deduction; here they are read from the records that already
+    hold them, so the figures can be checked rather than taken on trust.
+
+    Fixtures are priced by what their condition actually calls for, not by
+    one blanket rule: an item worn to `fair` is repaired, so it is charged
+    the repair cost; one `damaged` is paid for and one `missing` bought
+    again, both at the replacement cost. See CONDITION_OUTCOMES in
+    app/inventory.py.
 
     The result is deliberately NOT applied to anything. It is a statement
     the administrator reviews, because two outcomes are possible and only
@@ -387,12 +392,13 @@ def final_settlement(tenant_profile: TenantProfile, as_of: date | None = None) -
     the remainder is returned, or the tenant pays the charges separately
     and takes the deposit back in full.
 
-    Fixtures with no replacement cost recorded are listed as damage but
-    contribute nothing to the total — an unpriced item should be visible
-    and questioned, not silently charged at zero or guessed at.
+    Fixtures with no cost recorded for what their condition calls for are
+    still listed, but contribute nothing to the total — an unpriced item
+    should be visible and questioned, not silently charged at zero or
+    guessed at.
     """
     from .models import Reservation, UnitInventoryItem
-    from .inventory import CONDITION_NEEDS_ATTENTION
+    from .inventory import price_item
 
     as_of = as_of or date.today()
     arrears = get_rent_arrears(tenant_profile, as_of)
@@ -408,20 +414,26 @@ def final_settlement(tenant_profile: TenantProfile, as_of: date | None = None) -
     water_owed = latest_bill.water_outstanding if latest_bill else 0.0
 
     damaged, damage_owed, unpriced = [], 0.0, 0
+    repair_owed, replace_owed = 0.0, 0.0
     for row in (db.session.query(UnitInventoryItem)
                 .filter(UnitInventoryItem.unit_id == tenant_profile.unit_id)
                 .order_by(UnitInventoryItem.sort_order).all()):
-        if row.condition not in CONDITION_NEEDS_ATTENTION or not row.quantity:
+        line = price_item(row)
+        if not line["chargeable"]:
             continue
-        cost = float(row.replacement_cost or 0)
-        line = cost * row.quantity
-        damage_owed += line
-        if cost <= 0:
+        damage_owed += line["line_total"]
+        if line["basis"] == "repair":
+            repair_owed += line["line_total"]
+        else:
+            replace_owed += line["line_total"]
+        if not line["is_priced"]:
             unpriced += 1
         damaged.append({
-            "label": row.label, "condition": row.condition_label,
-            "quantity": row.quantity, "unit_cost": cost, "line_total": line,
-            "notes": row.notes, "is_priced": cost > 0,
+            "label": line["label"], "condition": line["condition_label"],
+            "condition_key": line["condition"], "outcome": line["outcome"],
+            "basis": line["basis"], "quantity": line["quantity"],
+            "unit_cost": line["unit_cost"], "line_total": line["line_total"],
+            "notes": line["notes"], "is_priced": line["is_priced"],
         })
 
     # The deposit lives on the tenant's reservation, which is where it was
@@ -442,6 +454,9 @@ def final_settlement(tenant_profile: TenantProfile, as_of: date | None = None) -
         "water_owed": round(water_owed, 2),
         "damaged": damaged,
         "damage_owed": round(damage_owed, 2),
+        # Split, so a settlement never reads a repair as a replacement.
+        "repair_owed": round(repair_owed, 2),
+        "replace_owed": round(replace_owed, 2),
         "unpriced_damage_count": unpriced,
         "total_owed": total_owed,
         "deposit": deposit,
