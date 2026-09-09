@@ -492,7 +492,7 @@
           {% if collection.overdue_total %}
             <span class="fc-tile__note">
               &#8369;{{ '{:,.0f}'.format(collection.overdue_rent) }} rent
-              &middot; &#8369;{{ '{:,.0f}'.format(collection.overdue_utilities) }} electric &amp; water
+              &middot; &#8369;{{ '{:,.0f}'.format(collection.overdue_utilities) }} electricity &amp; water
               <br>across {{ collection.tenants_behind_count }} tenant{{ 's' if collection.tenants_behind_count != 1 }}
             </span>
           {% else %}
@@ -507,7 +507,7 @@
           <span class="fc-tile__note">
             From {{ collection.billing_next_month }} tenant{{ 's' if collection.billing_next_month != 1 }}
             whose contract still runs.<br>
-            Electric and water are not included &mdash; those are read each month.
+            Electricity and water are not included &mdash; those are read each month.
           </span>
         </div>
 

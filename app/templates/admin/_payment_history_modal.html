@@ -18,7 +18,7 @@
     </strong>
     <div style="margin-top: 4px;">
       Rent owed &#8369;{{ '{:,.2f}'.format(standing.rent_owed) }}
-      {%- if standing.utility_owed %} &middot; Electric &amp; water owed &#8369;{{ '{:,.2f}'.format(standing.utility_owed) }}{% endif %}
+      {%- if standing.utility_owed %} &middot; Electricity &amp; water owed &#8369;{{ '{:,.2f}'.format(standing.utility_owed) }}{% endif %}
       &middot; <strong>Total &#8369;{{ '{:,.2f}'.format(standing.total_owed) }}</strong>
     </div>
   </div>
@@ -35,7 +35,7 @@
           <th>Month</th>
           <th>Due</th>
           <th>Rent</th>
-          <th>Electric</th>
+          <th>Electricity</th>
           <th>Water</th>
         </tr>
       </thead>
@@ -93,7 +93,7 @@
     </table>
   </div>
   <p class="muted" style="margin-top: 12px; font-size: 12px;">
-    Electric and water are settled separately, so a month can show one paid and
+    Electricity and water are settled separately, so a month can show one paid and
     the other not. Anything unpaid carries into the next month&rsquo;s bill.
   </p>
 {% endif %}

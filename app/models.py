@@ -614,10 +614,37 @@ class UtilityBill(db.Model):
     reminders_paused_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     reminders_paused_note = db.Column(db.String(255), nullable=True)
 
+    # The electricity bill itself. A submetered unit's charge is a share of one
+    # Meralco bill, so "why is mine this high" can only be answered by showing
+    # the bill — which used to mean sending a photo over Messenger. Attaching
+    # it here keeps the proof beside the charge it explains.
+    electric_bill_path = db.Column(db.String(500), nullable=True)
+    electric_bill_name = db.Column(db.String(255), nullable=True)
+    electric_bill_uploaded_at = db.Column(db.DateTime, nullable=True)
+    electric_note = db.Column(db.String(500), nullable=True)
+
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     tenant_profile = db.relationship("TenantProfile")
+
+    @property
+    def has_electric_bill(self):
+        return bool(self.electric_bill_path)
+
+    @property
+    def electric_bill_url(self):
+        """A path usable in an href, whether it went to Supabase or local disk."""
+        path = self.electric_bill_path
+        if not path:
+            return None
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        return "/" + path.lstrip("/")
+
+    @property
+    def electric_bill_is_pdf(self):
+        return (self.electric_bill_name or self.electric_bill_path or "").lower().endswith(".pdf")
     marked_paid_by_user = db.relationship("User", foreign_keys=[marked_paid_by])
     reminders_paused_by_user = db.relationship("User", foreign_keys=[reminders_paused_by])
 

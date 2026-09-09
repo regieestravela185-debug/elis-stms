@@ -67,7 +67,7 @@
   </div>
 
   {% if current_utility_bill %}
-    <!-- Current Month's Bill: Rent + Electric + Water (+ carried over) -->
+    <!-- Current Month's Bill: Rent + Electricity + Water (+ carried over) -->
     <div class="card" style="margin-bottom: 24px; padding: 24px;">
       <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
         <h3 style="margin: 0; font-size: 16px;">This Month's Bill</h3>
@@ -80,7 +80,7 @@
         </tr>
         <tr>
           <td style="padding: 6px 0; color: var(--muted);">
-            Electric
+            Electricity
             {% if current_utility_bill.electric_paid %}
               <span class="badge badge--available" style="margin-left: 6px;">Paid</span>
             {% elif current_utility_bill.carried_over_electric %}
@@ -89,6 +89,33 @@
           </td>
           <td style="padding: 6px 0; text-align: right; font-weight: 600;{% if current_utility_bill.electric_paid %} text-decoration: line-through; opacity: .55;{% endif %}">₱{{ "{:,.2f}".format(current_utility_bill.electric_due) }}</td>
         </tr>
+        {# The unit is submetered, so this charge is a share of one Meralco
+           bill. When the administrator attaches that bill, it belongs here —
+           beside the amount it explains — rather than in a chat thread. #}
+        {% if current_utility_bill.has_electric_bill or current_utility_bill.electric_note %}
+          <tr>
+            <td colspan="2" style="padding: 2px 0 10px 0;">
+              <div class="ebill-proof">
+                {% if current_utility_bill.has_electric_bill %}
+                  <a class="ebill-proof__link" href="{{ current_utility_bill.electric_bill_url }}"
+                     target="_blank" rel="noopener">
+                    View the electricity bill
+                    ({{ 'PDF' if current_utility_bill.electric_bill_is_pdf else 'photo' }})
+                  </a>
+                {% endif %}
+                {% if current_utility_bill.electric_note %}
+                  <div class="ebill-proof__note">{{ current_utility_bill.electric_note }}</div>
+                {% endif %}
+                {% if current_utility_bill.has_electric_bill and not current_utility_bill.electric_bill_is_pdf %}
+                  <a href="{{ current_utility_bill.electric_bill_url }}" target="_blank" rel="noopener">
+                    <img class="ebill-proof__thumb" src="{{ current_utility_bill.electric_bill_url }}"
+                         alt="Electricity bill for {{ current_utility_bill.billing_month }}" loading="lazy">
+                  </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endif %}
         <tr>
           <td style="padding: 6px 0; color: var(--muted);">
             Water
@@ -118,12 +145,12 @@
   {% endif %}
 
   {% if utility_bill_history %}
-    <!-- Electric and water settle independently, so each month lists its own
+    <!-- Electricity and water settle independently, so each month lists its own
          two statuses rather than a single paid/unpaid for the whole bill. -->
     <div class="card" style="margin-bottom: 24px; padding: 20px;">
-      <h3 style="margin: 0 0 4px 0; font-size: 16px;">Electric &amp; Water History</h3>
+      <h3 style="margin: 0 0 4px 0; font-size: 16px;">Electricity &amp; Water History</h3>
       <p class="muted" style="margin: 0 0 16px 0; font-size: 13px;">
-        Electric and water are settled separately. Anything left unpaid is
+        Electricity and water are settled separately. Anything left unpaid is
         added to the next month&rsquo;s bill &mdash; there is no late fee.
       </p>
       <div style="overflow-x: auto;">
@@ -132,7 +159,7 @@
             <tr>
               <th>Month</th>
               <th>Due</th>
-              <th>Electric</th>
+              <th>Electricity</th>
               <th>Water</th>
               <th style="text-align: right;">Still owed</th>
             </tr>
@@ -141,7 +168,13 @@
             {% for b in utility_bill_history %}
               <tr>
                 <td class="mono"><strong>{{ b.billing_month }}</strong></td>
-                <td class="muted" style="font-size: 13px;">{{ ph(b.due_date).strftime('%b %d, %Y') }}</td>
+                <td class="muted" style="font-size: 13px;">
+                  {{ ph(b.due_date).strftime('%b %d, %Y') }}
+                  {% if b.has_electric_bill %}
+                    <div><a class="ebill-proof__link" style="font-size: 12px;"
+                            href="{{ b.electric_bill_url }}" target="_blank" rel="noopener">bill attached</a></div>
+                  {% endif %}
+                </td>
                 <td>
                   {# Nothing charged reads as "not billed", never as "Paid" —
                      a tenant seeing "Paid" for a month with no reading would
@@ -517,6 +550,24 @@
   </div>
 
   <style>
+    /* The attached electricity bill, shown beside the charge it explains */
+    .ebill-proof {
+      padding: 10px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: rgba(215, 179, 91, .07);
+    }
+    .ebill-proof__link {
+      font-size: 13px; font-weight: 600; color: #B8922F; text-decoration: underline;
+    }
+    .ebill-proof__note {
+      font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5;
+    }
+    .ebill-proof__thumb {
+      display: block; margin-top: 9px; max-width: 190px; width: 100%;
+      border-radius: 8px; border: 1px solid var(--border);
+    }
+
     .card--lift {
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }

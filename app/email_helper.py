@@ -684,7 +684,7 @@ Dear {tenant_name},
 Your monthly bill for Unit {unit_code} {due_text} ({due_date.strftime('%B %d, %Y')}).
 
 Monthly Rent: ₱{rent_amount:,.2f}
-Electric: ₱{electric_due:,.2f}{electric_note}
+Electricity: ₱{electric_due:,.2f}{electric_note}
 Water: ₱{water_due:,.2f}{water_note}
 Total Amount Due: ₱{total:,.2f}
 
@@ -725,7 +725,7 @@ The Elis Center Management
                         <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{rent_amount:,.2f}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 6px 0; color: #666666;">Electric{electric_note}</td>
+                        <td style="padding: 6px 0; color: #666666;">Electricity{electric_note}</td>
                         <td style="padding: 6px 0; color: #1a1a1a; text-align: right; font-weight: 600;">₱{electric_due:,.2f}</td>
                     </tr>
                     <tr>

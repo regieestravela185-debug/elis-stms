@@ -463,15 +463,15 @@ a[href^="tel:"]:hover {
   <div style="margin-bottom: 32px;">
     <div class="card">
       <div class="section__header">
-        <h3>Utility Bills (Electric & Water)</h3>
+        <h3>Utility Bills (Electricity & Water)</h3>
         <p class="muted">
           Billed monthly, starting the month after you moved in{% if first_utility_month_label %} &mdash;
-          your first electric and water bill is for {{ first_utility_month_label }}{% endif %}.
+          your first electricity and water bill is for {{ first_utility_month_label }}{% endif %}.
         </p>
       </div>
       <div class="grid grid--2 mt-16">
         <div>
-          <div class="kicker">Electric (Meralco)</div>
+          <div class="kicker">Electricity (Meralco)</div>
           <p style="font-size: 14px; line-height: 1.6; margin-top: 4px;">
             Your Meralco bill is delivered straight to admin. Once ready, admin will announce it and maintenance will leave it at your door. Pay the amount on the bill at the office — cash or bank transfer.
           </p>
@@ -480,7 +480,7 @@ a[href^="tel:"]:hover {
           <div class="kicker">Water</div>
           {% if water_bill_amount %}
             <p style="font-size: 14px; line-height: 1.6; margin-top: 4px;">
-              Fixed at <strong class="mono">₱{{ '{:,.2f}'.format(water_bill_amount) }}</strong> per month for your unit ({{ unit.pax_range }} pax). Same process as electric — left at your door, pay at the office (cash or bank transfer).
+              Fixed at <strong class="mono">₱{{ '{:,.2f}'.format(water_bill_amount) }}</strong> per month for your unit ({{ unit.pax_range }} pax). Same process as electricity — left at your door, pay at the office (cash or bank transfer).
             </p>
           {% else %}
             <p style="font-size: 14px; line-height: 1.6; margin-top: 4px;">

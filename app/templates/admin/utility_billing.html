@@ -48,6 +48,33 @@
       gap: 6px;
       flex-wrap: wrap;
     }
+
+    /* The electricity bill attachment */
+    .ub-bill-link {
+      font-size: 13px; font-weight: 600; color: #B8922F; text-decoration: underline;
+    }
+    .ub-bill-none { font-size: 13px; color: var(--muted); }
+    .ub-bill-meta { font-size: 11px; color: var(--muted); }
+    .ub-bill-note {
+      font-size: 11px; color: var(--muted); margin-top: 3px;
+      max-width: 180px; line-height: 1.4;
+    }
+    .ub-bill-edit { margin-top: 6px; }
+    .ub-bill-edit > summary {
+      cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted);
+      list-style: none; display: inline-block;
+      padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px;
+    }
+    .ub-bill-edit > summary::-webkit-details-marker { display: none; }
+    .ub-bill-edit > summary:hover { color: #B8922F; border-color: #B8922F; }
+    .ub-bill-edit[open] > summary { margin-bottom: 8px; }
+    .ub-bill-edit form { min-width: 210px; }
+    .ub-bill-label {
+      display: block; font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .02em; margin: 6px 0 3px;
+    }
+    .ub-bill-edit .input { font-size: 12px; padding: 5px 7px; width: 100%; }
+    .ub-bill-buttons { margin-top: 8px; }
   </style>
 {% endblock %}
 
@@ -68,8 +95,8 @@
     <div class="card">
       <div class="ub-toolbar">
         <div>
-          <h3 style="margin: 0;">Residential Electric &amp; Water Bills</h3>
-          <p class="muted" style="margin: 4px 0 0;">Fill in each tenant's electric amount (water is prefilled from their pax rate) — one save updates every tenant at once. Tenants get an automatic email + in-app reminder 7 days before their due date.</p>
+          <h3 style="margin: 0;">Residential Electricity &amp; Water Bills</h3>
+          <p class="muted" style="margin: 4px 0 0;">Fill in each tenant's electricity amount (water is prefilled from their pax rate) — one save updates every tenant at once. Tenants get an automatic email + in-app reminder 7 days before their due date.</p>
         </div>
         <form method="get" action="{{ url_for('admin.utility_billing') }}" class="ub-month-form">
           <label class="label" style="margin: 0;">Billing Month</label>
@@ -86,7 +113,8 @@
                 <th>Tenant</th>
                 <th>Rent</th>
                 <th>Water (₱)</th>
-                <th>Electric (₱)</th>
+                <th>Electricity (₱)</th>
+                <th>Bill Attachment</th>
                 <th>Carried Over</th>
                 <th>Outstanding</th>
                 <th>Due Date</th>
@@ -127,6 +155,53 @@
                     >
                     {% if bill.electric_paid %}<span class="ub-settled">settled</span>{% endif %}
                   </td>
+
+                  {# The Meralco bill behind a submetered charge. Without it, a
+                     tenant asking why their electricity is high has only the
+                     figure — which is why the photo used to go over Messenger. #}
+                  <td>
+                    {% if bill.has_electric_bill %}
+                      <a class="ub-bill-link" href="{{ bill.electric_bill_url }}" target="_blank" rel="noopener"
+                         title="{{ bill.electric_bill_name or 'Electricity bill' }}">
+                        {{ 'PDF' if bill.electric_bill_is_pdf else 'Photo' }} attached
+                      </a>
+                      {% if bill.electric_bill_uploaded_at %}
+                        <div class="ub-bill-meta">{{ ph(bill.electric_bill_uploaded_at).strftime('%b %d, %Y') }}</div>
+                      {% endif %}
+                    {% else %}
+                      <span class="ub-bill-none">none</span>
+                    {% endif %}
+                    {% if bill.electric_note %}
+                      <div class="ub-bill-note">{{ bill.electric_note }}</div>
+                    {% endif %}
+
+                    <details class="ub-bill-edit">
+                      <summary>{{ 'Replace' if bill.has_electric_bill else 'Attach' }}</summary>
+                      <form method="post" enctype="multipart/form-data"
+                            action="{{ url_for('admin.upload_electric_bill', bill_id=bill.id) }}">
+                        <input type="hidden" name="billing_month" value="{{ billing_month }}">
+                        <label class="ub-bill-label" for="ebill_{{ bill.id }}">Bill photo or PDF</label>
+                        <input class="input" type="file" id="ebill_{{ bill.id }}" name="electric_bill"
+                               accept=".jpg,.jpeg,.png,.webp,.pdf">
+                        <label class="ub-bill-label" for="enote_{{ bill.id }}">Note for the tenant</label>
+                        <input class="input" type="text" id="enote_{{ bill.id }}" name="electric_note"
+                               maxlength="500" value="{{ bill.electric_note or '' }}"
+                               placeholder="e.g. submeter 1,240 → 1,398 kWh at ₱11.80">
+                        <div class="ub-bill-buttons">
+                          <button type="submit" class="btn btn--sm btn--primary">Save</button>
+                        </div>
+                      </form>
+                      {% if bill.has_electric_bill %}
+                        <form method="post" style="margin-top: 6px;"
+                              action="{{ url_for('admin.remove_electric_bill', bill_id=bill.id) }}"
+                              onsubmit="return confirm('Remove this attachment? The tenant will no longer see the bill.');">
+                          <input type="hidden" name="billing_month" value="{{ billing_month }}">
+                          <button type="submit" class="btn btn--sm btn--ghost">Remove attachment</button>
+                        </form>
+                      {% endif %}
+                    </details>
+                  </td>
+
                   <td>
                     {% if bill.carried_over_electric %}
                       <span class="ub-carry">E ₱{{ '{:,.2f}'.format(bill.carried_over_electric|float) }}</span>
@@ -160,10 +235,10 @@
                       </form>
                       {% if bill.electric_paid %}
                         <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;"
-                              onsubmit="return confirm('Marked the electric as paid by mistake?\n\nIt goes back to unpaid and will carry into next month again.');">
+                              onsubmit="return confirm('Marked the electricity as paid by mistake?\n\nIt goes back to unpaid and will carry into next month again.');">
                           <input type="hidden" name="component" value="electric">
                           <input type="hidden" name="undo" value="1">
-                          <button type="submit" class="btn btn--sm btn--ghost" title="Undo — electric was not actually paid">Undo Electric</button>
+                          <button type="submit" class="btn btn--sm btn--ghost" title="Undo — electricity was not actually paid">Undo Electricity</button>
                         </form>
                       {% endif %}
                       {% if bill.water_paid %}
@@ -177,7 +252,7 @@
                       {% if not bill.electric_paid %}
                         <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark the ELECTRIC as paid? Anything left unpaid still carries into next month.');">
                           <input type="hidden" name="component" value="electric">
-                          <button type="submit" class="btn btn--sm btn--ghost" title="Electric paid">Electric Paid</button>
+                          <button type="submit" class="btn btn--sm btn--ghost" title="Electricity paid">Electricity Paid</button>
                         </form>
                       {% endif %}
                       {% if not bill.water_paid %}
@@ -187,7 +262,7 @@
                         </form>
                       {% endif %}
                       {% if not bill.is_paid %}
-                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark BOTH electric and water as paid?');">
+                        <form method="post" action="{{ url_for('admin.mark_utility_bill_paid', bill_id=bill.id) }}" style="display: inline;" onsubmit="return confirm('Mark BOTH electricity and water as paid?');">
                           <input type="hidden" name="component" value="both">
                           <button type="submit" class="btn btn--sm btn--primary" title="Mark both as paid">Mark Paid</button>
                         </form>
@@ -243,7 +318,7 @@
   </section>
 
   <script>
-    // Live-recompute the OUTSTANDING total as admin edits electric/water,
+    // Live-recompute the OUTSTANDING total as admin edits electricity/water,
     // before saving. Rent plus any still-unpaid carry-over is fixed (read
     // from the row's own data-base-total); a component already settled is
     // excluded, since it is no longer owed.
@@ -256,12 +331,12 @@
         var electricInput = row.querySelector('input[data-field="electric"]');
         var water = row.getAttribute('data-water-paid') === '1'
           ? 0 : (parseFloat(waterInput.value) || 0);
-        var electric = row.getAttribute('data-electric-paid') === '1'
+        var electricity = row.getAttribute('data-electric-paid') === '1'
           ? 0 : (parseFloat(electricInput.value) || 0);
         var base = parseFloat(row.getAttribute('data-base-total')) || 0;
         var totalCell = document.getElementById('total_' + billId);
         if (!totalCell) return;
-        var newTotal = base + water + electric;
+        var newTotal = base + water + electricity;
         totalCell.textContent = '₱' + newTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       });
     });
