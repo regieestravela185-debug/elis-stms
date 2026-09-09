@@ -49,26 +49,31 @@
     });
   }
 
-  document.addEventListener(
-    "submit",
-    function (e) {
-      var form = e.target;
-      if (!form || form.tagName !== "FORM" || isReadOnly(form)) return;
+  // Bubble phase, deliberately: a page's own validation runs first, so a
+  // submit it cancels is never locked. Capture phase locked the button to
+  // "Please wait…" BEFORE the validator could stop the submit — the click
+  // then did nothing for twelve seconds, and every further click was
+  // swallowed as a duplicate. That reads exactly like a dead button.
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || form.tagName !== "FORM" || isReadOnly(form)) return;
 
-      if (form.dataset.submitting === "1") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        return;
-      }
-      lock(form);
+    if (form.dataset.submitting === "1") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
 
-      // If the page is still here after a while the submit was cancelled
-      // (a validation handler, a declined confirm, a failed fetch), so give
-      // the button back rather than leaving it stuck for good.
-      setTimeout(function () { unlock(form); }, 12000);
-    },
-    true
-  );
+    // Cancelled by a validator, a declined confirm(), or an AJAX handler
+    // that takes it from here — nothing is in flight, so nothing to guard.
+    if (e.defaultPrevented) return;
+
+    lock(form);
+
+    // If the page is still here after a while the submit went nowhere after
+    // all, so give the button back rather than leaving it stuck for good.
+    setTimeout(function () { unlock(form); }, 20000);
+  });
 
   // Coming back via the bfcache shows the old DOM, buttons and all.
   window.addEventListener("pageshow", function (e) {

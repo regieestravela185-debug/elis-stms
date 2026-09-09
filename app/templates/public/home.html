@@ -4014,7 +4014,8 @@
               </svg>
             </button>
           </div>
-          
+          <div id="home_register_password_error" class="error-message" style="color: red; font-size: 12px; margin-top: 4px; display: none;">Password needs at least 8 characters, with an uppercase and a lowercase letter, a number and a special character.</div>
+
           <!-- Password Strength Indicator -->
           <div class="password-strength-modal" id="passwordStrengthModal" style="display: none;">
             <div class="strength-bar-modal">
@@ -5013,26 +5014,32 @@ if (homeRegisterForm) {
     const password = document.getElementById('register_password');
     let valid = true;
 
-    if (!email.value.endsWith('@gmail.com')) {
-      email.style.borderColor = 'red';
-      document.getElementById('home_register_email_error').style.display = 'block';
-      valid = false;
+    // Written defensively: this used to reach into an element that was never
+    // in the markup, which threw before it could reject the form — so a weak
+    // password silently went to the server instead of being caught here, and
+    // the error it was supposed to show never appeared.
+    function mark(field, errorId, bad) {
+      if (field) field.style.borderColor = bad ? 'red' : '';
+      const note = document.getElementById(errorId);
+      if (note) note.style.display = bad ? 'block' : 'none';
+      return !bad;
     }
 
-    const hasUpper = /[A-Z]/.test(password.value);
-    const hasLower = /[a-z]/.test(password.value);
-    const hasNumber = /[0-9]/.test(password.value);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password.value);
-    const hasMinLength = password.value.length >= 8;
+    valid = mark(email, 'home_register_email_error',
+                 !email.value.endsWith('@gmail.com')) && valid;
 
-    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial || !hasMinLength) {
-      password.style.borderColor = 'red';
-      document.getElementById('home_register_password_error').style.display = 'block';
-      valid = false;
-    }
+    const pw = password ? password.value : '';
+    const weak = !(/[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw)
+                   && /[!@#$%^&*(),.?":{}|<>]/.test(pw) && pw.length >= 8);
+    valid = mark(password, 'home_register_password_error', weak) && valid;
 
     if (!valid) {
       e.preventDefault();
+      // The notes sit above the fold on a short screen, so make sure the
+      // first one is actually looked at rather than silently appearing.
+      const firstError = homeRegisterForm.querySelector(
+        '.error-message[style*="block"]');
+      if (firstError) firstError.scrollIntoView({behavior: 'smooth', block: 'nearest'});
     }
   });
 }

@@ -155,8 +155,13 @@ ELIS Smart Tenant Management System
 </html>
 """
     
+    # A short ceiling on purpose: registration waits on this call, and on a
+    # cold Render instance the page is already slow to come back. Brevo
+    # answers in well under a second when it is healthy; six seconds is long
+    # enough to hear a real answer and short enough that a hung mail service
+    # does not read as a dead button.
     return send_email_sync(subject, recipient_email, recipient_name,
-                           html_content, text_content)
+                           html_content, text_content, timeout=6)
 
 
 def send_password_reset_email(recipient_email, recipient_name, reset_token, reset_url):
