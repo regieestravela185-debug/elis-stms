@@ -6,6 +6,11 @@
   <div class="side-group__label">Property</div>
   <a class="side-link side-link--floorplan {% if request.path.startswith('/admin/floorplan') %}is-active{% endif %}" href="{{ url_for('admin.floorplan') }}"><span>Floorplan</span></a>
   <a class="side-link side-link--units {% if request.path.startswith('/admin/units') %}is-active{% endif %}" href="{{ url_for('admin.units') }}"><span>Units</span></a>
+  {# The public listing, as a prospective tenant sees it. Units is where a
+     unit is edited; this is where its listing is checked — the photos, the
+     price and the wording that actually go out. The public nav carries a way
+     back to the dashboard, so this is not a one-way trip. #}
+  <a class="side-link side-link--browse" href="{{ url_for('public.home') }}#units"><span>Browse Units</span></a>
 
   <div class="side-group__label">People</div>
   <a class="side-link side-link--users {% if request.path.startswith('/admin/users') %}is-active{% endif %}" href="{{ url_for('admin.users') }}"><span>Customers</span></a>
@@ -43,6 +48,7 @@
 .side-link--calendar.is-active,
 .side-link--floorplan.is-active,
 .side-link--units.is-active,
+.side-link--browse.is-active,
 .side-link--users.is-active,
 .side-link--monitoring.is-active,
 .side-link--moveouts.is-active,
