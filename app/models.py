@@ -225,6 +225,10 @@ class Reservation(db.Model):
     id_upload_path = db.Column(db.String(255), nullable=True)
     ocr_name = db.Column(db.String(120), nullable=True)
     ocr_id_number = db.Column(db.String(80), nullable=True)
+    # Why the declared ID could not be confirmed against the photo, when it
+    # could not be. Read by the admin before approving — a reservation the
+    # system could not check is not the same as one it checked and passed.
+    id_review_reason = db.Column(db.String(255), nullable=True)
 
     status = db.Column(
         db.Enum(ReservationStatus, values_callable=_enum_values, native_enum=False),

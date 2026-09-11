@@ -56,6 +56,11 @@ class Config:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "app/static/uploads")
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH_MB", "10")) * 1024 * 1024
 
+    # OCR.space key for reading an uploaded ID. Without one the code falls
+    # back to the shared demo key, which is rate-limited to the point of
+    # returning nothing — which is what "OCR API returned no results" means.
+    OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "")
+
     # Supabase Storage (persistent file uploads).
     # When SUPABASE_URL + SUPABASE_SERVICE_KEY are set, uploads go to Supabase
     # Storage instead of the local (ephemeral on Render) filesystem.
