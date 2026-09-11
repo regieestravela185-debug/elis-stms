@@ -176,7 +176,13 @@ def apply_security_headers(response):
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.socket.io https://accounts.google.com https://www.gstatic.com; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
-        "img-src 'self' data: https: http:; "
+        # blob: is needed wherever the page shows a picture the visitor has
+        # only just chosen — the unit image preview, the document preview,
+        # and the ID shrink before upload all build one with
+        # URL.createObjectURL. Without it those images fail silently: no
+        # console error the author would notice, just an empty frame.
+        # A blob: URL is created by the page itself and is same-origin.
+        "img-src 'self' data: blob: https: http:; "
         "connect-src 'self' https://accounts.google.com https://api.open-meteo.com; "
         f"frame-src 'self' https://accounts.google.com https://www.google.com https://maps.google.com {supabase_url}; "
         f"object-src 'self' {supabase_url};"

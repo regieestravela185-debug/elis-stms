@@ -4699,6 +4699,53 @@
       statusBox.innerHTML = html;
     }
 
+    // Read a response that is supposed to be JSON, and say something useful
+    // when it is not. A 413 page, a 500 page, or a worker killed mid-request
+    // all used to surface as "Unexpected token '<'" or "Unexpected end of
+    // JSON input" — true, and of no help to the person holding the phone.
+    async function readJson(res) {
+      const text = await res.text();
+      if (!text.trim()) {
+        throw new Error(res.status === 413
+          ? 'That photo is too large. Take it again from a little further back.'
+          : 'The server did not finish reading the photo. Please try again.');
+      }
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        if (res.status === 413) throw new Error('That photo is too large. Take it again from a little further back.');
+        if (res.status === 401 || res.status === 403) throw new Error('Your session expired. Please sign in again.');
+        if (res.status >= 500) throw new Error('The server could not read the ID. Please try again in a moment.');
+        throw new Error('Unexpected reply from the server. Please try again.');
+      }
+    }
+
+    // Draw the photo down to a sane size before it is uploaded.
+    function shrinkImage(file, maxSide, quality) {
+      return new Promise((resolve) => {
+        if (!file.type || file.type.indexOf('image/') !== 0) return resolve(file);
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = function () {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          if (scale === 1 && file.size <= 2 * 1024 * 1024) return resolve(file);
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * scale);
+          c.height = Math.round(img.height * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(function (blob) {
+            // If anything about the conversion failed, send the original.
+            if (!blob) return resolve(file);
+            resolve(new File([blob], (file.name || 'id').replace(/\.[^.]+$/, '') + '.jpg',
+                             { type: 'image/jpeg' }));
+          }, 'image/jpeg', quality);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+      });
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -4712,10 +4759,17 @@
       showStatus('🔍 Scanning ID and checking for tampering...', 'info');
       
       try {
+        // A photo straight from a phone camera is routinely 4-12 MB, past the
+        // server's upload limit — the request was rejected before any route
+        // saw it, and the HTML error page that came back was what the reader
+        // below choked on. Shrinking here keeps the upload small and the
+        // text on an ID is still perfectly legible at this size.
+        const shrunk = await shrinkImage(idUpload.files[0], 1800, 0.85);
+
         const fd = new FormData();
-        fd.append('id_upload', idUpload.files[0]);
+        fd.append('id_upload', shrunk);
         const res = await fetch('/user/api/verify-id', { method: 'POST', body: fd, credentials: 'same-origin' });
-        const data = await res.json();
+        const data = await readJson(res);
         
         if (!data.ok) {
           const reasons = (data.fake_detection?.reasons || []).join(', ') || 'Unknown';
@@ -4739,10 +4793,13 @@
             idNumEl.value = data.ocr.id_number;
           }
           
-          // Show warning if ID type was not detected
-          if (!data.ocr.id_type) {
-            showStatus(`<strong>⚠️ Warning</strong><br/>Could not automatically detect ID type. Please select your ID type manually from the dropdown.`, 'warning');
-            submitBtn.disabled = false; 
+          // Only stop when nothing is set at all. This used to test the OCR
+          // result alone, so a person who read the message, chose their ID
+          // type and pressed submit again got the same message again — the
+          // dropdown they had just filled in was never looked at.
+          if (!idTypeEl || !idTypeEl.value) {
+            showStatus(`<strong>⚠️ Warning</strong><br/>Could not read the ID type from the photo. Please choose it from the dropdown and submit again.`, 'warning');
+            submitBtn.disabled = false;
             submitBtn.textContent = 'Submit Reservation';
             return;
           }

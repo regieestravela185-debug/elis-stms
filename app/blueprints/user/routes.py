@@ -340,15 +340,25 @@ def api_verify_id():
     upload.save(save_path)
     
     try:
-        # Run OCR
+        # Run OCR. A crash in here used to escape the route, and Flask
+        # answered with its HTML error page — which the browser then tried to
+        # read as JSON, producing "Unexpected token '<'" in the caller's
+        # console and nothing useful on screen. Whatever happens, this
+        # endpoint answers with JSON.
         ocr_result = scan_id_fields(save_path)
-        
+
         # Run advanced fake ID detection
         fake_check = {"fake_score": 0.0, "is_fake": False, "reasons": []}
-        _fv = _face()
-        if _fv.FAKE_ID_DETECTION_AVAILABLE and _fv.detect_fake_id:
-            fake_check = _fv.detect_fake_id(str(save_path))
-        
+        try:
+            _fv = _face()
+            if _fv.FAKE_ID_DETECTION_AVAILABLE and _fv.detect_fake_id:
+                fake_check = _fv.detect_fake_id(str(save_path))
+        except Exception as exc:
+            # Tampering analysis is an extra check, not the point of the
+            # step. If it cannot run, the ID still gets read.
+            current_app.logger.warning("fake-ID detection unavailable: %s", exc)
+            fake_check["reasons"] = ["Tampering analysis unavailable for this upload."]
+
         return jsonify({
             "ok": not fake_check.get("is_fake", False),
             "ocr": {
@@ -375,6 +385,16 @@ def api_verify_id():
                 else "ID accepted. Proceed to selfie verification."
             ),
         })
+    except Exception as exc:
+        current_app.logger.exception("verify-id failed")
+        return jsonify({
+            "ok": False,
+            "error": "server_error",
+            "message": ("The ID could not be read on the server. Please try "
+                        "again, or take the photo in better light with the "
+                        "whole ID inside the frame."),
+            "detail": str(exc)[:200],
+        }), 200
     finally:
         # Clean up temp file
         try:
