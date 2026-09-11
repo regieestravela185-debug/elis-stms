@@ -9,7 +9,8 @@ from flask_login import login_required, login_user, logout_user, current_user
 
 from ...extensions import db, login_manager, limiter
 from ...models import User, Role
-from ...security import generate_otp_code, hash_password, otp_expiry, verify_password
+from ...security import (generate_otp_code, hash_password, otp_expiry,
+                         upgrade_password_hash, verify_password)
 from ...security_utils import (
     check_rate_limit, 
     record_failed_attempt, 
@@ -124,6 +125,10 @@ def login_post():
     login_user(user, remember=True)
     session["boot_id"] = current_app.config.get("SERVER_BOOT_ID")
     user.last_login_at = datetime.utcnow()
+    # Accounts predating hashing hold the password in the clear. This is the
+    # one moment the plain password is in hand and already proven correct, so
+    # it is where the stored value is quietly replaced with a hash.
+    upgrade_password_hash(user, password)
     db.session.commit()
 
     if not user.is_email_verified:
