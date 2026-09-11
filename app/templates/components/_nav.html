@@ -27,6 +27,14 @@
         {% if current_user.role.value == "user" %}
           <span class="nav__profile muted">Hi, {{ current_user.full_name }}</span>
         {% endif %}
+        {# A tenant or admin who follows "Browse Units" out to the public site
+           used to find Logout as the only way off the page, and had to sign in
+           again to get back. Give them the door they actually wanted. #}
+        {% if current_user.role.value == "tenant" %}
+          <a class="btn btn--primary" href="{{ url_for('tenant.dashboard') }}">Back to my account</a>
+        {% elif current_user.role.value == "admin" %}
+          <a class="btn btn--primary" href="{{ url_for('admin.dashboard') }}">Back to dashboard</a>
+        {% endif %}
         <form method="post" action="{{ url_for('auth.logout') }}">
           <button class="btn btn--ghost" type="submit">Logout</button>
         </form>
