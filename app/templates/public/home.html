@@ -666,11 +666,6 @@
       background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
     }
 
-    /* Modern Units Section */
-    #units {
-      background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
-    }
-
     /* Building picker — grouped into Residential / Commercial sections.
        Within each, boxes wrap 3-then-2 via flexbox self-centering.
        Clicking a box opens the full floor/unit browser in a modal. */
@@ -704,14 +699,21 @@
       margin-bottom: 4px;
     }
 
+    /* Residential was blue and Commercial orange — a pairing that fought
+       the gold and, once the section took a deep-green ground, fought that
+       too. The distinction is kept, but in two warm tones that belong with
+       gold: brass for residential, copper for commercial. */
     .building-section__icon--residential {
-      background: linear-gradient(135deg, #4f8cff, #2563eb);
-      color: white;
+      background: linear-gradient(135deg, #E5CB78, #C39B3D);
+      color: #221B08;
     }
 
     .building-section__icon--commercial {
-      background: linear-gradient(135deg, #f5a742, #c2650b);
-      color: white;
+      /* Deepened from a bright orange to copper: on the green band the old
+         tone was the one saturated thing on the page. Copper still reads as
+         plainly different from the residential brass, without shouting. */
+      background: linear-gradient(135deg, #C8843C, #96541A);
+      color: #FFF6E8;
     }
 
     /* Same premium treatment as the hero's "effortlessly managed"
@@ -739,6 +741,28 @@
       margin-top: 10px;
       background: linear-gradient(90deg, transparent, #D7B35B, transparent);
     }
+
+    /* A white card sat on a cream page with almost nothing between them —
+       the reason the section read as plain. A deep-green band gives the
+       cards ground and makes the gold glow, and leaves the page a rhythm:
+       cream, band, cream. Declared with !important because the section
+       polish block below clears the background of every band. */
+    #units {
+      background:
+        radial-gradient(900px 420px at 85% 0%, rgba(215, 179, 91, 0.16), transparent 60%),
+        linear-gradient(180deg, #15362B 0%, #0E2620 100%) !important;
+    }
+    #units h2 { color: #F7F3E8; }
+    #units .section-subtitle,
+    #units .units-sub,
+    #units .building-section__subtitle { color: rgba(247, 243, 232, 0.70); }
+    #units .building-section__title { color: #E5CB78; }
+    /* On the band the inactive half of the toggle was black on near-black. */
+    #units .filter-group,
+    #units .filter-toggle { background: rgba(247, 243, 232, 0.10); }
+    #units .filter-btn { color: rgba(247, 243, 232, 0.72); }
+    #units .filter-btn:hover { color: #E5CB78; }
+    #units .filter-btn--active { color: #221B08; }
 
     .building-sections .building-section--commercial {
       transition-delay: 0.15s;
@@ -821,8 +845,8 @@
     }
 
     .building-box--residential:hover {
-      box-shadow: 0 20px 44px rgba(37, 99, 235, 0.18);
-      border-color: rgba(37, 99, 235, 0.3);
+      box-shadow: 0 20px 44px rgba(195, 155, 61, 0.22);
+      border-color: rgba(195, 155, 61, 0.38);
     }
 
     .building-box--commercial:hover {
@@ -850,8 +874,8 @@
     }
 
     .building-box__icon--residential {
-      background: rgba(37, 99, 235, 0.1);
-      color: #2563eb;
+      background: rgba(195, 155, 61, 0.14);
+      color: #8A6D1E;
     }
 
     .building-box__icon--commercial {
@@ -890,8 +914,8 @@
     }
 
     .building-box__badge--residential {
-      background: rgba(80, 160, 255, 0.12);
-      color: #2563eb;
+      background: rgba(195, 155, 61, 0.16);
+      color: #7F5F1C;
     }
 
     .building-box__badge--commercial {
@@ -2310,8 +2334,10 @@
        ============================================================ */
     /* Soft washed cream canvas — modern, airy, elegant */
     .page-home{ background: #f5f1e8; }
-    /* Let the cream canvas show through; white cards float elegantly on it */
-    #units, #how, #about, #faq, #contact{ background: transparent !important; }
+    /* Let the cream canvas show through; white cards float elegantly on it.
+       #units is the exception — it carries the deep-green band, which is
+       what gives its white cards something to sit on. */
+    #how, #about, #faq, #contact{ background: transparent !important; }
     #announcements{
       background: linear-gradient(180deg, rgba(215,179,91,0.06), rgba(215,179,91,0.02)) !important;
     }
