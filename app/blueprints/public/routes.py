@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user
 from ...extensions import db
 from ...models import Building, Unit, Announcement, ChatLog
@@ -674,6 +674,51 @@ def submit_inquiry():
         "message": "Your inquiry has been submitted successfully. We'll get back to you soon!"
     })
 
+
+
+@bp.get("/robots.txt")
+def robots_txt():
+    """Tell crawlers the site exists and where the map of it lives.
+
+    Without this a search engine has to discover every page by following a
+    link from somewhere else — and nothing links here yet.
+    """
+    lines = [
+        "User-agent: *",
+        "Allow: /$",
+        "Allow: /terms",
+        "Allow: /privacy",
+        # Nothing behind a login has any business in a search result, and
+        # some of it is a tenant's own records.
+        "Disallow: /admin/",
+        "Disallow: /tenant/",
+        "Disallow: /user/",
+        "Disallow: /auth/",
+        "Disallow: /api/",
+        "",
+        f"Sitemap: {url_for('public.sitemap_xml', _external=True)}",
+    ]
+    return Response("\n".join(lines) + "\n", mimetype="text/plain")
+
+
+@bp.get("/sitemap.xml")
+def sitemap_xml():
+    """The public pages, which is the homepage and the two legal ones."""
+    today = datetime.utcnow().date().isoformat()
+    pages = [
+        (url_for("public.home", _external=True), "1.0", "weekly"),
+        (url_for("public.terms", _external=True), "0.3", "yearly"),
+        (url_for("public.privacy", _external=True), "0.3", "yearly"),
+    ]
+    body = "".join(
+        f"<url><loc>{loc}</loc><lastmod>{today}</lastmod>"
+        f"<changefreq>{freq}</changefreq><priority>{prio}</priority></url>"
+        for loc, prio, freq in pages
+    )
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>'
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+           f"{body}</urlset>")
+    return Response(xml, mimetype="application/xml")
 
 
 @bp.get("/terms")
