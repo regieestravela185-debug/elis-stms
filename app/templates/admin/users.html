@@ -441,9 +441,17 @@
     modal.style.display = 'none';
   }
 
-  // Close modal on outside click
-  document.getElementById('banModal').addEventListener('click', function(e) {
-    if (e.target === this) closeBanModal();
+  // Close modal on outside click.
+  // #banModal is written further down this file, so at the moment this
+  // script runs the element does not exist yet — getElementById returned
+  // null and the page threw before reaching anything after it. Bind once
+  // the document has finished parsing instead.
+  document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('banModal');
+    if (!modal) return;
+    modal.addEventListener('click', function (e) {
+      if (e.target === this) closeBanModal();
+    });
   });
 </script>
 
