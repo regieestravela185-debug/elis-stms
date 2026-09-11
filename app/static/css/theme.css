@@ -548,25 +548,3 @@ button.topbar__user:hover{ background:rgba(215,179,91,.11) }
 }
 .dash-body .table th:last-child{ background:var(--paper-2) }
 .dash-body .table tbody tr:hover td:last-child{ background:var(--g50) }
-
-/* ── Sidebar: deep green ground ───────────────────────────────────────── */
-/* Gold and deep green is the old pairing — banks, heritage hotels — and it
-   does two things a pale sidebar cannot. The gold building mark finally has
-   something to sit on, and the navigation steps back so the content in the
-   middle of the screen is what the eye lands on first. */
-.dash__side{
-  background:linear-gradient(180deg,#183A2E 0%,#0E2620 100%) !important;
-  border-right:1px solid rgba(215,179,91,.22) !important;
-}
-.dash__brand{ border-bottom-color:rgba(215,179,91,.22) !important }
-.dash__brandTitle{ color:#F7F3E8 }
-.dash__brandSub{ color:rgba(247,243,232,.52) }
-.side-group__label,.side-nav__label{ color:rgba(247,243,232,.55) }
-.side-link{ color:rgba(247,243,232,.84) }
-.side-link:hover:not(.is-active){
-  background:rgba(215,179,91,.12) !important; color:#F7F3E8 !important;
-}
-.side-link::before{ background:#E5CB78 }
-.side-ico{ color:#C39B3D }
-.dash__side::-webkit-scrollbar-thumb{ background:rgba(215,179,91,.28) }
-.dash__side{ scrollbar-color:rgba(215,179,91,.28) transparent }
