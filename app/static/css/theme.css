@@ -49,6 +49,18 @@
 }
 
 /* ── Canvas ───────────────────────────────────────────────────────────── */
+/* app.css gives html and body height:100% and makes body a column flex
+   container, which the public pages use for a footer that sits at the
+   bottom. On a dashboard it capped the whole layout at the height of the
+   window: .dash stayed 900px tall while its content ran to five thousand,
+   so the grid row — and with it the sidebar — ended a screen down and the
+   page background showed beneath. Letting the dashboard body grow is what
+   makes the sticky sidebar below possible. */
+body.dash-body{
+  display:block;
+  height:auto;
+  min-height:100vh;
+}
 body.dash-body{
   background:
     radial-gradient(1200px 420px at 78% -8%, rgba(215,179,91,.10), transparent 62%),
@@ -83,8 +95,23 @@ body.dash-body{
   background:linear-gradient(180deg,#fffdf8 0%,#f7f2e6 100%);
   border-right:1px solid rgba(215,179,91,.18);
   padding:14px 12px 20px;
-  max-height:100vh; overflow-y:auto;
   scrollbar-width:thin; scrollbar-color:var(--g200) transparent;
+}
+/* The sidebar used to be capped at max-height:100vh inside a grid row that
+   grows with the content. On any page taller than the window the column
+   simply stopped partway down and the page background showed beneath it.
+   Pinning it to the viewport is the fix: it stays put, scrolls its own
+   nav when the nav is long, and has no bottom edge to run out of.
+   Below 980px app.css turns this into an off-canvas drawer (position:fixed),
+   so the rule is kept above that breakpoint. */
+@media (min-width:981px){
+  .dash__side{
+    position:sticky; top:0;
+    align-self:start;
+    height:100vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
 }
 .dash__side::-webkit-scrollbar{ width:8px }
 .dash__side::-webkit-scrollbar-thumb{ background:var(--g200); border-radius:99px }
