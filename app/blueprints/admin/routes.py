@@ -638,7 +638,11 @@ def dashboard():
 
     total_tenants = db.session.query(TenantProfile).count()
     total_payments = db.session.query(Payment).count()
-    total_revenue = db.session.query(db.func.sum(Payment.amount)).scalar() or 0
+    # A voided or rejected payment must stop counting here too. The
+    # Payments page already excluded them; this one did not, so voiding a
+    # payment left the dashboard's revenue unchanged.
+    total_revenue = (db.session.query(db.func.sum(Payment.amount))
+                     .filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED)).scalar() or 0)
     total_deposits = (
         db.session.query(db.func.sum(Reservation.deposit_amount))
         .filter(Reservation.status == ReservationStatus.APPROVED)
@@ -681,6 +685,7 @@ def dashboard():
     for i in range(6):
         month_date = start_month + relativedelta(months=i)
         month_revenue = db.session.query(func.sum(Payment.amount)).filter(
+            Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
             extract('year', Payment.paid_at) == month_date.year,
             extract('month', Payment.paid_at) == month_date.month
         ).scalar() or 0
@@ -696,12 +701,14 @@ def dashboard():
     # NEW: This Month's Summary
     current_month_start = today.replace(day=1)
     this_month_revenue = db.session.query(func.sum(Payment.amount)).filter(
+        Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
         Payment.paid_at >= current_month_start
     ).scalar() or 0
     
     last_month_start = (current_month_start - relativedelta(months=1))
     last_month_end = current_month_start - timedelta(days=1)
     last_month_revenue = db.session.query(func.sum(Payment.amount)).filter(
+        Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
         Payment.paid_at >= last_month_start,
         Payment.paid_at <= last_month_end
     ).scalar() or 0

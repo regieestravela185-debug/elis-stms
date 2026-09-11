@@ -417,6 +417,9 @@
         </div>
 
         <form method="post" action="{{ url_for('tenant.update_settings') }}" class="form mt-16">
+          {# Marks the POST as carrying the notification checkboxes. Without it
+             the route cannot tell "all three off" from "never asked". #}
+          <input type="hidden" name="prefs_form" value="1" />
           <div>
             <label class="label">Full Name</label>
             <input class="input" name="full_name" value="{{ current_user.full_name }}" required style="border-color: rgba(215,179,91,.3);" />

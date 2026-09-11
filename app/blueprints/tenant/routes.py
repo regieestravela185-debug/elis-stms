@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, render_template, request, redirect, url_for, flash
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, current_app
 from flask_login import current_user, login_required
 from datetime import date
 import json
@@ -449,6 +449,34 @@ def concerns():
     return render_template("tenant/concerns.html", concerns=concerns, pagination=pagination, stats=stats)
 
 
+def _notify_admins_of_concern(*, subject, heading, profile, rows):
+    """Email every admin about a concern.
+
+    The concern itself is already committed by the time this runs, so this
+    never raises: a mail outage must not turn a saved concern into a 500
+    for the tenant who filed it. Replaces an import of app.email_utils,
+    a module that does not exist — the import alone was the error.
+    """
+    from ...email_helper import send_email_async
+
+    body = "".join(
+        f"<p><strong>{label}:</strong> {value}</p>" for label, value in rows
+    )
+    html = (
+        f"<h2>{heading}</h2>"
+        f"<p><strong>Tenant:</strong> {profile.user.full_name if profile.user else '-'}</p>"
+        f"<p><strong>Unit:</strong> {profile.unit.unit_code if profile.unit else '-'}</p>"
+        f"{body}"
+        f'<p><a href="{url_for("admin.concerns", _external=True)}">View in Admin Panel</a></p>'
+    )
+    try:
+        admins = db.session.query(User).filter(User.role == Role.ADMIN).all()
+        for admin in admins:
+            send_email_async(subject, admin.email, admin.full_name or "Admin", html)
+    except Exception as exc:                       # pragma: no cover - best effort
+        current_app.logger.warning("concern notification failed: %s", exc)
+
+
 @bp.post("/concerns")
 @login_required
 def create_concern():
@@ -525,28 +553,15 @@ def create_concern():
     db.session.add(c)
     db.session.commit()
     
-    # Send email notification to admin
-    from ...email_utils import send_email
-    try:
-        admin_users = db.session.query(User).filter(User.role == Role.ADMIN).all()
-        for admin in admin_users:
-            send_email(
-                to=admin.email,
-                subject=f"New Concern Submitted: {subject}",
-                body=f"""
-                <h2>New Concern Submitted</h2>
-                <p><strong>Tenant:</strong> {profile.user.full_name}</p>
-                <p><strong>Unit:</strong> {profile.unit.unit_code}</p>
-                <p><strong>Subject:</strong> {subject}</p>
-                <p><strong>Priority:</strong> {priority.upper()}</p>
-                <p><strong>Category:</strong> {category.title()}</p>
-                <p><strong>Description:</strong></p>
-                <p>{description}</p>
-                <p><a href="http://127.0.0.1:5001/admin/concerns">View in Admin Panel</a></p>
-                """
-            )
-    except Exception as e:
-        print(f"Failed to send email: {e}")
+    # Tell the admins, but never at the tenant's expense: the concern is
+    # already committed above, so a mail failure must not reach the browser.
+    _notify_admins_of_concern(
+        subject=f"New Concern Submitted: {subject}",
+        heading="New Concern Submitted",
+        profile=profile,
+        rows=[("Subject", subject), ("Priority", priority.upper()),
+              ("Category", category.title()), ("Description", description)],
+    )
 
     from ...socket_events import emit_concern_notification
     emit_concern_notification({
@@ -647,25 +662,13 @@ def escalate_concern(concern_id: int):
     
     db.session.commit()
     
-    # Send email notification to admin
-    from ...email_utils import send_email
-    try:
-        admin_users = db.session.query(User).filter(User.role == Role.ADMIN).all()
-        for admin in admin_users:
-            send_email(
-                to=admin.email,
-                subject=f"Concern Escalated to {concern.priority.upper()}: {concern.subject}",
-                body=f"""
-                <h2>Concern Escalated</h2>
-                <p><strong>Tenant:</strong> {profile.user.full_name}</p>
-                <p><strong>Unit:</strong> {profile.unit.unit_code}</p>
-                <p><strong>Subject:</strong> {concern.subject}</p>
-                <p><strong>New Priority:</strong> {concern.priority.upper()}</p>
-                <p><a href="http://127.0.0.1:5001/admin/concerns">View in Admin Panel</a></p>
-                """
-            )
-    except Exception as e:
-        print(f"Failed to send email: {e}")
+    _notify_admins_of_concern(
+        subject=f"Concern Escalated to {concern.priority.upper()}: {concern.subject}",
+        heading="Concern Escalated",
+        profile=profile,
+        rows=[("Subject", concern.subject),
+              ("New Priority", concern.priority.upper())],
+    )
     
     flash(f"Concern escalated to {concern.priority.upper()} priority.", "success")
     return redirect(url_for("tenant.concerns"))
@@ -1885,7 +1888,12 @@ def update_settings():
     new_password = (request.form.get("new_password") or "").strip()
     confirm_password = (request.form.get("confirm_password") or "").strip()
 
-    # Email preferences
+    # An unticked checkbox sends nothing, so a POST that never carried the
+    # preference block reads identically to one where the tenant turned all
+    # three off. The avatar form posts only full_name — without this marker
+    # it silently switched every notification off. Only the form that owns
+    # these fields may change them.
+    prefs_submitted = request.form.get("prefs_form") == "1"
     email_announcements = request.form.get("email_announcements") == "on"
     email_payment_reminders = request.form.get("email_payment_reminders") == "on"
     email_concern_updates = request.form.get("email_concern_updates") == "on"
@@ -1922,10 +1930,10 @@ def update_settings():
         _url = supabase_storage.upload_local_file(filepath, f"avatars/{filename}")
         current_user.profile_picture = _url or f"uploads/avatars/{filename}"  # type: ignore[attr-defined]
 
-    # Update email preferences
-    profile.email_announcements = email_announcements
-    profile.email_payment_reminders = email_payment_reminders
-    profile.email_concern_updates = email_concern_updates
+    if prefs_submitted:
+        profile.email_announcements = email_announcements
+        profile.email_payment_reminders = email_payment_reminders
+        profile.email_concern_updates = email_concern_updates
 
     # Update password if provided
     if new_password:
