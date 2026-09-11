@@ -52,6 +52,38 @@
         });
       }
     </script>
+    {# Tells a search engine this is a place in Calamba, not only a web
+       page — which is what lets it appear for "commercial space Calamba"
+       rather than only for its own name. Only rendered on the homepage. #}
+    {% if request.path == "/" %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "@id": "{{ url_for('public.home', _external=True) }}#business",
+      "name": "The Elis Center",
+      "alternateName": ["Elis Center", "Elis Business Center", "The Elis Center Commercial and Residences"],
+      "description": "Commercial and residential units in Calamba, Laguna with 24/7 CCTV, a prime highway location, and online reservation through STMS.",
+      "url": "{{ url_for('public.home', _external=True) }}",
+      "image": "{{ url_for('static', filename='img/property/elis-05-signage.jpg', _external=True) }}",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Calamba",
+        "addressRegion": "Laguna",
+        "addressCountry": "PH"
+      },
+      "areaServed": "Calamba, Laguna",
+      "amenityFeature": [
+        {"@type": "LocationFeatureSpecification", "name": "24/7 CCTV", "value": true},
+        {"@type": "LocationFeatureSpecification", "name": "Online reservation", "value": true}
+      ],
+      "makesOffer": [
+        {"@type": "Offer", "name": "Residential studio units", "category": "Residential rental"},
+        {"@type": "Offer", "name": "Commercial and retail spaces", "category": "Commercial rental"}
+      ]
+    }
+    </script>
+    {% endif %}
     {% block head %}{% endblock %}
   </head>
   <body {% block body_attrs %}{% endblock %}>
