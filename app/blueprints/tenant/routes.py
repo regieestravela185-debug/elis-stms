@@ -1942,7 +1942,10 @@ def update_settings():
             return redirect(url_for("tenant.settings"))
 
         from ...security import verify_password
-        if not verify_password(current_password, current_user.password_hash):  # type: ignore[attr-defined]
+        # verify_password takes (stored_value, candidate). The arguments were
+        # the other way round here, which a plain-text equality check hid —
+        # with real hashing it would have rejected every correct password.
+        if not verify_password(current_user.password_hash, current_password):  # type: ignore[attr-defined]
             flash("Current password is incorrect.", "danger")
             return redirect(url_for("tenant.settings"))
 
