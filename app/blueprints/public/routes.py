@@ -676,6 +676,19 @@ def submit_inquiry():
 
 
 
+@bp.get("/google4ec0266e5545eee8.html")
+def google_site_verification():
+    """Proves to Search Console that whoever runs this site put it here.
+
+    Google fetches this exact path and expects the token back as the body.
+    Served from a route rather than a file in static/ so it lives at the
+    site root, which is where Google looks — /static/google….html would
+    not be found.
+    """
+    return Response("google-site-verification: google4ec0266e5545eee8.html\n",
+                    mimetype="text/html")
+
+
 @bp.get("/robots.txt")
 def robots_txt():
     """Tell crawlers the site exists and where the map of it lives.
