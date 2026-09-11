@@ -548,3 +548,25 @@ button.topbar__user:hover{ background:rgba(215,179,91,.11) }
 }
 .dash-body .table th:last-child{ background:var(--paper-2) }
 .dash-body .table tbody tr:hover td:last-child{ background:var(--g50) }
+
+/* ── Sidebar: espresso ground ─────────────────────────────────────────── */
+/* Cream and espresso are the same family — one is warm white, the other
+   warm near-black — so they sit together without either giving way. The
+   gold mark finally has something to sit on, and the navigation steps back
+   so the content is what the eye reaches first. */
+.dash__side{
+  background:linear-gradient(180deg,#2A241C 0%,#191510 100%) !important;
+  border-right:1px solid rgba(215,179,91,.22) !important;
+}
+.dash__brand{ border-bottom-color:rgba(215,179,91,.22) !important }
+.dash__brandTitle{ color:#F7F3E8 }
+.dash__brandSub{ color:rgba(247,243,232,.55) }
+.side-group__label,.side-nav__label{ color:rgba(247,243,232,.55) }
+.side-link{ color:rgba(247,243,232,.84) }
+.side-link:hover:not(.is-active){
+  background:rgba(215,179,91,.12) !important; color:#F7F3E8 !important;
+}
+.side-link::before{ background:#E5CB78 }
+.side-ico{ color:#C39B3D }
+.dash__side::-webkit-scrollbar-thumb{ background:rgba(215,179,91,.28) }
+.dash__side{ scrollbar-color:rgba(215,179,91,.28) transparent }
