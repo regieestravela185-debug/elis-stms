@@ -1,0 +1,229 @@
+{% extends "dashboard_base.html" %}
+{% block body_attrs %}class="page-move-out-history"{% endblock %}
+{% block title %}Move-Out History | STMS Admin{% endblock %}
+
+{% block sidebar %}{% include "components/_sidebar_admin.html" %}{% endblock %}
+{% block topbar_left %}<div class="topbar__title">Move-Out History</div>{% endblock %}
+
+{% block head %}
+<style>
+  .moh-sum{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+            gap:14px; margin-bottom:20px; }
+  /* .stat-card carries no padding of its own — each page that uses it has
+     always supplied its own. */
+  .moh-sum .stat-card{ padding:18px 20px; }
+  .moh-sum .stat-card__number{ font-size:30px; line-height:1.1; display:block; }
+  .moh-sum .stat-card__label{ display:block; margin-top:6px; }
+  /* The badge style lowercases its text, which suits a status word and not
+     a date, so the settlement date is plain text with its own marker. */
+  .moh-settled{ display:inline-flex; align-items:center; gap:6px;
+                font-size:12.5px; font-weight:600; color:var(--ok); }
+  .moh-settled::before{ content:""; width:6px; height:6px; border-radius:99px;
+                        background:var(--ok); }
+  .moh-row{ cursor:pointer }
+  .moh-detail > td{ padding:0 !important; border-bottom:1px solid var(--line-2) }
+  .moh-detail__inner{ padding:18px 22px; background:var(--paper-2) }
+  .moh-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+             gap:18px; }
+  .moh-ded{ list-style:none; margin:8px 0 0; padding:0 }
+  .moh-ded li{ display:flex; justify-content:space-between; gap:16px;
+               padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px }
+  .moh-ded li:last-child{ border-bottom:0 }
+  .moh-ded__amt{ font-variant-numeric:tabular-nums; font-weight:600; color:var(--bad) }
+  .moh-note{ margin-top:12px; padding:12px 14px; border-left:3px solid var(--g400);
+             background:var(--g50); border-radius:0 var(--r-sm) var(--r-sm) 0;
+             font-size:13px; color:var(--ink-2) }
+  .moh-chev{ transition:transform .2s ease; display:inline-block; color:var(--ink-4) }
+  .moh-row.is-open .moh-chev{ transform:rotate(90deg) }
+  @media (max-width:900px){ .moh-sum{ grid-template-columns:repeat(2,minmax(0,1fr)) } }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="dash-panel">
+
+  <div class="moh-sum">
+    <div class="stat-card">
+      <div class="stat-card__number">{{ totals.departed }}</div>
+      <div class="stat-card__label">Moved Out</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__number">&#8369;{{ '{:,.0f}'.format(totals.deposit) }}</div>
+      <div class="stat-card__label">Deposits Settled</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__number">&#8369;{{ '{:,.0f}'.format(totals.deducted) }}</div>
+      <div class="stat-card__label">Total Deducted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__number">&#8369;{{ '{:,.0f}'.format(totals.returned) }}</div>
+      <div class="stat-card__label">Total Returned</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section__header">
+      <div>
+        <h2>Move-Out &amp; Settlement History</h2>
+        <p class="muted" style="margin:4px 0 0; font-size:13px;">
+          Every tenant who has left, with how their security deposit was
+          settled. Click a row to see the itemised charges.
+          {% if totals.unsettled %}
+            <strong>{{ totals.unsettled }}</strong> still awaiting settlement.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    {% if rows %}
+      <div class="moh-table-wrap mt-16">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width:28px;"></th>
+              <th>Tenant</th>
+              <th>Unit</th>
+              <th>Moved In</th>
+              <th>Moved Out</th>
+              <th>Notice</th>
+              <th class="num">Deposit</th>
+              <th class="num">Deducted</th>
+              <th class="num">Returned</th>
+              <th>Settlement</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr class="moh-row js-moh-row" data-target="moh-{{ r.profile.id }}">
+                <td><span class="moh-chev">&#9656;</span></td>
+                <td>
+                  <strong>{{ r.user.full_name if r.user else 'Unknown' }}</strong>
+                  {% if r.user %}<div class="muted" style="font-size:11.5px;">{{ r.user.email }}</div>{% endif %}
+                </td>
+                <td>{{ r.unit.unit_code if r.unit else '—' }}</td>
+                <td>{{ ph(r.profile.contract_start).strftime('%b %d, %Y') if r.profile.contract_start else '—' }}</td>
+                <td>{{ ph(r.moved_out).strftime('%b %d, %Y') if r.moved_out else '—' }}</td>
+                <td>
+                  {% if r.notice %}
+                    {% if r.notice_days is not none and r.notice_days >= 14 %}
+                      <span class="badge badge--approved">{{ r.notice_days }} days</span>
+                    {% elif r.notice_days is not none %}
+                      <span class="badge badge--pending">{{ r.notice_days }} days</span>
+                    {% else %}
+                      <span class="badge badge--approved">Given</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="muted" style="font-size:12px;">No notice</span>
+                  {% endif %}
+                </td>
+                <td class="num">{% if r.deposit %}&#8369;{{ '{:,.2f}'.format(r.deposit) }}{% else %}—{% endif %}</td>
+                <td class="num">{% if r.deducted %}&#8369;{{ '{:,.2f}'.format(r.deducted) }}{% else %}—{% endif %}</td>
+                <td class="num">{% if r.returned is not none %}&#8369;{{ '{:,.2f}'.format(r.returned) }}{% else %}—{% endif %}</td>
+                <td>
+                  {% if r.settled_on %}
+                    <span class="moh-settled">{{ ph(r.settled_on).strftime('%b %d, %Y') }}</span>
+                  {% else %}
+                    <span class="badge badge--pending">Not settled</span>
+                  {% endif %}
+                </td>
+              </tr>
+              <tr class="moh-detail" id="moh-{{ r.profile.id }}" hidden>
+                <td colspan="10">
+                  <div class="moh-detail__inner">
+                    <div class="moh-grid">
+                      <div>
+                        <div class="kicker">Deductions</div>
+                        {% if r.deductions %}
+                          <ul class="moh-ded">
+                            {% for d in r.deductions %}
+                              <li>
+                                <span>{{ d.reason or 'Charge' }}{% if d.date %}
+                                  <span class="muted" style="font-size:11px;">&nbsp;· {{ d.date }}</span>{% endif %}</span>
+                                <span class="moh-ded__amt">
+                                  {% if d.amount %}&minus;&#8369;{{ '{:,.2f}'.format(d.amount|float) }}
+                                  {% else %}&mdash;{% endif %}
+                                </span>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        {% else %}
+                          <p class="muted" style="font-size:13px; margin:8px 0 0;">
+                            No deductions — the deposit was returned whole.
+                          </p>
+                        {% endif %}
+                      </div>
+
+                      <div>
+                        <div class="kicker">Deposit</div>
+                        <ul class="moh-ded">
+                          <li><span>Held</span><span style="font-variant-numeric:tabular-nums;">&#8369;{{ '{:,.2f}'.format(r.deposit) }}</span></li>
+                          <li><span>Deducted</span><span class="moh-ded__amt">&minus;&#8369;{{ '{:,.2f}'.format(r.deducted) }}</span></li>
+                          <li><span><strong>Returned</strong></span>
+                              <span style="font-variant-numeric:tabular-nums; font-weight:700; color:var(--ok);">
+                                {% if r.returned is not none %}&#8369;{{ '{:,.2f}'.format(r.returned) }}{% else %}pending{% endif %}
+                              </span></li>
+                        </ul>
+                      </div>
+
+                      <div>
+                        <div class="kicker">Notice</div>
+                        {% if r.notice %}
+                          <ul class="moh-ded">
+                            <li><span>First given</span><span>{{ ph(r.notice.created_at).strftime('%b %d, %Y') }}</span></li>
+                            <li><span>Date requested</span><span>{{ ph(r.notice.original_move_out_date).strftime('%b %d, %Y') }}</span></li>
+                            {% if r.notice.planned_move_out_date != r.notice.original_move_out_date %}
+                              <li><span>Adjusted to</span><span>{{ ph(r.notice.planned_move_out_date).strftime('%b %d, %Y') }}</span></li>
+                            {% endif %}
+                            <li><span>Status</span><span>{{ r.notice.status.value|title }}</span></li>
+                          </ul>
+                          {% if r.notice.notes %}
+                            <div class="moh-note">&ldquo;{{ r.notice.notes }}&rdquo;</div>
+                          {% endif %}
+                        {% else %}
+                          <p class="muted" style="font-size:13px; margin:8px 0 0;">
+                            The tenant left without filing a move-out notice.
+                          </p>
+                        {% endif %}
+                      </div>
+                    </div>
+
+                    {% if r.notes %}
+                      <div class="moh-note">{{ r.notes }}</div>
+                    {% endif %}
+
+                    <div class="mt-16">
+                      <a class="btn btn--ghost btn--sm"
+                         href="{{ url_for('admin.tenant_settlement', profile_id=r.profile.id) }}">
+                        Open full settlement
+                      </a>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state mt-16">
+        <div class="empty-state__title">No move-outs yet</div>
+        <div class="empty-state__text">
+          When a tenant is processed as moved out, their settlement appears here.
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<script>
+  // Rows expand in place; nothing is fetched, the detail is already rendered.
+  document.addEventListener('click', function (e) {
+    var row = e.target.closest && e.target.closest('.js-moh-row');
+    if (!row) return;
+    var panel = document.getElementById(row.dataset.target);
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    row.classList.toggle('is-open', !panel.hidden);
+  });
+</script>
+{% endblock %}

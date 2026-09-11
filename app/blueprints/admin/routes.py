@@ -3077,19 +3077,26 @@ def tenant_settlement_save(profile_id: int):
               "record to settle against.", "warning")
         return redirect(url_for("admin.tenant_settlement", profile_id=profile.id))
 
-    lines = [f"\u20b1{st['rent']['total']:,.2f} — unpaid rent "
-             f"({st['rent']['count']} month(s))"] if st["rent"]["total"] else []
+    # Structured, so the amounts can be read back and totalled later rather
+    # than only re-parsed out of the sentence they were printed in.
+    _today = date.today().isoformat()
+    entries = []
+    if st["rent"]["total"]:
+        entries.append({"amount": float(st["rent"]["total"]), "date": _today,
+                        "reason": f"Unpaid rent ({st['rent']['count']} month(s))"})
     if st["electric_owed"]:
-        lines.append(f"\u20b1{st['electric_owed']:,.2f} — unpaid electric")
+        entries.append({"amount": float(st["electric_owed"]), "date": _today,
+                        "reason": "Unpaid electric"})
     if st["water_owed"]:
-        lines.append(f"\u20b1{st['water_owed']:,.2f} — unpaid water")
+        entries.append({"amount": float(st["water_owed"]), "date": _today,
+                        "reason": "Unpaid water"})
     for d in st["damaged"]:
         if d["is_priced"]:
-            lines.append(f"\u20b1{d['line_total']:,.2f} — {d['label']} "
-                         f"x{d['quantity']} ({d['condition']})")
+            entries.append({"amount": float(d["line_total"]), "date": _today,
+                            "reason": f"{d['label']} x{d['quantity']} ({d['condition']})"})
 
     if action == "deduct":
-        reservation.deposit_deductions = "\n".join(f"• {l}" for l in lines) or None
+        reservation.deposit_deductions = json.dumps(entries) if entries else None
         reservation.deposit_return_amount = st["refund_after_deduction"]
         reservation.deposit_return_date = date.today()
         note = (f"Settled {date.today():%Y-%m-%d} by {current_user.full_name}: "
@@ -5229,12 +5236,9 @@ def process_move_out(profile_id: int):
         )
         if reservation:
             import json as _json
-            deductions = []
-            if reservation.deposit_deductions:
-                try:
-                    deductions = _json.loads(reservation.deposit_deductions)
-                except Exception:
-                    deductions = []
+            # Read through the model's parser, which understands both the
+            # JSON form and the display text this code used to write.
+            deductions = [dict(d) for d in reservation.deduction_entries]
             reason = (
                 f"Final month charge ({charge['half_or_full']} month, notified after due date) "
                 f"— moved out {actual_move_out_date.strftime('%b %d, %Y')}"
@@ -5244,12 +5248,11 @@ def process_move_out(profile_id: int):
                 "reason": reason,
                 "date": date.today().isoformat(),
             })
-            deduction_lines = []
-            total_deductions = 0.0
-            for d in deductions:
-                total_deductions += d["amount"]
-                deduction_lines.append(f"• ₱{d['amount']:.2f} - {d['reason']} ({d['date']})")
-            reservation.deposit_deductions = "\n".join(deduction_lines)
+            total_deductions = sum(float(d["amount"]) for d in deductions if d.get("amount"))
+            # Store JSON, not the text it happens to be displayed as. Writing
+            # the rendered lines back made every earlier deduction unreadable
+            # — the amounts were only recoverable by parsing prose.
+            reservation.deposit_deductions = _json.dumps(deductions)
             return_amount = float(reservation.deposit_amount) - total_deductions
             reservation.deposit_return_amount = max(0, return_amount)
             reservation.deposit_status = "full_return" if total_deductions >= float(reservation.deposit_amount) else "partial_return"
@@ -5309,6 +5312,80 @@ def process_move_out(profile_id: int):
             "success",
         )
     return redirect(url_for("admin.tenant_monitoring"))
+
+
+@bp.get("/move-outs")
+@login_required
+def move_out_history():
+    """Everyone who has left, and how their deposit was settled.
+
+    Nothing here is new information — a move-out already deactivates the
+    profile, closes the notice, archives the user and writes the deposit
+    outcome onto the reservation. It simply had nowhere to be read. Once a
+    tenant is archived they drop out of every active list, so the record of
+    what was charged and what was returned became unreachable in the
+    interface even though it was never deleted.
+    """
+    _ensure_admin()
+
+    departed = (
+        db.session.query(TenantProfile)
+        .options(joinedload(TenantProfile.user), joinedload(TenantProfile.unit))
+        .filter(db.or_(TenantProfile.is_active.is_(False),
+                       TenantProfile.moved_out_on.isnot(None)))
+        .order_by(TenantProfile.contract_end.desc().nullslast(),
+                  TenantProfile.id.desc())
+        .all()
+    )
+
+    # One query for the notices rather than one per tenant.
+    notices = {}
+    if departed:
+        for n in (db.session.query(MoveOutNotice)
+                  .filter(MoveOutNotice.tenant_profile_id.in_([p.id for p in departed]))
+                  .order_by(MoveOutNotice.created_at.desc()).all()):
+            notices.setdefault(n.tenant_profile_id, n)
+
+    reservations = {}
+    if departed:
+        for r in (db.session.query(Reservation)
+                  .filter(Reservation.user_id.in_([p.user_id for p in departed]),
+                          Reservation.status == ReservationStatus.APPROVED)
+                  .order_by(Reservation.created_at.desc()).all()):
+            reservations.setdefault((r.user_id, r.unit_id), r)
+
+    rows = []
+    for p in departed:
+        r = reservations.get((p.user_id, p.unit_id))
+        n = notices.get(p.id)
+        deposit = float(r.deposit_amount) if r and r.deposit_amount else 0.0
+        returned = float(r.deposit_return_amount) if r and r.deposit_return_amount is not None else None
+        deducted = float(r.total_deducted) if r else 0.0
+        rows.append({
+            "profile": p, "user": p.user, "unit": p.unit,
+            "moved_out": p.moved_out_on or p.contract_end,
+            "notice": n,
+            "notice_days": ((p.moved_out_on or p.contract_end) - n.original_move_out_date).days
+                           if n and (p.moved_out_on or p.contract_end) else None,
+            "reservation": r,
+            "deposit": deposit,
+            "deducted": deducted,
+            "returned": returned,
+            "settled_on": r.deposit_return_date if r else None,
+            "deductions": r.deduction_entries if r else [],
+            "notes": r.deposit_notes if r else None,
+        })
+
+    settled = [x for x in rows if x["settled_on"]]
+    totals = {
+        "departed": len(rows),
+        "settled": len(settled),
+        "unsettled": len(rows) - len(settled),
+        "deposit": sum(x["deposit"] for x in settled),
+        "deducted": sum(x["deducted"] for x in settled),
+        "returned": sum(x["returned"] or 0 for x in settled),
+    }
+    return render_template("admin/move_out_history.html", rows=rows, totals=totals)
 
 
 @bp.get("/feedbacks")
