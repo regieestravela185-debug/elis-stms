@@ -28,18 +28,30 @@ def _detect_id_type(text: str) -> str:
     Returns empty string if no valid ID type is detected.
     """
     t = text.lower()
-    
-    # Count confidence indicators for each ID type
-    # National ID
-    if any(keyword in t for keyword in ["national id", "philsys", "pambansang", "republic of the philippines id"]):
+
+    def word(*terms):
+        """Match a short acronym as a word, not as a run of letters.
+
+        "lto" in t was true for "alto" and "Malto"; "prc" for "prcinct";
+        "sss" for any triple s. Each of those quietly relabelled somebody's
+        ID as a different one.
+        """
+        return any(re.search(rf"\b{re.escape(w)}\b", t) for w in terms)
+
+    # National ID. The card itself says PHILIPPINE IDENTIFICATION CARD —
+    # the phrase "national id" appears nowhere on it, which is why a real
+    # PhilID was never recognised.
+    if (any(k in t for k in ["philippine identification", "pambansang pagkakakilanlan",
+                             "philsys", "national id", "pambansang"])
+            or (word("pcn", "psn") and "pilipinas" in t)):
         return "National ID"
-    
+
     # PhilHealth
     if "philhealth" in t or ("philippine health" in t and "insurance" in t):
         return "PhilHealth"
-    
+
     # Driver's License
-    if ("driver" in t and "license" in t) or "lto" in t or "land transportation office" in t:
+    if ("driver" in t and "licen" in t) or word("lto") or "land transportation" in t:
         return "Driver's License"
     
     # Passport - require multiple indicators
@@ -49,11 +61,11 @@ def _detect_id_type(text: str) -> str:
         return "Passport"
     
     # SSS
-    if "social security" in t or ("sss" in t and "number" in t):
+    if "social security" in t or (word("sss") and "number" in t):
         return "SSS"
     
     # UMID
-    if "umid" in t or "unified multi-purpose id" in t:
+    if word("umid") or "unified multi-purpose" in t:
         return "UMID"
     
     # Postal ID
@@ -61,7 +73,7 @@ def _detect_id_type(text: str) -> str:
         return "Postal ID"
     
     # PRC ID
-    if "prc" in t or "professional regulation commission" in t:
+    if word("prc") or "professional regulation" in t:
         return "PRC ID"
     
     # Voter's ID
@@ -140,15 +152,37 @@ def scan_id_fields(file_path: str | Path) -> dict[str, str]:
         }
 
     try:
-        # Read and encode image
-        with open(path, "rb") as f:
-            image_data = base64.b64encode(f.read()).decode()
+        raw = path.read_bytes()
 
-        # Call OCR.space API (free tier)
+        # OCR.space's free tier refuses anything over 1 MB. A photo from a
+        # phone is several times that, so it is drawn down here rather than
+        # sent and rejected — the text on an ID stays legible well below the
+        # limit, and this is also the only path a file-picker upload takes.
+        if len(raw) > 900_000:
+            try:
+                from PIL import Image
+                import io as _io
+                im = Image.open(_io.BytesIO(raw))
+                im.thumbnail((1800, 1800))
+                buf = _io.BytesIO()
+                im.convert("RGB").save(buf, format="JPEG", quality=82, optimize=True)
+                raw = buf.getvalue()
+            except Exception:
+                pass                       # send the original and let the API decide
+
+        # The prefix has to name the format actually being sent. It said PNG
+        # for every upload, including the JPEGs that phones produce.
+        ext = path.suffix.lower().lstrip(".") or "jpg"
+        mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png",
+                "webp": "webp", "gif": "gif", "pdf": "pdf"}.get(ext, "jpeg")
+        image_data = base64.b64encode(raw).decode()
+
+        # Call OCR.space API
         response = requests.post(
             "https://api.ocr.space/parse/image",
+            timeout=25,                    # never let a hung call hold a worker
             data={
-                "base64Image": f"data:image/png;base64,{image_data}",
+                "base64Image": f"data:image/{mime};base64,{image_data}",
                 "language": "eng",
                 "isOverlayRequired": False,
                 "scale": True,

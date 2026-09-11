@@ -8,6 +8,11 @@ services:
         value: 3.11.9
       - key: FLASK_ENV
         value: production
+      # Free key from ocr.space — without it the code falls back to the
+      # shared demo key, which returns nothing and sends every ID to
+      # manual review.
+      - key: OCR_SPACE_API_KEY
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: DB_TYPE
