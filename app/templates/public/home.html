@@ -666,9 +666,70 @@
       background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
     }
 
-    /* Modern Units Section */
+    /* ── One dark band, and depth for the cream ──────────────────────
+       The section had no background at all — a white card on a cream page
+       with almost nothing between them, which is why it read as plain.
+       It gets the one espresso band; everything below stays cream, because
+       a second dark band further down turned the page into a blink.
+       !important because the section-polish block below clears the
+       background of every band. */
     #units {
-      background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+      position: relative;
+      background:
+        radial-gradient(900px 420px at 85% 0%, rgba(215, 179, 91, 0.16), transparent 60%),
+        linear-gradient(180deg, #2A241C 0%, #191510 100%) !important;
+      /* A crisp edge, not a fade. A long fade passes through grey and eats
+         into the bottom of whichever card sits near it. */
+      border-bottom: 1px solid rgba(215, 179, 91, 0.45) !important;
+    }
+    #units::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(215, 179, 91, 0.75), transparent);
+      pointer-events: none;
+    }
+    #units h2 { color: #F7F3E8; }
+    #units .building-section__title { color: #E5CB78; }
+    #units .building-section__subtitle { color: rgba(247, 243, 232, 0.70); }
+    /* On the band the inactive half of the toggle was black on near-black. */
+    #units .filter-btn { color: rgba(247, 243, 232, 0.72); }
+    #units .filter-btn:hover { color: #E5CB78; }
+    #units .filter-btn--active { color: #221B08; }
+
+    /* A fine grain over the whole page. Two percent — invisible on its own,
+       and the difference between paper and a flat fill. Large areas of one
+       colour are what read as unfinished, not the colour itself. */
+    .page-home::before {
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      opacity: 0.022; background-size: 140px 140px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+    }
+    .page-home > * { position: relative; z-index: 1; }
+
+    /* Bands alternate by a few percent — enough for the eye to register an
+       edge, not enough to notice as a change of colour. */
+    #how, #about, #faq, #testimonials {
+      position: relative;
+      background: linear-gradient(180deg, #F8F5ED 0%, #F2EEE3 100%) !important;
+      border-top: 1px solid rgba(42, 36, 28, 0.06);
+    }
+    #gallery, #contact {
+      background: #F5F1E8 !important;
+      border-top: 1px solid rgba(42, 36, 28, 0.06);
+    }
+    /* A warm glow anchored to one corner, so a wide surface has somewhere
+       to look instead of being uniform. */
+    #how::before, #about::before, #faq::before, #testimonials::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(760px 300px at 88% 0%, rgba(215, 179, 91, 0.10), transparent 62%);
+    }
+    #testimonials::before {
+      background: radial-gradient(720px 280px at 12% 0%, rgba(215, 179, 91, 0.13), transparent 60%);
+    }
+
+    /* Cards read as objects resting on paper, not rectangles cut from it. */
+    .page-home .card, .home-stat, .feature-strip, .building-header {
+      box-shadow: 0 1px 2px rgba(42, 36, 28, 0.04),
+                  0 16px 36px -18px rgba(42, 36, 28, 0.20) !important;
     }
 
     /* Building picker — grouped into Residential / Commercial sections.
@@ -704,14 +765,17 @@
       margin-bottom: 4px;
     }
 
+    /* Residential was blue and Commercial a bright orange — a pairing that
+       fought the gold, and on a dark band fought that too. The distinction
+       is what matters, not the hues: brass and copper, both warm. */
     .building-section__icon--residential {
-      background: linear-gradient(135deg, #4f8cff, #2563eb);
-      color: white;
+      background: linear-gradient(135deg, #E5CB78, #C39B3D);
+      color: #221B08;
     }
 
     .building-section__icon--commercial {
-      background: linear-gradient(135deg, #f5a742, #c2650b);
-      color: white;
+      background: linear-gradient(135deg, #C8843C, #96541A);
+      color: #FFF6E8;
     }
 
     /* Same premium treatment as the hero's "effortlessly managed"
@@ -821,8 +885,8 @@
     }
 
     .building-box--residential:hover {
-      box-shadow: 0 20px 44px rgba(37, 99, 235, 0.18);
-      border-color: rgba(37, 99, 235, 0.3);
+      box-shadow: 0 20px 44px rgba(195, 155, 61, 0.22);
+      border-color: rgba(195, 155, 61, 0.38);
     }
 
     .building-box--commercial:hover {
@@ -850,13 +914,13 @@
     }
 
     .building-box__icon--residential {
-      background: rgba(37, 99, 235, 0.1);
-      color: #2563eb;
+      background: rgba(195, 155, 61, 0.14);
+      color: #8A6D1E;
     }
 
     .building-box__icon--commercial {
-      background: rgba(194, 101, 11, 0.1);
-      color: #c2650b;
+      background: rgba(162, 96, 28, 0.12);
+      color: #8A5116;
     }
 
     .building-box__code {
@@ -890,13 +954,13 @@
     }
 
     .building-box__badge--residential {
-      background: rgba(80, 160, 255, 0.12);
-      color: #2563eb;
+      background: rgba(195, 155, 61, 0.16);
+      color: #7F5F1C;
     }
 
     .building-box__badge--commercial {
-      background: rgba(255, 149, 0, 0.12);
-      color: #c2650b;
+      background: rgba(162, 96, 28, 0.14);
+      color: #8A5116;
     }
 
     .building-box__count {
@@ -999,12 +1063,15 @@
       overflow: hidden;
     }
 
+    /* The modal header is the largest colour on the screen once a building
+       is opened; blue and orange there undid the palette the page had just
+       established. Brass and copper, the same pair as the cards. */
     .building-header--residential {
-      background: linear-gradient(135deg, #3b6fd6 0%, #2563eb 55%, #1d4ed8 100%);
+      background: linear-gradient(135deg, #C9A94E 0%, #A8862C 55%, #7F5F1C 100%);
     }
 
     .building-header--commercial {
-      background: linear-gradient(135deg, #e08a2e 0%, #c2650b 55%, #a4560a 100%);
+      background: linear-gradient(135deg, #C8843C 0%, #A2601C 55%, #7A4614 100%);
     }
 
     .building-header__top {
@@ -2310,8 +2377,9 @@
        ============================================================ */
     /* Soft washed cream canvas — modern, airy, elegant */
     .page-home{ background: #f5f1e8; }
-    /* Let the cream canvas show through; white cards float elegantly on it */
-    #units, #how, #about, #faq, #contact{ background: transparent !important; }
+    /* Let the cream canvas show through; white cards float elegantly on it.
+       #units is the exception — it carries the one dark band. */
+    #how, #about, #faq, #contact{ background: transparent !important; }
     #announcements{
       background: linear-gradient(180deg, rgba(215,179,91,0.06), rgba(215,179,91,0.02)) !important;
     }

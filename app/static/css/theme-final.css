@@ -212,3 +212,40 @@
   /* one tap target per row beats two cramped ones */
   .dash-body .grid--4,.dash-body .units-stats{ grid-template-columns:repeat(2,minmax(0,1fr)) }
 }
+
+/* ── Sidebar active state on the espresso ground ──────────────────────── */
+/* Loaded last, because the tenant sheet still paints its own gold gradient. */
+.dash-body .side-link--dashboard.is-active,
+.dash-body .side-link--browse.is-active,
+.dash-body .side-link--concerns.is-active,
+.dash-body .side-link--payments.is-active,
+.dash-body .side-link--announcements.is-active,
+.dash-body .side-link--documents.is-active,
+.dash-body .side-link--renewal.is-active,
+.dash-body .side-link--feedback.is-active,
+.dash-body .side-link--settings.is-active,
+.dash-body .side-link.is-active{
+  background:rgba(215,179,91,.18) !important;
+  color:#E5CB78 !important;
+}
+.dash-body .side-link.is-active span,
+.dash-body .side-link.is-active .side-ico{ color:#E5CB78 !important }
+.dash-body .side-badge{
+  background:rgba(215,179,91,.22) !important; color:#E5CB78 !important;
+  border-color:rgba(215,179,91,.3) !important;
+}
+
+/* ── Sidebar group labels ─────────────────────────────────────────────── */
+/* Both sidebar partials set this to near-black, and their <style> sits in
+   the body — later in the document than any stylesheet, so it wins at equal
+   specificity. On the espresso ground the labels were all but invisible.
+   The extra class raises specificity so document order stops deciding it. */
+.dash-body .side-group__label,
+.dash-body .side-nav__label{
+  color:rgba(247,243,232,.62) !important;
+  font-weight:700; letter-spacing:.16em;
+}
+.dash-body .dash__brandTitle{ color:#F7F3E8 !important }
+.dash-body .dash__brandSub{ color:rgba(247,243,232,.55) !important }
+.dash-body .side-link{ color:rgba(247,243,232,.86) !important }
+.dash-body .side-link:hover:not(.is-active){ color:#F7F3E8 !important }
