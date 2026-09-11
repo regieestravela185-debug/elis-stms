@@ -1,4 +1,6 @@
 from flask import Flask
+from flask import jsonify
+from flask import redirect
 from flask import flash
 from flask import request
 from flask import session
@@ -329,6 +331,29 @@ def create_app(config_object: type[Config] = Config) -> Flask:
             if pending_reg:
                 session["pending_registration"] = pending_reg
     
+    @app.errorhandler(413)
+    def _payload_too_large(_e):
+        """A phone camera photo routinely runs past MAX_CONTENT_LENGTH.
+
+        Flask rejects the request before any route sees it and answers with
+        its HTML error page, so a fetch() caller reading JSON got
+        "Unexpected token '<'" and the person got no explanation at all.
+        Anything that asked for JSON is answered in JSON.
+        """
+        limit_mb = app.config.get("MAX_CONTENT_LENGTH", 0) / 1048576
+        message = (f"That photo is larger than {limit_mb:.0f} MB. Take the "
+                   f"picture again from a little further back, or pick a "
+                   f"smaller one from your gallery.")
+        wants_json = (request.path.startswith("/api/")
+                      or "/api/" in request.path
+                      or request.accept_mimetypes.best == "application/json"
+                      or request.headers.get("X-Requested-With") == "XMLHttpRequest")
+        if wants_json:
+            return jsonify({"ok": False, "error": "file_too_large",
+                            "message": message}), 413
+        flash(message, "warning")
+        return redirect(request.referrer or url_for("public.home"))
+
     @app.after_request
     def _add_security_headers(response):
         """Add security headers to all responses"""
