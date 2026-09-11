@@ -227,6 +227,35 @@ def reserve_post(unit_id: int):
         flash("ID Number is required. OCR could not detect it, please type manually.", "warning")
         return redirect(url_for("public.home") + "#units")
 
+    # ── Does the declared ID match the photo? ─────────────────────────
+    # Until now the typed value simply won: a PhilHealth card uploaded as a
+    # "National ID" with an invented number was accepted outright, because
+    # the only test was that the field was not empty. What the person types
+    # is a claim; the photo is the evidence. Where the two can be compared
+    # and disagree, or where OCR read nothing and there is nothing to
+    # compare against, the reservation goes to a human rather than through.
+    id_review_reason = None
+    ocr_type = (ocr_result.get("id_type") or "").strip()
+    ocr_num = (ocr_result.get("id_number") or "").strip()
+
+    def _digits(v):
+        return "".join(ch for ch in (v or "") if ch.isalnum()).upper()
+
+    if ocr_type and id_type and ocr_type.lower() != id_type.lower():
+        id_review_reason = (f"Declared {id_type}, but the photo reads as "
+                            f"{ocr_type}.")
+    elif ocr_num and id_number and _digits(ocr_num) != _digits(id_number):
+        id_review_reason = (f"Declared ID number does not match the number "
+                            f"read from the photo ({ocr_num}).")
+    elif not ocr_type and not ocr_num:
+        id_review_reason = ("The ID could not be read, so the declared type "
+                            "and number were not confirmed against it.")
+
+    if id_review_reason:
+        verification_status = VerificationStatus.MANUAL_REVIEW
+        flash("Reservation submitted. Your ID needs a quick check by our "
+              "staff before it is approved.", "info")
+
     deposit_amount = float(unit.price_monthly) + 1000.00
 
     reservation = Reservation(
@@ -242,6 +271,7 @@ def reserve_post(unit_id: int):
         id_upload_path=upload_path,
         ocr_name=ocr_result.get("name"),
         ocr_id_number=ocr_result.get("id_number"),
+        id_review_reason=id_review_reason,
         selfie_image=None,
         face_match_score=face_match_score,
         verification_status=verification_status,

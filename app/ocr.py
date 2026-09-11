@@ -106,6 +106,23 @@ def _extract_id_number(text: str) -> str:
     return ""
 
 
+def _ocr_api_key() -> str:
+    """The OCR.space key, from config when one is set."""
+    try:
+        from flask import current_app
+        key = (current_app.config.get("OCR_SPACE_API_KEY") or "").strip()
+        if key:
+            return key
+        current_app.logger.warning(
+            "OCR_SPACE_API_KEY is not set — falling back to the shared demo "
+            "key, which usually returns nothing. Register a free key at "
+            "ocr.space and set it in the environment."
+        )
+    except Exception:
+        pass
+    return "helloworld"
+
+
 def scan_id_fields(file_path: str | Path) -> dict[str, str]:
     """
     Best-effort OCR extractor using OCR.space API.
@@ -138,7 +155,12 @@ def scan_id_fields(file_path: str | Path) -> dict[str, str]:
                 "detectOrientation": True,
                 "OCREngine": "2",
             },
-            headers={"apikey": "helloworld"},  # Free API key
+            # "helloworld" is OCR.space's public demo key: rate-limited to a
+            # handful of calls and shared with everyone on the internet, so
+            # it returns nothing most of the time. Set OCR_SPACE_API_KEY to
+            # a free registered key and OCR starts working; the demo key is
+            # kept only so a local run does not hard-fail.
+            headers={"apikey": _ocr_api_key()},
         )
         result = response.json()
 

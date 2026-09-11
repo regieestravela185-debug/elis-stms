@@ -470,6 +470,17 @@
                         {% endif %}
                       {% endif %}
                       
+                      {# Why it needs a look. A "Manual Review" badge with no
+                         reason is a badge an administrator learns to approve
+                         past; the sentence is the part that stops them. #}
+                      {% if r.id_review_reason %}
+                        <div style="margin-top:6px; padding:7px 9px; border-radius:8px;
+                                    background:rgba(162,101,11,.10); border-left:3px solid #A2650B;
+                                    font-size:11px; line-height:1.45; color:#7A4614; max-width:230px;">
+                          {{ r.id_review_reason }}
+                        </div>
+                      {% endif %}
+
                       {% if r.fake_id_flag %}
                         <span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 10px; margin-top: 4px; display: inline-block;">
                            Fake ID Flag
