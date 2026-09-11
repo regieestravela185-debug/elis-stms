@@ -1,0 +1,214 @@
+/* ==========================================================================
+   STMS — consistency layer
+   Loaded AFTER each page's own <style>. Twenty-seven pages grew their own
+   .stat-card, each with a different accent, so the product read as a set of
+   unrelated screens. This file settles colour, type and edges for the few
+   components that appear on many pages. It deliberately touches no layout —
+   no display, grid, position or width — so a page keeps the arrangement it
+   was built with.
+   ========================================================================== */
+
+/* ── Statistic tiles ──────────────────────────────────────────────────── */
+.dash-body .stat-card{
+  background:var(--paper);
+  border:1px solid var(--line-2);
+  border-radius:var(--r-lg);
+  box-shadow:var(--e2);
+  transition:transform var(--t) var(--ease),
+             box-shadow var(--t) var(--ease),
+             border-color var(--t) var(--ease);
+}
+.dash-body .stat-card:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--e3);
+  border-color:rgba(215,179,91,.34);
+}
+/* One accent, one meaning: the figure is gold because it is the figure,
+   not because of which tile it happens to sit in. */
+.dash-body .stat-card__number,
+.dash-body .stat-card__value,
+.dash-body .stat-card--total .stat-card__number,
+.dash-body .stat-card--month .stat-card__number,
+.dash-body .stat-card--last  .stat-card__number,
+.dash-body .stat-card--count .stat-card__number,
+.dash-body .stat-card--active .stat-card__number{
+  color:var(--g700);
+  font-family:'Playfair Display',Georgia,serif;
+  font-weight:600; letter-spacing:-.015em;
+  font-variant-numeric:tabular-nums;
+}
+.dash-body .stat-card--total,.dash-body .stat-card--month,
+.dash-body .stat-card--last,.dash-body .stat-card--count,
+.dash-body .stat-card--active{ border-color:var(--line-2) }
+.dash-body .stat-card__label{
+  text-transform:uppercase; letter-spacing:.14em;
+  font-size:10.5px; font-weight:600; color:var(--ink-4);
+}
+.dash-body .stat-card__icon{
+  color:var(--g600); background:var(--g100);
+  border-radius:var(--r-sm);
+}
+/* the accent rail stays, but in the brand colour on every variant */
+.dash-body .stat-card::before{ background:linear-gradient(90deg,var(--g400),var(--g200)) }
+
+/* ── Status badges ────────────────────────────────────────────────────── */
+.dash-body .status-badge{
+  display:inline-flex; align-items:center; gap:5px;
+  border-radius:999px; padding:4px 10px;
+  font-size:11px; font-weight:650; letter-spacing:.02em;
+  border:1px solid transparent;
+}
+.dash-body .status-badge--paid,.dash-body .status-badge--available,
+.dash-body .status-badge--approved,.dash-body .status-badge--active,
+.dash-body .status-badge--resolved{ background:var(--ok-bg);   color:var(--ok) }
+.dash-body .status-badge--pending,.dash-body .status-badge--unpaid,
+.dash-body .status-badge--overdue{ background:var(--warn-bg); color:var(--warn) }
+.dash-body .status-badge--occupied,.dash-body .status-badge--in-progress{
+  background:var(--info-bg); color:var(--info) }
+.dash-body .status-badge--rejected,.dash-body .status-badge--cancelled,
+.dash-body .status-badge--expired{ background:var(--bad-bg); color:var(--bad) }
+
+/* ── Filter bars ──────────────────────────────────────────────────────── */
+.dash-body .filters-section{
+  background:var(--paper); border:1px solid var(--line-2);
+  border-radius:var(--r-md); box-shadow:var(--e1);
+}
+.dash-body .filter-label{
+  font-size:10.5px; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-4);
+}
+
+/* ── Empty states ─────────────────────────────────────────────────────── */
+.dash-body .empty-state{
+  border:1px dashed var(--line); border-radius:var(--r-md);
+  background:var(--paper-2);
+}
+.dash-body .empty-state__icon{ color:var(--g300) }
+.dash-body .empty-state__title{ color:var(--ink-2); font-weight:600 }
+.dash-body .empty-state__text{ color:var(--ink-4) }
+
+/* ── Unit tiles ───────────────────────────────────────────────────────── */
+.dash-body .unit-tile{
+  border-radius:var(--r-md);
+  transition:transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.dash-body .unit-tile:hover{ transform:translateY(-2px); box-shadow:var(--e2) }
+
+/* ── The primary action is gold on every page ─────────────────────────── */
+.dash-body .btn--primary{
+  background:linear-gradient(180deg,var(--g300),var(--g400));
+  color:#2a2107; border:1px solid var(--g500);
+}
+.dash-body .btn--primary:hover{ background:linear-gradient(180deg,var(--g200),var(--g300)) }
+
+/* ── Table headers read the same everywhere ───────────────────────────── */
+.dash-body .table th{
+  font-size:10.5px; font-weight:700; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--ink-4);
+  background:var(--paper-2);
+}
+
+/* ── One active state for both sidebars ───────────────────────────────── */
+/* The tenant sidebar painted its active item as a solid gold gradient with
+   white text while the admin sidebar used a quiet tint. Two people looking
+   at the same product saw two different navigations. */
+.dash-body .side-link--dashboard.is-active,
+.dash-body .side-link--browse.is-active,
+.dash-body .side-link--concerns.is-active,
+.dash-body .side-link--payments.is-active,
+.dash-body .side-link--announcements.is-active,
+.dash-body .side-link--documents.is-active,
+.dash-body .side-link--renewal.is-active,
+.dash-body .side-link--feedback.is-active,
+.dash-body .side-link--settings.is-active,
+.dash-body .side-link.is-active{
+  background:rgba(215,179,91,.15) !important;
+  color:var(--g700) !important;
+  border:1px solid transparent !important;
+  box-shadow:none !important;
+  font-weight:650;
+}
+.dash-body .side-link.is-active span,
+.dash-body .side-link.is-active .side-ico{ color:var(--g700) !important }
+
+/* ── The check-in banner is a card, not a grey box ────────────────────── */
+.dash-body .checkin-banner{
+  background:var(--paper);
+  border:1px solid var(--line-2);
+  border-left:3px solid var(--g400);
+  border-radius:var(--r-lg);
+  box-shadow:var(--e2);
+  padding:18px 22px;
+}
+.dash-body .checkin-banner__title{
+  font-size:10.5px; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--g600);
+}
+.dash-body .checkin-line{ color:var(--ink-2) }
+
+/* ── Status count tiles ───────────────────────────────────────────────── */
+/* Six figures in six different colours read as decoration, not data. The
+   status still matters, so it moves to a dot beside the label and the
+   figure itself stays in the brand colour, where the eye lands first. */
+.dash-body .stat-mini{
+  background:var(--paper);
+  border:1px solid var(--line-2) !important;
+  border-radius:var(--r-lg);
+  box-shadow:var(--e2);
+}
+.dash-body .stat-mini::before{
+  height:3px; background:linear-gradient(90deg,var(--g400),var(--g200));
+}
+.dash-body .stat-mini__number,
+.dash-body .stat-mini--total .stat-mini__number,
+.dash-body .stat-mini--available .stat-mini__number,
+.dash-body .stat-mini--occupied .stat-mini__number,
+.dash-body .stat-mini--reserved .stat-mini__number,
+.dash-body .stat-mini--unpaid .stat-mini__number,
+.dash-body .stat-mini--archived .stat-mini__number{
+  color:var(--g700) !important;
+  font-family:'Playfair Display',Georgia,serif;
+  font-weight:600; font-variant-numeric:tabular-nums;
+}
+.dash-body .stat-mini__label{
+  display:inline-flex; align-items:center; gap:6px;
+  text-transform:uppercase; letter-spacing:.14em;
+  font-size:10.5px; font-weight:600; color:var(--ink-4);
+}
+.dash-body [class*="stat-mini--"] .stat-mini__label::before{
+  content:""; width:6px; height:6px; border-radius:99px; flex:none;
+  background:var(--ink-4);
+}
+.dash-body .stat-mini--available .stat-mini__label::before{ background:var(--ok) }
+.dash-body .stat-mini--occupied  .stat-mini__label::before{ background:var(--info) }
+.dash-body .stat-mini--reserved  .stat-mini__label::before{ background:var(--bad) }
+.dash-body .stat-mini--unpaid    .stat-mini__label::before{ background:var(--warn) }
+.dash-body .stat-mini--total     .stat-mini__label::before{ background:var(--g500) }
+.dash-body .stat-mini--archived  .stat-mini__label::before{ background:var(--ink-4) }
+
+/* ── Figure cards built from a heading ────────────────────────────────── */
+/* The tenant tiles are a .card with .kicker / h3.mono / .muted rather than
+   a .metric, so the figure was inheriting heading size and reading smaller
+   than its own label. */
+.dash-body .card--lift > h3,
+.dash-body .card--lift > h3.mono{
+  font-family:'Playfair Display',Georgia,serif;
+  font-size:clamp(26px,2.4vw,32px); line-height:1.1;
+  font-weight:600; color:var(--g700);
+  font-variant-numeric:tabular-nums;
+  margin:8px 0 6px;
+}
+.dash-body .card--lift > .kicker{ color:var(--g600) }
+.dash-body .card--lift > .muted{ font-size:12.5px }
+
+@media (max-width:600px){
+  .dash-body .card--lift{ padding:16px 18px }
+  /* a value can be a word ("Month-to-month"), not only a number, so the
+     mobile size is capped where the longest of those still fits two lines */
+  .dash-body .card--lift > h3,.dash-body .card--lift > h3.mono{
+    font-size:24px; margin:6px 0 2px; overflow-wrap:break-word; hyphens:auto;
+  }
+  .dash-body .stat-card,.dash-body .stat-mini,.dash-body .kpi-tile{ padding:16px 18px }
+  /* one tap target per row beats two cramped ones */
+  .dash-body .grid--4,.dash-body .units-stats{ grid-template-columns:repeat(2,minmax(0,1fr)) }
+}
