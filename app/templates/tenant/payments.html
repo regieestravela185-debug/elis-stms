@@ -1,9 +1,13 @@
 {% extends "dashboard_base.html" %}
 {% import "components/_icons.html" as icons %}
-{% block title %}Payment History | STMS
+{% block title %}Payment History | STMS{% endblock %}
+
+{% block head %}
 <script>
-  // Print used to open the same tab as Download. It now loads the receipt
-  // hidden and calls print() on it, so the dialog comes up directly.
+  // Print loads the receipt into a hidden frame and calls print() on it, so
+  // the dialog comes up directly instead of opening another tab.
+  // This lived inside the title block, which put it inside <title> as text —
+  // the browser never ran it, and Print Receipt did nothing at all.
   document.addEventListener('click', function (e) {
     var btn = e.target.closest && e.target.closest('.js-print-receipt');
     if (!btn) return;
