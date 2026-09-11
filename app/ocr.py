@@ -60,13 +60,15 @@ def _detect_id_type(text: str) -> str:
     if passport_count >= 2:  # Require at least 2 indicators
         return "Passport"
     
+    # UMID must be tested before SSS. Every UMID card carries the words
+    # SOCIAL SECURITY SYSTEM, because SSS issues it — so with SSS first, a
+    # UMID was always answered as an SSS card.
+    if word("umid") or "unified multi-purpose" in t:
+        return "UMID"
+
     # SSS
     if "social security" in t or (word("sss") and "number" in t):
         return "SSS"
-    
-    # UMID
-    if word("umid") or "unified multi-purpose" in t:
-        return "UMID"
     
     # Postal ID
     if "postal" in t and "id" in t:
@@ -81,7 +83,7 @@ def _detect_id_type(text: str) -> str:
         return "Voter's ID"
     
     # TIN ID
-    if ("tin" in t and ("id" in t or "number" in t)) or "bureau of internal revenue" in t:
+    if (word("tin") and ("id" in t or "number" in t)) or "bureau of internal revenue" in t:
         return "TIN ID"
     
     # If no specific ID type detected, return empty string (not "Other")
@@ -103,6 +105,14 @@ def _extract_id_number(text: str) -> str:
         r"\b\d{4}[-\s]\d{4}[-\s]\d{4}\b",  # Generic 12-digit grouped
         r"\b\d{3}[-\s]\d{7}\b",  # SSS-like pattern
         r"\b\d{12}\b",  # 12-digit plain
+        # Added after checking each type in the dropdown against the text
+        # actually printed on it — these four were read as nothing at all,
+        # which sent every one of them to manual review.
+        r"\b\d{2}[-\s]\d{7}[-\s]\d{1}\b",       # SSS: 03-1234567-8
+        r"\b\d{3}[-\s]\d{3}[-\s]\d{3}[-\s]\d{3}\b",  # TIN: 123-456-789-000
+        r"\b[A-Z]\d{7}[A-Z]?\b",                  # Passport: P1234567A
+        r"\b\d{4}[-\s]\d{7}[-\s]\d{1}\b",       # UMID CRN: 0111-2233445-6
+        r"\b\d{7}\b",                            # PRC registration: 0123456
     ]
 
     # Common words to exclude
