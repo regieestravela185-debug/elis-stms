@@ -10,6 +10,7 @@
   <div class="side-group__label">People</div>
   <a class="side-link side-link--users {% if request.path.startswith('/admin/users') %}is-active{% endif %}" href="{{ url_for('admin.users') }}"><span>Customers</span></a>
   <a class="side-link side-link--monitoring {% if request.path.startswith('/admin/tenants/monitoring') %}is-active{% endif %}" href="{{ url_for('admin.tenant_monitoring') }}"><span>Monitoring</span></a>
+  <a class="side-link side-link--moveouts {% if request.path.startswith('/admin/move-outs') %}is-active{% endif %}" href="{{ url_for('admin.move_out_history') }}"><span>Move-Out History</span></a>
 
   <div class="side-group__label">Requests</div>
   <a class="side-link side-link--reservations {% if request.path.startswith('/admin/reservations') %}is-active{% endif %}" href="{{ url_for('admin.reservations') }}"><span>Reservations</span>{% if nav_counts.reservations %}<span class="side-badge">{{ nav_counts.reservations }}</span>{% endif %}</a>
@@ -44,6 +45,7 @@
 .side-link--units.is-active,
 .side-link--users.is-active,
 .side-link--monitoring.is-active,
+.side-link--moveouts.is-active,
 .side-link--reservations.is-active,
 .side-link--payments.is-active,
 .side-link--deposits.is-active,
