@@ -676,6 +676,41 @@
     .idpick__clear:hover{ color:#b3261e; border-color:rgba(179,38,30,.35) }
     /* A disagreement between what was typed and what the photo says is the
        one message here that must not read like a tip. */
+    /* The scan read the card cleanly — said plainly, so the reader knows
+       there is nothing left to check before submitting. */
+    #ocrStatus.ocr-status--ok{
+      color:#12634a; font-weight:600;
+      background:rgba(18,133,90,.09); border-left:3px solid #12855A;
+      padding:9px 12px; border-radius:0 8px 8px 0; margin-top:8px;
+    }
+    .idwait{
+      position:fixed; inset:0; z-index:12000;
+      background:rgba(23,22,26,.55);
+      backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      animation:fadeIn .18s ease;
+    }
+    .idwait[hidden]{ display:none !important }
+    .idwait__box{
+      position:relative; width:min(280px,80vw);
+      padding:34px 26px 26px; text-align:center;
+      background:#fffdf8; border-radius:20px;
+      box-shadow:0 24px 64px -12px rgba(23,22,26,.4);
+    }
+    .idwait__mark{ width:52px; height:52px; object-fit:contain; position:relative; z-index:1 }
+    .idwait__ring{
+      position:absolute; top:26px; left:50%; margin-left:-34px;
+      width:68px; height:68px; border-radius:50%;
+      border:3px solid rgba(215,179,91,.22);
+      border-top-color:#C39B3D;
+      animation:spin 1s linear infinite;
+    }
+    .idwait__title{
+      margin:16px 0 4px; font-weight:700; font-size:15px; color:#201c14;
+    }
+    .idwait__sub{ margin:0; font-size:12.5px; color:#6b6875 }
+    @keyframes fadeIn{ from{ opacity:0 } to{ opacity:1 } }
+
     #ocrStatus.ocr-status--clash{
       color:#7A4614; font-weight:600;
       background:rgba(162,96,28,.10); border-left:3px solid #A2650B;
@@ -4779,9 +4814,11 @@
         return;
       }
       
-      submitBtn.disabled = true; 
+      submitBtn.disabled = true;
       submitBtn.textContent = 'Verifying ID...';
-      showStatus('🔍 Scanning ID and checking for tampering...', 'info');
+      const wait = document.getElementById('idWait');
+      if (wait) wait.hidden = false;
+      showStatus('Checking your ID…', 'info');
       
       try {
         // A photo straight from a phone camera is routinely 4-12 MB, past the
@@ -4796,6 +4833,7 @@
         const res = await fetch('/user/api/verify-id', { method: 'POST', body: fd, credentials: 'same-origin' });
         const data = await readJson(res);
         
+        if (wait) wait.hidden = true;
         if (!data.ok) {
           const reasons = (data.fake_detection?.reasons || []).join(', ') || 'Unknown';
           showStatus(`<strong>❌ ID Rejected</strong><br/>${data.message}<br/><small>${reasons}</small>`, 'error');
@@ -4837,22 +4875,41 @@
         const statusType = authenticity >= 80 ? 'success' : 'warning';
         const statIcon = authenticity >= 80 ? '✓' : '⚠️';
         
-        showStatus(`<strong>${statIcon} ID Accepted</strong>${reasonsHtml}<br/>Submitting reservation...`, statusType);
-        
-        // Submit the form directly
-        setTimeout(() => {
-          form.submit();
-        }, 800);
+        showStatus(`<strong>${statIcon} ID accepted</strong>${reasonsHtml}<br/>Sending your reservation…`, statusType);
+
+        // The page is about to navigate; keep the overlay up so the button
+        // does not look pressable again in the meantime.
+        if (wait) {
+          wait.hidden = false;
+          const t = wait.querySelector('.idwait__title');
+          const u = wait.querySelector('.idwait__sub');
+          if (t) t.textContent = 'Sending your reservation';
+          if (u) u.textContent = 'Please wait — do not close this page.';
+        }
+        setTimeout(() => { form.submit(); }, 800);
         
       } catch (err) {
-        showStatus('Verification error: ' + err.message, 'error');
-        submitBtn.disabled = false; 
+        if (wait) wait.hidden = true;
+        showStatus(err.message, 'error');
+        submitBtn.disabled = false;
         submitBtn.textContent = 'Submit Reservation';
       }
     });
   })();
   </script>
   {% endif %}
+
+  {# Shown while the ID is being checked. Verification takes a few seconds
+     on a phone connection, and without this the button simply sat there —
+     long enough that people press it again. #}
+  <div class="idwait" id="idWait" hidden aria-live="polite">
+    <div class="idwait__box">
+      <img class="idwait__mark" src="{{ url_for('static', filename='img/elis-mark.png') }}" alt="" />
+      <div class="idwait__ring" aria-hidden="true"></div>
+      <p class="idwait__title">Checking your ID</p>
+      <p class="idwait__sub">Please wait — do not close this page.</p>
+    </div>
+  </div>
 
   <div class="modal" id="modalUnitDetails" hidden aria-modal="true" role="dialog">
     <div class="modal__backdrop js-modal-close"></div>

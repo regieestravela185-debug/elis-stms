@@ -255,6 +255,14 @@
         modal.addEventListener("hidden", closeHandler);
       }
 
+      // Details is opened from the building's unit list, so closing it has
+      // to put that list back — the same rule Terms and Privacy already
+      // follow below. Without it, closing details or clicking the backdrop
+      // closed everything and dropped the reader back onto the page, having
+      // to find the building and open it again to see the next unit.
+      returnToModal = ["#modalBuildingUnits", "#modalReserve"]
+        .find((id) => { const el = $(id); return el && !el.hidden; }) || null;
+
       closeModals();
       openModal("#modalUnitDetails");
       startAutoPlay();
@@ -721,6 +729,17 @@
       });
     }
 
+    // Mark a value as the reader's own the moment they touch the field.
+    // A flag around our own writes is what separates the two — e.isTrusted
+    // looked like the obvious test and is not dependable: it never came
+    // through for the <select>, so choosing an ID type by hand was recorded
+    // as if the scan had filled it.
+    let autofilling = false;
+    [reserveIdType, reserveIdNumber].forEach((el) => {
+      ["input", "change"].forEach((ev) =>
+        el.addEventListener(ev, () => { if (!autofilling) el.dataset.userTyped = "1"; }));
+    });
+
     reserveUpload.addEventListener("change", async () => {
       const file = reserveUpload.files && reserveUpload.files[0];
       if (!file) return;
@@ -747,11 +766,24 @@
       // the photo says something else, the reader is told here, with both
       // values in front of them, rather than finding out from a message
       // after the reservation has already gone in.
-      const typedType = reserveIdType.value;
-      const typedNumber = reserveIdNumber.value;
+      // Only what the person typed themselves is worth warning about. The
+      // fields are also filled by the previous scan, and comparing against
+      // those meant every re-upload announced a "mismatch" between two
+      // readings the reader never made — noise on top of a message that
+      // should be rare enough to be believed.
+      const typedType = reserveIdType.dataset.userTyped === "1" ? reserveIdType.value : "";
+      const typedNumber = reserveIdNumber.dataset.userTyped === "1" ? reserveIdNumber.value : "";
+      autofilling = true;
       reserveIdType.value = "";
       reserveIdNumber.value = "";
+      autofilling = false;
+      delete reserveIdType.dataset.userTyped;
+      delete reserveIdNumber.dataset.userTyped;
       if (clearBtn) clearBtn.hidden = false;
+
+      // A new photo answers whatever the last one was rejected for.
+      const verifyBox = document.getElementById("homeVerifyStatusBox");
+      if (verifyBox) { verifyBox.style.display = "none"; verifyBox.innerHTML = ""; }
 
       const fd = new FormData();
       fd.append("id_upload", file);
@@ -760,8 +792,14 @@
         const res = await fetch("/api/ocr-id", { method: "POST", body: fd });
         const data = await res.json();
         const detectedIdType = data.id_type && allowedIdTypes.has(data.id_type) ? data.id_type : (data.id_type ? "Other" : "");
+        // Filled by the scan, not by the reader — so a later upload does
+        // not treat these as something to disagree with.
+        autofilling = true;
         if (detectedIdType) reserveIdType.value = detectedIdType;
         if (data.id_number) reserveIdNumber.value = data.id_number;
+        autofilling = false;
+        delete reserveIdType.dataset.userTyped;
+        delete reserveIdNumber.dataset.userTyped;
 
         const norm = (v) => (v || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
         const clashes = [];
@@ -773,17 +811,22 @@
         }
 
         if (ocrStatus) {
-          ocrStatus.classList.toggle("ocr-status--clash", clashes.length > 0);
+          ocrStatus.classList.remove("ocr-status--clash", "ocr-status--ok");
           if (clashes.length) {
+            ocrStatus.classList.add("ocr-status--clash");
             ocrStatus.textContent =
               "This does not match what you entered — " + clashes.join("; ") +
               ". The photo is what staff will check, so the fields now show "
               + "what it says. Change them back only if the photo is wrong.";
+          } else if (data.id_type && data.id_number) {
+            ocrStatus.classList.add("ocr-status--ok");
+            ocrStatus.textContent = "Read this ID: " + data.id_type + " \u00b7 " +
+              data.id_number + ". Check it matches the card in your hand, then submit.";
           } else if (data.id_type || data.id_number) {
             ocrStatus.textContent = "Read from this photo: " +
               (data.id_type || "type not detected") +
               (data.id_number ? " \u00b7 " + data.id_number : "") +
-              ". Check it against the ID in your hand before you submit.";
+              ". Fill in what is missing before you submit.";
           } else {
             ocrStatus.textContent = data.ocr_note ||
               "Could not read this photo. Choose the ID type below and type the number.";

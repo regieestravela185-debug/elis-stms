@@ -727,6 +727,11 @@ def google_login():
     # Generate redirect URI
     redirect_uri = url_for("auth.google_callback", _external=True)
     
+    # The state Authlib stores lives in the session cookie. Without this the
+    # cookie is a browser-session one, and anything that drops it between
+    # the redirect out and the redirect back takes the state with it.
+    session.permanent = True
+
     # Initiate OAuth flow with account selection prompt
     # Forces Google to show account chooser every time
     return oauth.google.authorize_redirect(redirect_uri, prompt='select_account')
@@ -737,9 +742,30 @@ def google_callback():
     """Handle Google OAuth callback"""
     from app import oauth
     
+    from authlib.integrations.base_client.errors import MismatchingStateError
+
     try:
         # Get access token from Google
-        token = oauth.google.authorize_access_token()
+        try:
+            token = oauth.google.authorize_access_token()
+        except MismatchingStateError:
+            # The state Authlib left in the session is gone or no longer
+            # matches — the cookie was dropped, the flow was started twice
+            # in two tabs, or the browser came back to a stale callback.
+            #
+            # None of that is something the person can put right by trying
+            # again the same way, which is what they were being told to do:
+            # the sign-in appeared to reload and land them back where they
+            # started, with no explanation. Start the flow once more, with a
+            # marker so a genuinely broken setup cannot loop.
+            if not session.pop("google_retry", False):
+                session["google_retry"] = True
+                current_app.logger.info("OAuth state mismatch — restarting the flow once")
+                return redirect(url_for("auth.google_login"))
+            flash("Google sign-in could not be completed. Please try once more, "
+                  "or sign in with your email and password.", "warning")
+            return redirect(url_for("public.home") + "?auth=login")
+        session.pop("google_retry", None)
         
         # Get user info from Google
         user_info = token.get('userinfo')
