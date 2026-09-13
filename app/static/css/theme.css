@@ -227,12 +227,54 @@ button.topbar__user:hover{ background:rgba(215,179,91,.11) }
   transform-origin:top;
 }
 @keyframes pop{ from{ opacity:0; transform:translateY(-6px) scale(.985) } to{ opacity:1; transform:none } }
+/* Each panel's own geometry. Merging the two into one rule kept what they
+   share and lost what they do not: the notification panel had no width and
+   no right edge to hang from, and the search results had no width either,
+   so both collapsed to the width of their longest line. */
+.topbar-menu{ right:0; width:320px; max-width:calc(100vw - 32px) }
+.topbar-search__results{
+  left:0; width:380px; max-width:90vw;
+  max-height:420px; overflow-y:auto;
+}
+.topbar-menu[hidden],.topbar-search__results[hidden]{ display:none !important }
+/* The magnifier belongs inside the field, not beside it. */
+.topbar-search__icon{
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  pointer-events:none;
+}
+.topbar-iconbtn{ position:relative }
+.topbar-iconbtn:hover,button.topbar__user:hover{ border-color:rgba(215,179,91,.25) }
 .topbar-menu__head{
   padding:13px 16px; border-bottom:1px solid var(--line-2);
   font-weight:600; font-size:13.5px;
 }
 .topbar-menu__count{ font-size:11px; font-weight:700; color:var(--g600) }
-.notif-item,.menu-link,.search-item{ transition:background var(--t-fast) var(--ease) }
+
+/* These carry the layout of a dropdown row. Moving the old inline block
+   into this file kept each rule's colour and dropped its geometry, so the
+   items lost their padding and their links went back to being underlined —
+   a notification read as a wall of underlined text in a cramped panel. */
+.notif-item,.search-item{
+  display:block; text-decoration:none;
+  transition:background var(--t-fast) var(--ease);
+}
+.notif-item{ padding:12px 16px; border-bottom:1px solid var(--line-2) }
+.notif-item:last-child{ border-bottom:0 }
+.search-item{ padding:9px 16px }
+.menu-link{
+  display:block; width:100%; text-align:left;
+  padding:11px 16px; text-decoration:none;
+  color:var(--ink); font-size:13px; font-weight:500;
+  background:none; border:0; cursor:pointer; font-family:inherit;
+  transition:background var(--t-fast) var(--ease);
+}
+.notif-item__title{ display:block; color:var(--ink) }
+.notif-item__sub{ display:block; margin-top:2px }
+.search-item__sub{ display:block }
+.topbar-menu__head{
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+}
+.topbar-menu__count{ white-space:nowrap; flex:none }
 .notif-item:hover,.menu-link:hover,.search-item:hover,.search-item.is-active{
   background:var(--g50);
 }
