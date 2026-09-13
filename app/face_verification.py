@@ -144,6 +144,31 @@ def detect_fake_id(image_path: str) -> dict:
             positives.append("Valid government QR code detected")
             fake_score = max(0.0, fake_score - 0.35)
 
+        # ── Signals that are weak alone and strong together ──────────
+        # An image saved off the web has no camera EXIF, is often WEBP or
+        # PNG rather than JPEG, and has been cropped to an aspect no camera
+        # produces. Each of those is weak on its own — a legitimate scan
+        # can show any one of them — so each carries a small weight, and a
+        # downloaded fake ID scored 0.23 and was reported as "77% likely
+        # genuine" with the evidence listed underneath it.
+        #
+        # Their co-occurrence is not weak. Nothing that came out of a camera
+        # has all three. Counting them together is what separates a scan of
+        # a real card from a picture saved off a search result.
+        not_from_camera = sum([
+            not has_camera_exif,
+            img_format in ("PNG", "WEBP", "GIF", "BMP", "TIFF"),
+            aspect > 2.6 or aspect < 1.15,   # a card is about 1.59 wide
+            width * height < 480_000,        # smaller than a phone ever shoots
+        ])
+        if not_from_camera >= 3:
+            reasons.append("Several signs this image did not come from a camera "
+                           "— no camera data, unusual format, unusual shape")
+            fake_score += 0.45
+        elif not_from_camera == 2:
+            reasons.append("Two signs this image may not be a photo of a physical card")
+            fake_score += 0.20
+
         fake_score = max(0.0, min(fake_score, 1.0))
         authenticity = round((1.0 - fake_score) * 100)
 

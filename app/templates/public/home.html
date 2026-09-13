@@ -669,61 +669,13 @@
     /* ── ID capture ────────────────────────────────────────────────── */
     .idpick{ display:flex; gap:10px; align-items:center }
     .idpick__file{ flex:1; min-width:0 }
-    .idpick__cam{ flex:none; white-space:nowrap }
+    .idpick__clear{
+      flex:none; width:40px; padding:0; font-size:20px; line-height:1;
+      color:var(--muted);
+    }
+    .idpick__clear:hover{ color:#b3261e; border-color:rgba(179,38,30,.35) }
     .idpick__chosen{ font-size:12px; margin-top:6px; color:#7F5F1C; font-weight:600 }
 
-    .idcam{
-      position:fixed; inset:0; z-index:12000;
-      background:#0E0C09; display:flex; flex-direction:column;
-    }
-    .idcam[hidden]{ display:none !important }
-    .idcam__stage{ position:relative; flex:1; overflow:hidden; background:#000 }
-    .idcam__video,.idcam__shot{
-      position:absolute; inset:0; width:100%; height:100%;
-      object-fit:cover; display:block;
-    }
-    /* The dim is drawn as a border on the guide rather than four panels, so
-       the cutout is always exactly the rectangle being photographed. */
-    .idcam__guide{
-      position:absolute; border-radius:14px;
-      box-shadow:0 0 0 100vmax rgba(10,8,6,.66);
-      outline:2px solid rgba(229,203,120,.95);
-    }
-    .idcam__corner{
-      position:absolute; width:26px; height:26px;
-      border:3px solid #E5CB78;
-    }
-    .idcam__corner--tl{ top:-3px; left:-3px; border-right:0; border-bottom:0; border-radius:12px 0 0 0 }
-    .idcam__corner--tr{ top:-3px; right:-3px; border-left:0; border-bottom:0; border-radius:0 12px 0 0 }
-    .idcam__corner--bl{ bottom:-3px; left:-3px; border-right:0; border-top:0; border-radius:0 0 0 12px }
-    .idcam__corner--br{ bottom:-3px; right:-3px; border-left:0; border-top:0; border-radius:0 0 12px 0 }
-    .idcam__hint{
-      position:absolute; left:0; right:0; text-align:center;
-      color:rgba(247,243,232,.92); font-size:14px; font-weight:600;
-      margin:0; padding:0 24px; text-shadow:0 1px 6px rgba(0,0,0,.6);
-    }
-    .idcam__bar{
-      flex:none; display:flex; align-items:center; justify-content:space-between;
-      gap:16px; padding:18px 22px calc(18px + env(safe-area-inset-bottom));
-      background:#0E0C09;
-    }
-    .idcam__btn{
-      background:none; border:0; cursor:pointer; font-size:14px; font-weight:600;
-      padding:10px 6px; font-family:inherit;
-    }
-    .idcam__btn--text{ color:rgba(247,243,232,.82) }
-    .idcam__btn--use{
-      color:#221B08; background:linear-gradient(180deg,#E5CB78,#C39B3D);
-      border-radius:10px; padding:11px 20px;
-    }
-    .idcam__shutter{
-      width:68px; height:68px; border-radius:50%; cursor:pointer;
-      border:4px solid rgba(247,243,232,.9); background:#E5CB78;
-      box-shadow:0 0 0 3px rgba(14,12,9,.9) inset;
-      transition:transform .12s ease;
-    }
-    .idcam__shutter:active{ transform:scale(.93) }
-    .idcam__shutter[hidden]{ display:none }
 
     /* ── One dark band, and depth for the cream ──────────────────────
        The section had no background at all — a white card on a cream page
@@ -4722,12 +4674,10 @@
         <label class="label">Upload ID (image/PDF)</label>
         <div class="idpick">
           <input class="input idpick__file" type="file" name="id_upload" id="reserveIdUpload" accept="image/*,.pdf" required />
-          {# Shown only once the browser reports a camera. On a laptop with
-             none, or where permission is refused, the file input alone is
-             still a complete way through. #}
-          <button type="button" class="btn btn--ghost idpick__cam" id="idCameraBtn" hidden>
-            Use camera
-          </button>
+          {# Clears the chosen file and everything read from it. Without it
+             the only way to undo a wrong photo was to pick another one. #}
+          <button type="button" class="btn btn--ghost idpick__clear" id="reserveIdClear"
+                  title="Remove this photo" aria-label="Remove this photo" hidden>&times;</button>
         </div>
         <p class="muted idpick__chosen" id="idChosenNote" hidden></p>
         <p class="muted" style="font-size: 12px; margin-top: 4px;">Accepted IDs: National ID, UMID, PhilHealth, Driver's License, Passport, SSS, Postal ID, PRC ID, Voter's ID, TIN ID, or other valid government ID.</p>
@@ -4814,145 +4764,6 @@
       });
     }
 
-    // ── Camera capture ──────────────────────────────────────────────
-    // Only the rectangle inside the guide is kept. That is what makes the
-    // OCR's job easy — no desk, no hand, no floor — and it is why what
-    // leaves the phone is a few hundred kilobytes instead of several
-    // megabytes.
-    //
-    // The shutter is deliberately a button rather than automatic. Firing on
-    // "looks sharp enough" is easy to write and unreliable to use: it goes
-    // off while the card is still moving, or refuses to go off at all in
-    // poor light, and either way the person has no way to insist. A button
-    // always works.
-    // The overlay markup sits further down this file than the script, so at
-    // the moment this runs #idCam does not exist yet. Wait for the parse.
-    document.addEventListener('DOMContentLoaded', setupIdCamera);
-    if (document.readyState !== 'loading') setupIdCamera();
-
-    function setupIdCamera () {
-      const CARD = 1.586;                       // ID-1, 85.6 x 54 mm
-      const cam = document.getElementById('idCam');
-      const btn = document.getElementById('idCameraBtn');
-      if (!cam || !btn || btn.dataset.wired === '1') return;
-      btn.dataset.wired = '1';
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-
-      const video   = document.getElementById('idCamVideo');
-      const shot    = document.getElementById('idCamShot');
-      const guide   = document.getElementById('idCamGuide');
-      const hint    = document.getElementById('idCamHint');
-      const shutter = document.getElementById('idCamShutter');
-      const cancel  = document.getElementById('idCamCancel');
-      const retake  = document.getElementById('idCamRetake');
-      const use     = document.getElementById('idCamUse');
-      const note    = document.getElementById('idChosenNote');
-      let stream = null, captured = null;
-
-      btn.hidden = false;
-
-      function layoutGuide () {
-        const st = cam.querySelector('.idcam__stage').getBoundingClientRect();
-        const w = Math.min(st.width * 0.88, (st.height * 0.78) * CARD);
-        const h = w / CARD;
-        guide.style.width  = w + 'px';
-        guide.style.height = h + 'px';
-        guide.style.left   = ((st.width  - w) / 2) + 'px';
-        guide.style.top    = ((st.height - h) / 2) + 'px';
-        hint.style.top     = ((st.height - h) / 2 + h + 18) + 'px';
-      }
-
-      async function open () {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' },
-                     width: { ideal: 1920 }, height: { ideal: 1080 } },
-            audio: false
-          });
-        } catch (err) {
-          showStatus('Could not open the camera: ' + (err && err.name === 'NotAllowedError'
-            ? 'permission was declined. You can still choose a photo with the file picker.'
-            : (err.message || 'unavailable')), 'warning');
-          return;
-        }
-        video.srcObject = stream;
-        cam.hidden = false;
-        document.body.style.overflow = 'hidden';
-        await video.play().catch(() => {});
-        layoutGuide();
-        setStage('live');
-      }
-
-      function close () {
-        if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-        video.srcObject = null;
-        cam.hidden = true;
-        document.body.style.overflow = '';
-      }
-
-      function setStage (stage) {
-        const live = stage === 'live';
-        video.hidden   = !live;
-        shot.hidden    = live;
-        shutter.hidden = !live;
-        retake.hidden  = live;
-        use.hidden     = live;
-        guide.style.display = live ? '' : 'none';
-        hint.textContent = live ? 'Fit your ID inside the frame'
-                                : 'Readable? Use it. Blurry? Retake.';
-      }
-
-      function capture () {
-        // The video is drawn with object-fit: cover, so the part on screen is
-        // a crop of the frame. The guide has to be mapped back through that
-        // same crop or the photo comes out offset from what was framed.
-        const st = cam.querySelector('.idcam__stage').getBoundingClientRect();
-        const vw = video.videoWidth, vh = video.videoHeight;
-        if (!vw || !vh) return;
-        const scale = Math.max(st.width / vw, st.height / vh);
-        const offX = (vw * scale - st.width) / 2;
-        const offY = (vh * scale - st.height) / 2;
-        const g = guide.getBoundingClientRect();
-        const sx = (g.left - st.left + offX) / scale;
-        const sy = (g.top  - st.top  + offY) / scale;
-        const sw = g.width  / scale;
-        const sh = g.height / scale;
-
-        const outW = Math.min(1800, Math.round(sw));
-        shot.width  = outW;
-        shot.height = Math.round(outW / CARD);
-        shot.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, shot.width, shot.height);
-        shot.toBlob(function (blob) {
-          if (!blob) { showStatus('Could not save that photo. Please try again.', 'warning'); return; }
-          captured = new File([blob], 'id-camera.jpg', { type: 'image/jpeg' });
-          setStage('review');
-        }, 'image/jpeg', 0.9);
-      }
-
-      function accept () {
-        if (!captured) return;
-        // Hand it to the file input the form already posts, so nothing
-        // downstream needs to know the camera exists.
-        const dt = new DataTransfer();
-        dt.items.add(captured);
-        idUpload.files = dt.files;
-        idUpload.dispatchEvent(new Event('change', { bubbles: true }));
-        if (note) {
-          note.hidden = false;
-          note.textContent = 'Photo captured — ' + Math.round(captured.size / 1024) + ' KB, ready to submit.';
-        }
-        close();
-      }
-
-      btn.addEventListener('click', open);
-      cancel.addEventListener('click', close);
-      shutter.addEventListener('click', capture);
-      retake.addEventListener('click', () => setStage('live'));
-      use.addEventListener('click', accept);
-      window.addEventListener('resize', () => { if (!cam.hidden) layoutGuide(); });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !cam.hidden) close(); });
-    }
-
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -5035,31 +4846,6 @@
   })();
   </script>
   {% endif %}
-
-  {# ── Camera capture for the ID ──────────────────────────────────────
-     A live view with an ID-shaped cutout, so the photo arrives framed and
-     right-way-up instead of as whatever the phone's own camera produced.
-     Only the area inside the guide is kept, which is also why the upload
-     is small: the desk, the hand and the floor never leave the device. #}
-  <div class="idcam" id="idCam" hidden>
-    <div class="idcam__stage">
-      <video class="idcam__video" id="idCamVideo" playsinline muted autoplay></video>
-      <canvas class="idcam__shot" id="idCamShot" hidden></canvas>
-      <div class="idcam__guide" id="idCamGuide" aria-hidden="true">
-        <span class="idcam__corner idcam__corner--tl"></span>
-        <span class="idcam__corner idcam__corner--tr"></span>
-        <span class="idcam__corner idcam__corner--bl"></span>
-        <span class="idcam__corner idcam__corner--br"></span>
-      </div>
-      <p class="idcam__hint" id="idCamHint">Fit your ID inside the frame</p>
-    </div>
-    <div class="idcam__bar">
-      <button type="button" class="idcam__btn idcam__btn--text" id="idCamCancel">Cancel</button>
-      <button type="button" class="idcam__shutter" id="idCamShutter" aria-label="Take photo"></button>
-      <button type="button" class="idcam__btn idcam__btn--text" id="idCamRetake" hidden>Retake</button>
-      <button type="button" class="idcam__btn idcam__btn--use" id="idCamUse" hidden>Use photo</button>
-    </div>
-  </div>
 
   <div class="modal" id="modalUnitDetails" hidden aria-modal="true" role="dialog">
     <div class="modal__backdrop js-modal-close"></div>
