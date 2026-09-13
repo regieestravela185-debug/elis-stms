@@ -674,6 +674,13 @@
       color:var(--muted);
     }
     .idpick__clear:hover{ color:#b3261e; border-color:rgba(179,38,30,.35) }
+    /* A disagreement between what was typed and what the photo says is the
+       one message here that must not read like a tip. */
+    #ocrStatus.ocr-status--clash{
+      color:#7A4614; font-weight:600;
+      background:rgba(162,96,28,.10); border-left:3px solid #A2650B;
+      padding:9px 12px; border-radius:0 8px 8px 0; margin-top:8px;
+    }
     .idpick__chosen{ font-size:12px; margin-top:6px; color:#7F5F1C; font-weight:600 }
 
 

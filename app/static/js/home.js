@@ -742,6 +742,13 @@
       // first upload they never were, so choosing a second, different ID
       // left the first one's type and number sitting in the form while the
       // photo underneath had changed.
+      //
+      // What was typed before the scan is kept long enough to compare: if
+      // the photo says something else, the reader is told here, with both
+      // values in front of them, rather than finding out from a message
+      // after the reservation has already gone in.
+      const typedType = reserveIdType.value;
+      const typedNumber = reserveIdNumber.value;
       reserveIdType.value = "";
       reserveIdNumber.value = "";
       if (clearBtn) clearBtn.hidden = false;
@@ -755,12 +762,32 @@
         const detectedIdType = data.id_type && allowedIdTypes.has(data.id_type) ? data.id_type : (data.id_type ? "Other" : "");
         if (detectedIdType) reserveIdType.value = detectedIdType;
         if (data.id_number) reserveIdNumber.value = data.id_number;
+
+        const norm = (v) => (v || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+        const clashes = [];
+        if (typedType && detectedIdType && typedType !== detectedIdType) {
+          clashes.push("you chose " + typedType + ", but this photo reads as " + detectedIdType);
+        }
+        if (typedNumber && data.id_number && norm(typedNumber) !== norm(data.id_number)) {
+          clashes.push("you typed " + typedNumber + ", but this photo reads " + data.id_number);
+        }
+
         if (ocrStatus) {
-          ocrStatus.textContent = data.id_type || data.id_number
-            ? "Read from this photo: " + (data.id_type || "type not detected") +
+          ocrStatus.classList.toggle("ocr-status--clash", clashes.length > 0);
+          if (clashes.length) {
+            ocrStatus.textContent =
+              "This does not match what you entered — " + clashes.join("; ") +
+              ". The photo is what staff will check, so the fields now show "
+              + "what it says. Change them back only if the photo is wrong.";
+          } else if (data.id_type || data.id_number) {
+            ocrStatus.textContent = "Read from this photo: " +
+              (data.id_type || "type not detected") +
               (data.id_number ? " \u00b7 " + data.id_number : "") +
-              ". Check it against the ID in your hand before you submit."
-            : (data.ocr_note ? `${data.ocr_note} Please choose a valid ID from the dropdown and type the ID number manually.` : "OCR could not confidently detect fields. Please choose a valid ID from the dropdown and type the ID number manually.");
+              ". Check it against the ID in your hand before you submit.";
+          } else {
+            ocrStatus.textContent = data.ocr_note ||
+              "Could not read this photo. Choose the ID type below and type the number.";
+          }
         }
       } catch (_) {
         if (ocrStatus) ocrStatus.textContent = "OCR unavailable right now. Please choose a valid ID from the dropdown and type the ID number manually.";
