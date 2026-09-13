@@ -242,8 +242,13 @@
    The extra class raises specificity so document order stops deciding it. */
 .dash-body .side-group__label,
 .dash-body .side-nav__label{
-  color:rgba(247,243,232,.62) !important;
-  font-weight:700; letter-spacing:.16em;
+  /* These were the same ivory as the links, only fainter, so they read as
+     dimmer links rather than as the headings above them. Brass separates
+     them by hue instead of by opacity — dark enough not to compete with
+     the active item, which is the one thing in the sidebar that should be
+     the brightest gold. */
+  color:#B2934E !important;
+  font-weight:700; letter-spacing:.18em; font-size:10px;
 }
 .dash-body .dash__brandTitle{ color:#F7F3E8 !important }
 .dash-body .dash__brandSub{ color:rgba(247,243,232,.55) !important }
