@@ -707,6 +707,20 @@
   }
 
   if (reserveUpload && reserveIdType && reserveIdNumber) {
+    // Clearing the file has to clear what was read from it too, or the form
+    // keeps describing a photo that is no longer attached.
+    const clearBtn = document.getElementById("reserveIdClear");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        reserveUpload.value = "";
+        reserveIdType.value = "";
+        reserveIdNumber.value = "";
+        clearBtn.hidden = true;
+        if (ocrStatus) ocrStatus.textContent =
+          "Tip: OCR tries to detect ID Type and ID Number after upload. You can still choose the ID type manually from the dropdown.";
+      });
+    }
+
     reserveUpload.addEventListener("change", async () => {
       const file = reserveUpload.files && reserveUpload.files[0];
       if (!file) return;
@@ -723,6 +737,15 @@
         "TIN ID",
         "Other",
       ]);
+      // A new file describes a new ID, so whatever the last one produced is
+      // now wrong. The fields used to be filled only when empty — after a
+      // first upload they never were, so choosing a second, different ID
+      // left the first one's type and number sitting in the form while the
+      // photo underneath had changed.
+      reserveIdType.value = "";
+      reserveIdNumber.value = "";
+      if (clearBtn) clearBtn.hidden = false;
+
       const fd = new FormData();
       fd.append("id_upload", file);
       if (ocrStatus) ocrStatus.textContent = "Scanning ID (OCR)...";
@@ -730,11 +753,13 @@
         const res = await fetch("/api/ocr-id", { method: "POST", body: fd });
         const data = await res.json();
         const detectedIdType = data.id_type && allowedIdTypes.has(data.id_type) ? data.id_type : (data.id_type ? "Other" : "");
-        if (detectedIdType && !reserveIdType.value) reserveIdType.value = detectedIdType;
-        if (data.id_number && !reserveIdNumber.value) reserveIdNumber.value = data.id_number;
+        if (detectedIdType) reserveIdType.value = detectedIdType;
+        if (data.id_number) reserveIdNumber.value = data.id_number;
         if (ocrStatus) {
           ocrStatus.textContent = data.id_type || data.id_number
-            ? "OCR done. Please review the detected ID type and ID number before submit. If needed, choose a valid ID manually from the dropdown."
+            ? "Read from this photo: " + (data.id_type || "type not detected") +
+              (data.id_number ? " \u00b7 " + data.id_number : "") +
+              ". Check it against the ID in your hand before you submit."
             : (data.ocr_note ? `${data.ocr_note} Please choose a valid ID from the dropdown and type the ID number manually.` : "OCR could not confidently detect fields. Please choose a valid ID from the dropdown and type the ID number manually.");
         }
       } catch (_) {
