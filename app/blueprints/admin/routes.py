@@ -2171,6 +2171,37 @@ def approve_reservation(reservation_id: int):
     _generate_payment_ledger(monthly_payment)
     _generate_payment_ledger(deposit_payment)
 
+    # Somebody shopping for a place may reserve several units while they make
+    # up their mind, and each reservation takes its unit off the market so two
+    # people cannot claim the same one. The moment they are approved for one,
+    # the rest are settled here. One email is one account is one unit at Elis
+    # — User.email and TenantProfile.user_id are both unique — so the others
+    # could never have been approved anyway. Left alone they stayed PENDING
+    # forever and held their units at RESERVED: invisible on the homepage,
+    # unrentable, with nothing on any screen saying why.
+    released = []
+    others = (db.session.query(Reservation)
+              .filter(Reservation.user_id == user.id,
+                      Reservation.id != r.id,
+                      Reservation.status == ReservationStatus.PENDING)
+              .all())
+    for other in others:
+        other.status = ReservationStatus.CANCELLED
+        other_unit = db.session.get(Unit, other.unit_id)
+        if not other_unit or other_unit.id == unit.id:
+            continue  # a second claim on the unit they just took; it is theirs
+        # Someone else may be waiting on that same unit. Only hand it back to
+        # the market when this was the last claim on it, and only from
+        # RESERVED — never overrule an OCCUPIED or UNPAID unit.
+        still_claimed = (db.session.query(Reservation)
+                         .filter(Reservation.unit_id == other_unit.id,
+                                 Reservation.id != other.id,
+                                 Reservation.status == ReservationStatus.PENDING)
+                         .count())
+        if not still_claimed and other_unit.status == UnitStatus.RESERVED:
+            other_unit.status = UnitStatus.AVAILABLE
+            released.append(other_unit.unit_code)
+
     db.session.add(ActivityLog(actor_user_id=current_user.id, action="reservation_approved"))  # type: ignore[attr-defined]
     db.session.commit()
 
@@ -2183,7 +2214,11 @@ def approve_reservation(reservation_id: int):
     emit_unit_status_update()
 
     _send_reservation_result_email(r.email, status=ReservationStatus.APPROVED, unit_code=unit.unit_code)
-    flash("Reservation approved. User is now a Tenant. Deposit and monthly payment recorded.", "success")
+    msg = "Reservation approved. User is now a Tenant. Deposit and monthly payment recorded."
+    if others:
+        msg += f" Their {len(others)} other pending reservation{'s' if len(others) != 1 else ''} were cancelled"
+        msg += f", returning {', '.join(released)} to Available." if released else "."
+    flash(msg, "success")
     return redirect(url_for("admin.reservations"))
 
 
