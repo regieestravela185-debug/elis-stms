@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 import base64
 from pathlib import Path
 
@@ -128,6 +129,23 @@ def _extract_id_number(text: str) -> str:
     return ""
 
 
+# What the reader is told when the scan does not work. Short, and about
+# what they can do next — never about sockets or SSL.
+UNREADABLE = ("Could not read this photo. Choose the ID type below and type "
+              "the number, or try a clearer picture.")
+OFFLINE = ("The ID scanner is not responding right now. Choose the ID type "
+           "below and type the number — your reservation will still go "
+           "through, and staff will check the photo.")
+
+
+def _log(msg, *args):
+    try:
+        from flask import current_app
+        current_app.logger.warning(msg, *args)
+    except Exception:
+        pass
+
+
 def _ocr_api_key() -> str:
     """The OCR.space key, from config when one is set."""
     try:
@@ -188,38 +206,56 @@ def scan_id_fields(file_path: str | Path) -> dict[str, str]:
         image_data = base64.b64encode(raw).decode()
 
         # Call OCR.space API
-        response = requests.post(
-            "https://api.ocr.space/parse/image",
-            timeout=25,                    # never let a hung call hold a worker
-            data={
-                "base64Image": f"data:image/{mime};base64,{image_data}",
-                "language": "eng",
-                "isOverlayRequired": False,
-                "scale": True,
-                "detectOrientation": True,
-                "OCREngine": "2",
-            },
+        def _call():
+            return requests.post(
+                "https://api.ocr.space/parse/image",
+                timeout=25,                # never let a hung call hold a worker
+                data={
+                    "base64Image": f"data:image/{mime};base64,{image_data}",
+                    "language": "eng",
+                    "isOverlayRequired": False,
+                    "scale": True,
+                    "detectOrientation": True,
+                    "OCREngine": "2",
+                },
             # "helloworld" is OCR.space's public demo key: rate-limited to a
             # handful of calls and shared with everyone on the internet, so
             # it returns nothing most of the time. Set OCR_SPACE_API_KEY to
             # a free registered key and OCR starts working; the demo key is
             # kept only so a local run does not hard-fail.
-            headers={"apikey": _ocr_api_key()},
-        )
+                headers={"apikey": _ocr_api_key()},
+            )
+
+        # One retry. The failure reported from the field was an SSL timeout
+        # reaching api.ocr.space — a transient network fault, nothing to do
+        # with the photo, and it left the reader typing everything by hand.
+        try:
+            response = _call()
+        except Exception:
+            time.sleep(1.5)
+            response = _call()
+
         result = response.json()
 
         if result.get("IsErroredOnProcessing", False):
-            return {"id_type": "", "id_number": "", "ocr_note": f"OCR API error: {result.get('ErrorMessage', 'Unknown error')}"}
+            _log("OCR service error: %s", result.get("ErrorMessage", "unknown"))
+            return {"id_type": "", "id_number": "", "ocr_note": UNREADABLE}
 
         if not result.get("ParsedResults"):
-            return {"id_type": "", "id_number": "", "ocr_note": "OCR API returned no results."}
+            _log("OCR returned no parsed results")
+            return {"id_type": "", "id_number": "", "ocr_note": UNREADABLE}
 
         text = result["ParsedResults"][0].get("ParsedText", "")
-    except Exception as e:
-        return {"id_type": "", "id_number": "", "ocr_note": f"OCR API request failed: {str(e)}"}
+    except Exception as exc:
+        # The technical detail belongs in the log, not on the screen. This
+        # used to hand the reader a raw Python traceback string —
+        # "HTTPSConnectionPool(host='api.ocr.space'... SSLError" — which
+        # tells them nothing they can act on.
+        _log("OCR request failed: %s", exc)
+        return {"id_type": "", "id_number": "", "ocr_note": OFFLINE}
 
     if not text.strip():
-        return {"id_type": "", "id_number": "", "ocr_note": "OCR found no readable text."}
+        return {"id_type": "", "id_number": "", "ocr_note": UNREADABLE}
 
     detected_type = _detect_id_type(text)
     
