@@ -209,7 +209,12 @@ def scan_id_fields(file_path: str | Path) -> dict[str, str]:
         def _call():
             return requests.post(
                 "https://api.ocr.space/parse/image",
-                timeout=25,                # never let a hung call hold a worker
+                # Gunicorn runs a single eventlet worker and kills it after
+                # 30s. Two attempts at 25s each could reach 51s — past that
+                # line — and the kill takes down every other request in
+                # flight with it, including somebody's sign-in. Two attempts
+                # now fit inside the budget with room to spare.
+                timeout=12,
                 data={
                     "base64Image": f"data:image/{mime};base64,{image_data}",
                     "language": "eng",
@@ -232,7 +237,7 @@ def scan_id_fields(file_path: str | Path) -> dict[str, str]:
         try:
             response = _call()
         except Exception:
-            time.sleep(1.5)
+            time.sleep(1)
             response = _call()
 
         result = response.json()
