@@ -90,7 +90,15 @@ body.dash-body{
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
-.dash{ grid-template-columns:264px 1fr }
+/* Widening the sidebar column has to stop at the same breakpoint where
+   app.css turns the sidebar into an off-canvas drawer. Unconditional, this
+   line outranked app.css's single-column rule — a later sheet beats an
+   earlier media query at equal specificity — so below 981px the sidebar left
+   the grid but the column stayed, and every admin and tenant page squeezed
+   its content into 264px with the rest of the window empty. */
+@media (min-width:981px){
+  .dash{ grid-template-columns:264px 1fr }
+}
 .dash__side{
   background:linear-gradient(180deg,#fffdf8 0%,#f7f2e6 100%);
   border-right:1px solid rgba(215,179,91,.18);
