@@ -403,6 +403,358 @@
       box-shadow: 0 2px 8px rgba(215, 179, 91, 0.3);
     }
 
+    /* ---- 3D view of the compound ---------------------------------------
+       Real CSS 3D boxes rather than a drawing: the site can be turned with
+       a drag, and a selected building pulls apart into its storeys so a
+       floor can be picked straight off it. --spin is set on the panel by
+       the script; everything that must stay readable counter-rotates by it.
+       ------------------------------------------------------------------ */
+    .site3d {
+      position: relative;
+      height: 470px;
+      perspective: 1500px;
+      perspective-origin: 50% 42%;
+      border-radius: 14px;
+      overflow: hidden;
+      background:
+        radial-gradient(120% 90% at 50% 4%, #FBF7EE 0%, #F1E9D9 52%, #E4D9C2 100%);
+      cursor: grab;
+      user-select: none;
+      touch-action: pan-y;
+    }
+    .site3d.is-dragging { cursor: grabbing }
+
+    .site3d__stage {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 0; height: 0;
+      transform-style: preserve-3d;
+      /* scale3d, not scale: a 2D scale flattens the preserve-3d subtree and
+         every wall collapses into its roof. */
+      transform: translate3d(-27px, -44px, 0) scale3d(1.5, 1.5, 1.5)
+                 rotateX(var(--tilt, 58deg)) rotateZ(var(--spin, -135deg));
+      transition: transform .12s linear;
+    }
+    .site3d.is-dragging .site3d__stage { transition: none }
+
+    .site3d__ground {
+      position: absolute;
+      left: -238px; top: -128px;
+      width: 460px; height: 244px;
+      border-radius: 6px;
+      background: linear-gradient(150deg, #F5F0E4, #EAE1CE);
+      box-shadow: inset 0 0 0 1px rgba(96,76,44,.22);
+    }
+    /* every child is placed from the same origin as the ground */
+    .site3d__stage > * { position: absolute; left: -238px; top: -128px }
+
+    /* ---- ground surfaces ---- */
+    .b3d-road, .b3d-pad {
+      width: var(--w); height: var(--d);
+      transform: translate3d(var(--x), var(--y), .4px);
+    }
+    .b3d-road { background: #D5C8AE; box-shadow: inset 0 0 0 1px rgba(96,76,44,.18) }
+    .b3d-pad  { background: #E6DCC6; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(96,76,44,.14) }
+
+    /* The drive in from the highway, laid as one strip per traced segment so
+       it bends the way the drawing does. Each is rotated about its left edge,
+       which is where the previous segment ended. */
+    .b3d-drive {
+      width: var(--w); height: var(--d);
+      transform-origin: 0 50%;
+      transform: translate3d(var(--x), var(--y), .5px) rotate(var(--rot, 0deg)) translateY(-50%);
+      background: #DCCEB1;
+      box-shadow: inset 0 0 0 1px rgba(96,76,44,.26), 0 1px 2px rgba(70,54,26,.10);
+    }
+
+    /* The low planting that lines the drive on the plan. */
+    .b3d-hedge {
+      width: 22px; height: 7px;
+      transform-origin: 0 50%;
+      transform: translate3d(var(--x), var(--y), .9px) rotate(var(--rot, 0deg)) translateY(-50%);
+      border-radius: 4px;
+      background: linear-gradient(180deg, #9BAA82, #7E8E64);
+      box-shadow: 0 2px 4px rgba(46,58,34,.3);
+    }
+
+    /* ---- one storey ---- */
+    .b3d-slab {
+      width: var(--w); height: var(--d);
+      transform: translate3d(var(--x), var(--y), calc(var(--lift) + var(--i) * var(--exp, 0px)));
+      transform-style: preserve-3d;
+      transition: transform .4s cubic-bezier(.22,.61,.36,1), filter .22s ease;
+    }
+    .b3d__f {
+      position: absolute; display: block; left: 0; top: 0;
+      transform-origin: 0 0;
+      background: var(--wall);
+      box-shadow: inset 0 0 0 .7px rgba(52,38,16,.45);
+    }
+    .b3d__f--roof {
+      width: var(--w); height: var(--d);
+      transform: translateZ(var(--h));
+      background: var(--roof);
+      border-radius: 2px;
+      box-shadow: inset 0 0 0 .7px rgba(52,38,16,.48);
+    }
+    .b3d__f--n, .b3d__f--s { width: var(--w); height: var(--h); transform: rotateX(90deg) }
+    .b3d__f--s { top: var(--d) }
+    .b3d__f--e, .b3d__f--w { width: var(--d); height: var(--h); transform: rotateZ(90deg) rotateX(90deg) }
+    .b3d__f--e { left: var(--w) }
+    /* A band of windows across each storey, so a block reads as a building. */
+    .b3d__f--n, .b3d__f--s, .b3d__f--e, .b3d__f--w {
+      background:
+        linear-gradient(to bottom,
+          transparent 0, transparent 26%,
+          var(--win) 26%, var(--win) 72%,
+          transparent 72%, transparent 100%),
+        var(--wall);
+    }
+    .b3d__shadow {
+      position: absolute; inset: 0; display: block;
+      transform: translateZ(.2px) translate(6px, 6px);
+      background: rgba(60,44,20,.18);
+      filter: blur(4px);
+    }
+
+    .b3d-slab--plain { --wall:#C5B99E; --roof:#D9CFB6; --win:rgba(104,86,54,.20) }
+    .b3d-slab--rent  { --wall:#B7A478; --roof:#DCCB9F; --win:rgba(70,54,22,.32); cursor: pointer }
+    .b3d-slab--rent:hover { filter: brightness(1.07) }
+    .b3d-slab--rent.is-on {
+      --wall:#C9A340; --roof:#F0CB63; --win:rgba(70,48,6,.34);
+      --exp: 11px;                      /* storeys separate when selected */
+    }
+    /* The storey being filtered to stands proud of the rest. */
+    .b3d-slab--rent.is-floor {
+      --wall:#E8BE4C; --roof:#FBDD84;
+      filter: brightness(1.08) drop-shadow(0 0 10px rgba(226,178,63,.55));
+    }
+
+    /* ---- names written on the plan ---- */
+    .b3d-note {
+      width: 0; height: 0;
+      transform: translate3d(var(--x), var(--y), var(--z, 1px))
+                 rotateZ(calc(-1 * var(--spin, -135deg))) rotateX(calc(-1 * var(--tilt, 58deg)));
+      pointer-events: none;
+    }
+    .b3d-note span {
+      position: absolute; left: 0; top: 0;
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+      padding: 2px 7px 3px;
+      border-radius: 5px;
+      font: 700 7.5px/1 'Inter', system-ui, sans-serif;
+      letter-spacing: .08em;
+      color: #6E5B37;
+      background: rgba(255,253,247,.86);
+      box-shadow: inset 0 0 0 1px rgba(130,106,60,.22);
+    }
+
+    /* ---- chips ---- */
+    .b3d-tag {
+      /* Rides above the stack, and rises further when the storeys separate
+         so it never lands on the top floor's chip. */
+      transform: translate3d(var(--x), var(--y),
+                   calc(var(--h) + var(--fl) * var(--exp, 0px) + 12px))
+                 rotateZ(calc(-1 * var(--spin, -135deg))) rotateX(calc(-1 * var(--tilt, 58deg)));
+      transform-origin: 0 0;
+      pointer-events: none;
+      transition: transform .4s cubic-bezier(.22,.61,.36,1);
+    }
+    .b3d-tag__chip {
+      /* The one part of a building never hidden behind another. Elis
+         Premiere stands directly behind Building 2 on the real site, so
+         without a clickable chip it could not be picked without rotating. */
+      pointer-events: auto;
+      cursor: pointer;
+      position: absolute; left: 0; top: 0;
+      transform: translate(-50%, -50%);
+      display: grid; place-items: center;
+      min-width: 22px; height: 22px; padding: 0 6px;
+      border-radius: 7px;
+      font: 800 10.5px/1 'Inter', system-ui, sans-serif;
+      color: #4A3A1C;
+      background: rgba(255,252,245,.96);
+      box-shadow: 0 2px 7px rgba(50,38,18,.26), inset 0 0 0 1px rgba(120,98,56,.3);
+      transition: transform .18s ease, background .18s ease;
+    }
+    .b3d-tag.is-on { --exp: 11px }
+    .b3d-tag.is-on .b3d-tag__chip {
+      background: #F3CC63; color: #33260A;
+      box-shadow: 0 4px 12px rgba(60,44,10,.42), inset 0 0 0 1px rgba(120,92,20,.5);
+      transform: translate(-50%, -50%) scale(1.16);
+    }
+
+    /* ---- read-out and controls ---- */
+    .site3d__info {
+      position: absolute; left: 16px; top: 14px; z-index: 5;
+      padding: 9px 14px 10px;
+      border-radius: 11px;
+      background: rgba(255,253,248,.93);
+      box-shadow: 0 4px 16px rgba(60,46,22,.16), inset 0 0 0 1px rgba(130,106,60,.22);
+      pointer-events: none;
+    }
+    .site3d__info b { display: block; font: 800 14px/1.2 'Inter', system-ui, sans-serif; color: #3E3221 }
+    .site3d__info span {
+      display: block; margin-top: 2px;
+      font: 600 10.5px/1.2 'Inter', system-ui, sans-serif;
+      letter-spacing: .07em; color: #9A8055;
+    }
+    .site3d__floors {
+      display: grid; gap: 3px;
+      margin-top: 9px; padding-top: 9px;
+      border-top: 1px solid rgba(130,106,60,.2);
+      pointer-events: auto;
+    }
+    .site3d__floors[hidden] { display: none }
+    .site3d__floor {
+      display: flex; align-items: baseline; gap: 7px;
+      padding: 4px 9px 5px;
+      border: 0; border-radius: 7px;
+      background: rgba(120,98,56,.07);
+      cursor: pointer; text-align: left;
+      transition: background .16s ease;
+    }
+    .site3d__floor:hover { background: rgba(120,98,56,.15) }
+    .site3d__floor b  { font: 800 10.5px/1 'Inter', system-ui, sans-serif; color: #4A3A1C }
+    .site3d__floor em { font: 600 9px/1 'Inter', system-ui, sans-serif; font-style: normal; color: #9A8055 }
+    .site3d__floor.is-floor { background: #F3CC63 }
+    .site3d__floor.is-floor b, .site3d__floor.is-floor em { color: #33260A }
+    /* A moving hint rather than only a line of text: people do not try to
+       drag a picture unless something tells them it moves. Fades for good
+       the first time the model is turned. */
+    .site3d__drag {
+      position: absolute; left: 50%; bottom: 16px; z-index: 6;
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 13px 8px;
+      border-radius: 999px;
+      background: rgba(255,253,248,.94);
+      box-shadow: 0 4px 14px rgba(60,46,22,.18), inset 0 0 0 1px rgba(130,106,60,.24);
+      font: 700 10px/1 'Inter', system-ui, sans-serif;
+      letter-spacing: .12em; color: #7A6540;
+      pointer-events: none;
+      animation: site3dNudge 2.6s ease-in-out infinite;
+      transition: opacity .35s ease;
+    }
+    .site3d__drag svg { display: block }
+    .site3d.is-touched .site3d__drag { opacity: 0 }
+    @keyframes site3dNudge {
+      0%, 100% { transform: translate(-50%, 0) }
+      28%      { transform: translate(calc(-50% - 8px), 0) }
+      56%      { transform: translate(calc(-50% + 8px), 0) }
+      80%      { transform: translate(-50%, -5px) }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .site3d__drag { animation: none; transform: translate(-50%, 0) }
+    }
+
+    /* Availability at a glance beside each storey. */
+    .site3d__dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      flex: 0 0 auto; align-self: center;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.14);
+    }
+    .site3d__dot--free { background: rgb(34,197,94) }
+    .site3d__dot--full { background: rgb(59,130,246) }
+    .site3d__dot--none { background: rgba(130,106,60,.32) }
+
+    /* ---- photo spots ---- */
+    .b3d-spot {
+      width: 0; height: 0;
+      transform: translate3d(var(--x), var(--y), var(--z, 26px))
+                 rotateZ(calc(-1 * var(--spin, -135deg))) rotateX(calc(-1 * var(--tilt, 58deg)));
+      transform-origin: 0 0;
+      pointer-events: none;
+    }
+    .b3d-spot__pin {
+      pointer-events: auto;
+      cursor: pointer;
+      position: absolute; left: 0; top: 0;
+      transform: translate(-50%, -100%);
+      display: grid; place-items: center;
+      width: 24px; height: 24px;
+      border-radius: 50% 50% 50% 4px;
+      color: #FFFBF0;
+      background: linear-gradient(150deg, #4A3A1C, #2E2410);
+      box-shadow: 0 3px 9px rgba(34,24,8,.42), inset 0 0 0 1.5px rgba(243,204,99,.85);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .b3d-spot__pin:hover {
+      transform: translate(-50%, -100%) scale(1.18);
+      box-shadow: 0 5px 14px rgba(34,24,8,.5), inset 0 0 0 1.5px #F3CC63;
+    }
+    .b3d-spot__pin svg { transform: rotate(45deg) }
+
+    /* ---- the photo itself ---- */
+    .site-photo { position: fixed; inset: 0; z-index: 12000; display: grid; place-items: center }
+    .site-photo[hidden] { display: none }
+    .site-photo__backdrop { position: absolute; inset: 0; background: rgba(26,19,8,.8); backdrop-filter: blur(3px) }
+    .site-photo__card {
+      position: relative; margin: 0;
+      max-width: min(92vw, 880px); max-height: 90vh;
+      display: flex; flex-direction: column;
+      background: #FFFDF7;
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 24px 70px rgba(20,14,4,.55);
+      animation: sitePhotoIn .28s cubic-bezier(.22,.61,.36,1) both;
+    }
+    @keyframes sitePhotoIn { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: none } }
+    .site-photo__card img { display: block; max-width: 100%; max-height: calc(90vh - 56px); object-fit: contain; background: #2E2410 }
+    .site-photo__card figcaption {
+      padding: 13px 18px 15px;
+      font: 700 13px/1.3 'Inter', system-ui, sans-serif;
+      letter-spacing: .02em; color: #3E3221;
+    }
+    .site-photo__x {
+      position: absolute; top: 10px; right: 10px; z-index: 2;
+      width: 32px; height: 32px; border: 0; border-radius: 50%;
+      font-size: 19px; line-height: 1; color: #FFFBF0;
+      background: rgba(32,24,10,.66); cursor: pointer;
+    }
+    .site-photo__x:hover { background: rgba(32,24,10,.86) }
+
+    .site3d__hint {
+      position: absolute; left: 16px; bottom: 13px; z-index: 5;
+      font: 600 10px/1 'Inter', system-ui, sans-serif;
+      letter-spacing: .1em; color: #9A8055; pointer-events: none;
+    }
+    .site3d__reset {
+      position: absolute; right: 14px; top: 14px; z-index: 5;
+      width: 30px; height: 30px;
+      display: grid; place-items: center;
+      border: 0; border-radius: 9px;
+      font-size: 15px; line-height: 1; color: #6E5B37;
+      background: rgba(255,253,248,.93);
+      box-shadow: 0 3px 10px rgba(60,46,22,.16), inset 0 0 0 1px rgba(130,106,60,.22);
+      cursor: pointer;
+    }
+    .site3d__reset:hover { background: #fff; color: #3E3221 }
+
+    /* Narrow: the read-out would sit on top of the model, so it drops to a
+       strip along the bottom and the storey list runs across instead of down. */
+    @media (max-width: 1100px) {
+      .site3d { height: 400px }
+      .site3d__info {
+        left: 12px; right: 12px; top: auto; bottom: 12px;
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        padding: 8px 12px 9px;
+      }
+      .site3d__floors {
+        display: flex; flex-wrap: wrap;
+        margin: 0; padding: 0 0 0 10px;
+        border-top: 0; border-left: 1px solid rgba(130,106,60,.2);
+      }
+      .site3d__hint { display: none }
+      .site3d__stage { transform: translate3d(0, -34px, 0) scale3d(1.3, 1.3, 1.3)
+                                  rotateX(var(--tilt, 58deg)) rotateZ(var(--spin, -135deg)); }
+    }
+    @media (max-width: 720px) {
+      .site3d { height: 380px }
+      .site3d__stage { transform: translate3d(0, -46px, 0) scale3d(.92, .92, .92)
+                                  rotateX(var(--tilt, 58deg)) rotateZ(var(--spin, -135deg)); }
+      .site3d__info b { font-size: 12.5px }
+    }
+
     /* Type badge next to each building name in the sidebar */
     .building-btn {
       display: flex;
@@ -549,6 +901,185 @@
       <span class="legend rs">Reserved</span>
       <span class="legend up">Unpaid</span>
 </div>
+
+
+    {# ---- 3D view of the whole compound -------------------------------
+       Geometry lifted straight out of the site development plan PDF: the
+       building rectangles, the drive from the highway to the garage and the
+       planting were read off the drawing's own vectors and mapped into plan
+       units (1 unit ≈ 4.2px), so this is the property's real footprint and
+       not an approximation. Only site_geo ties a block to a building record.
+       Every rental building is built one slab per storey, so selecting a
+       building can pull its floors apart and let a floor be picked off it. #}
+    {# Footprints traced off the drawing, then eased apart. The traced
+       rectangles touch or overlap in several places — the drawing packs the
+       blocks tight and some of its outlines are shared — which read as one
+       solid mass once they were stood up. Each is inset and the few genuine
+       collisions separated, so the compound reads as separate buildings
+       without moving anything off its real position. #}
+    {% set site_geo = {
+         'B1': {'x': 53.3, 'y': 31.1, 'w':  9.3, 'd':  8.5},
+         'B2': {'x': 38.2, 'y': 33.9, 'w': 12.7, 'd':  9.0},
+         'B3': {'x': 43.1, 'y':  5.6, 'w': 17.9, 'd':  9.6},
+         'B4': {'x': 37.1, 'y': 24.9, 'w':  9.3, 'd':  5.9},
+         'B5': {'x': 22.2, 'y': 23.7, 'w': 12.9, 'd': 11.5} } %}
+    {% set U = 4.2 %}
+    {% set FH = 15.5 %}
+    {% set unit_count = {} %}
+    {% set floor_stat = {} %}
+    {% for u in units %}
+      {% set _ = unit_count.update({u.building_id: unit_count.get(u.building_id, 0) + 1}) %}
+      {% set fkey = u.building_id ~ '/' ~ (u.floor or 1) %}
+      {% set cur = floor_stat.get(fkey, {'n': 0, 'available': 0, 'occupied': 0, 'reserved': 0, 'unpaid': 0}) %}
+      {% set _ = cur.update({'n': cur['n'] + 1, u.status.value: cur.get(u.status.value, 0) + 1}) %}
+      {% set _ = floor_stat.update({fkey: cur}) %}
+    {% endfor %}
+
+    <div class="site3d card mt-16" id="site3d">
+      <div class="site3d__stage" id="site3dStage">
+        <div class="site3d__ground"></div>
+
+        {# --- the highway along the frontage --- #}
+        <div class="b3d-road" style="--x:{{ (-1*U)|round|int }}px; --y:{{ (-4*U)|round|int }}px; --w:{{ (7*U)|round|int }}px; --d:{{ (60*U)|round|int }}px;"></div>
+
+        {# --- the drive in from the highway, running the length of the site
+               to the garage at the far end. Traced off the drawing. --- #}
+        {% for g in [{'x':15.7,'y':22.0,'l':7.4,'w':3.2,'r':-7.2},  {'x':22.6,'y':21.2,'l':7.4,'w':3.3,'r':-7.9},
+                     {'x':29.5,'y':20.2,'l':7.4,'w':3.4,'r':-7.1},  {'x':36.3,'y':19.4,'l':7.4,'w':3.7,'r':-5.8},
+                     {'x':43.2,'y':18.6,'l':7.4,'w':3.8,'r':-4.3},  {'x':50.1,'y':18.1,'l':7.4,'w':3.7,'r':-9.8},
+                     {'x':56.9,'y':17.0,'l':7.6,'w':3.5,'r':-31.8}, {'x':63.0,'y':13.2,'l':7.4,'w':3.1,'r':-28.1},
+                     {'x':69.2,'y':9.9, 'l':7.4,'w':2.9,'r':-13.6}, {'x':76.0,'y':8.3, 'l':7.4,'w':2.9,'r':-13.6},
+                     {'x':82.8,'y':6.6, 'l':7.4,'w':3.0,'r':-13.6}, {'x':89.5,'y':5.0, 'l':7.4,'w':3.1,'r':-13.6},
+                     {'x':96.3,'y':3.3, 'l':7.4,'w':3.1,'r':-13.6}] %}
+          <div class="b3d-drive" style="--x:{{ (g.x*U)|round|int }}px; --y:{{ (g.y*U)|round|int }}px; --w:{{ (g.l*U)|round|int }}px; --d:{{ (g.w*U)|round|int }}px; --rot:{{ g.r }}deg;"></div>
+        {% endfor %}
+
+        {# --- parking bays --- #}
+        {% for pad in [{'x': 14.5, 'y': 23.5, 'w': 6.4, 'd': 9.0},
+                       {'x': 33.5, 'y': 10.6, 'w': 11.5, 'd': 5.2}] %}
+          <div class="b3d-pad" style="--x:{{ (pad.x*U)|round|int }}px; --y:{{ (pad.y*U)|round|int }}px; --w:{{ (pad.w*U)|round|int }}px; --d:{{ (pad.d*U)|round|int }}px;"></div>
+        {% endfor %}
+
+        {# --- the low planting that lines the drive on the drawing --- #}
+        {% for h in [[22.1,19.4,-7],[30.2,18.4,-7],[38.5,17.2,-6],[45.6,16.8,-4],
+                     [52.7,16.2,-10],[59.3,14.0,-30],[75.7,10.1,-14],[80.8,9.3,-14],
+                     [87.3,4.1,-14],[93.4,2.4,-14],[23.1,23.5,-7]] %}
+          <div class="b3d-hedge" style="--x:{{ (h[0]*U)|round|int }}px; --y:{{ (h[1]*U)|round|int }}px; --rot:{{ h[2] }}deg;"></div>
+        {% endfor %}
+
+        {# --- everything that is not rented out --- #}
+        {% set plain = [
+             {'k': 'STORAGE', 'x': 47.3, 'y': 23.4, 'w':  6.2, 'd':  4.7, 'f': 1, 'label': 'Storage',   'lift':  7},
+             {'k': 'GARAGE',  'x': 92.0, 'y':  9.6, 'w':  7.6, 'd': 20.7, 'f': 1, 'label': 'Garage',    'lift':  7},
+             {'k': 'HOUSE',   'x': 70.6, 'y': 16.1, 'w': 13.9, 'd': 12.3, 'f': 2, 'label': 'House',     'lift':  7},
+             {'k': 'EE',      'x': 86.8, 'y': 18.2, 'w':  2.3, 'd':  8.1, 'f': 1, 'label': 'Office EE', 'lift': 34},
+             {'k': 'ME',      'x': 70.6, 'y': 31.6, 'w': 13.9, 'd':  5.3, 'f': 1, 'label': 'Office ME', 'lift': 20} ] %}
+        {% for g in plain %}
+          <div class="b3d-slab b3d-slab--plain" style="--x:{{ (g.x*U)|round|int }}px; --y:{{ (g.y*U)|round|int }}px; --w:{{ (g.w*U)|round|int }}px; --d:{{ (g.d*U)|round|int }}px; --h:{{ (g.f*FH)|round|int }}px; --lift:0px; --i:0;">
+            <i class="b3d__f b3d__f--roof"></i><i class="b3d__f b3d__f--n"></i><i class="b3d__f b3d__f--s"></i><i class="b3d__f b3d__f--e"></i><i class="b3d__f b3d__f--w"></i><i class="b3d__shadow"></i>
+          </div>
+        {% endfor %}
+
+        {# --- the rental buildings, one slab per storey --- #}
+        {% for b in buildings %}
+          {% set g = site_geo.get(b.code) %}
+          {% if g %}
+            {% set fl = building_floor_limits.get(b.id, 4) %}
+            {% for i in range(fl) %}
+              <div class="b3d-slab b3d-slab--rent" data-building="{{ b.id }}" data-floor="{{ i + 1 }}"
+                   style="--x:{{ (g.x*U)|round|int }}px; --y:{{ (g.y*U)|round|int }}px; --w:{{ (g.w*U)|round|int }}px; --d:{{ (g.d*U)|round|int }}px; --h:{{ FH|round|int }}px; --lift:{{ (i*FH)|round|int }}px; --i:{{ i }};">
+                <i class="b3d__f b3d__f--roof"></i><i class="b3d__f b3d__f--n"></i><i class="b3d__f b3d__f--s"></i><i class="b3d__f b3d__f--e"></i><i class="b3d__f b3d__f--w"></i>
+                {% if loop.first %}<i class="b3d__shadow"></i>{% endif %}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+
+        {# --- names ride above their own roof; written on the ground they
+               were hidden behind the very block they named --- #}
+        {% for g in plain %}
+          <div class="b3d-note" style="--x:{{ ((g.x + g.w/2)*U)|round|int }}px; --y:{{ ((g.y + g.d/2)*U)|round|int }}px; --z:{{ ((g.f*FH) + g.lift)|round|int }}px;"><span>{{ g.label }}</span></div>
+        {% endfor %}
+        {% for n in [{'x': 2.5, 'y': 30, 'label': 'Hi-Way'},
+                     {'x': 17.7, 'y': 28, 'label': 'Parking'},
+                     {'x': 39.2, 'y': 13.2, 'label': 'Parking'}] %}
+          <div class="b3d-note" style="--x:{{ (n.x*U)|round|int }}px; --y:{{ (n.y*U)|round|int }}px; --z:2px;"><span>{{ n.label }}</span></div>
+        {% endfor %}
+
+        {# --- photo spots: real pictures of the place, pinned where they
+               were taken from. Click one and it opens full size. --- #}
+        {# 'z' lifts a pin that stands on a roof clear of it — one placed inside
+           a building's own volume is simply buried by its walls. #}
+        {% for sp in [
+             {'x': 17.0, 'y': 22.5, 'z': 26, 'f': 'pathway.jpg',    'title': 'Pathway out to the highway'},
+             {'x': 39.0, 'y': 13.2, 'z': 26, 'f': 'parking.jpg',    'title': 'Parking beside Building 4'},
+             {'x': 46.5, 'y': 20.5, 'z': 26, 'f': 'b245.jpg',       'title': 'Buildings 2, 4 and 5'},
+             {'x': 29.0, 'y': 29.5, 'z': 58, 'f': 'b5-top.jpg',     'title': 'Top of Building 5'},
+             {'x': 54.5, 'y': 18.5, 'z': 26, 'f': 'b3.jpg',         'title': 'Building 3'},
+             {'x': 51.0, 'y': 25.8, 'z': 32, 'f': 'storage-b1.jpg', 'title': 'Storage and Building 1'},
+             {'x': 88.5, 'y': 14.5, 'z': 26, 'f': 'gate.jpg',       'title': 'Gate to the office, house and garage'} ] %}
+          <div class="b3d-spot" data-photo="{{ url_for('static', filename='img/site/' ~ sp.f) }}"
+               data-title="{{ sp.title }}"
+               style="--x:{{ (sp.x*U)|round|int }}px; --y:{{ (sp.y*U)|round|int }}px; --z:{{ sp.z }}px;">
+            <span class="b3d-spot__pin" title="{{ sp.title }}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </span>
+          </div>
+        {% endfor %}
+
+        {# --- building chips --- #}
+        {% for b in buildings %}
+          {% set g = site_geo.get(b.code) %}
+          {% if g %}
+            {% set fl = building_floor_limits.get(b.id, 4) %}
+            <div class="b3d-tag" data-building="{{ b.id }}"
+                 data-name="{{ b.name }}"
+                 data-sub="{{ building_unit_types.get(b.id, 'residential')|title }} &middot; {{ fl }} floor{{ 's' if fl != 1 else '' }} &middot; {{ unit_count.get(b.id, 0) }} unit{{ 's' if unit_count.get(b.id, 0) != 1 else '' }}"
+                 style="--x:{{ ((g.x + g.w/2)*U)|round|int }}px; --y:{{ ((g.y + g.d/2)*U)|round|int }}px; --h:{{ (fl*FH)|round|int }}px; --fl:{{ fl }};">
+              <span class="b3d-tag__chip">{{ b.code }}</span>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="site3d__info" id="site3dInfo">
+        <b>&nbsp;</b><span>&nbsp;</span>
+        {# A floor list beside the model rather than labels floating over it:
+           the buildings stand shoulder to shoulder on this site, so anything
+           pinned to a storey landed on its neighbour whichever side it took. #}
+        {% for b in buildings %}
+          {% if site_geo.get(b.code) %}
+            {% set fl = building_floor_limits.get(b.id, 4) %}
+            <div class="site3d__floors" data-building="{{ b.id }}" hidden>
+              {% for i in range(fl) %}
+                {% set st = floor_stat.get(b.id ~ '/' ~ (i + 1), {'n': 0, 'available': 0}) %}
+                <button type="button" class="site3d__floor" data-building="{{ b.id }}" data-floor="{{ i + 1 }}">
+                  <span class="site3d__dot site3d__dot--{% if st.available %}free{% elif st.n %}full{% else %}none{% endif %}"></span>
+                  <b>{{ i + 1 }}F</b>
+                  <em>{{ st.n }} unit{{ 's' if st.n != 1 else '' }}{% if st.available %} &middot; {{ st.available }} free{% endif %}</em>
+                </button>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="site3d__drag" id="site3dDrag">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l-3 3 3 3"/><path d="M19 9l3 3-3 3"/><path d="M9 5l3-3 3 3"/><path d="M9 19l3 3 3-3"/><path d="M2 12h20"/><path d="M12 2v20"/></svg>
+        DRAG TO TURN &amp; TILT
+      </div>
+      <span class="site3d__hint" id="site3dHint">DRAG TO ROTATE &middot; CLICK A BUILDING</span>
+      <button type="button" class="site3d__reset" id="site3dReset" title="Reset view">&#8634;</button>
+    </div>
+
+    {# Full-size view of a photo spot. #}
+    <div class="site-photo" id="sitePhoto" hidden>
+      <div class="site-photo__backdrop" data-close></div>
+      <figure class="site-photo__card">
+        <button type="button" class="site-photo__x" data-close aria-label="Close">&times;</button>
+        <img id="sitePhotoImg" src="" alt="" />
+        <figcaption id="sitePhotoCap"></figcaption>
+      </figure>
+    </div>
 
     <div class="floorplan mt-16">
       <div class="floorplan__sidebar card">

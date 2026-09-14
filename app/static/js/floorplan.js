@@ -337,3 +337,234 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// 3D view of the compound.
+//
+// Each rental building is a stack of storey slabs. Selecting a building pulls
+// its storeys apart; a storey can then be picked straight off the model, which
+// drives the same floor filter the pills below do. Whichever control is used,
+// the model, the building list and the pills stay in step.
+// ---------------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+  const root = document.getElementById("site3d");
+  const stage = document.getElementById("site3dStage");
+  const hint = document.getElementById("site3dHint");
+  const reset = document.getElementById("site3dReset");
+  if (!root || !stage) return;
+
+  const START = -135;
+  const TILT_START = 58;
+  const TILT_MIN = 30;   // any flatter and the storeys stop reading as storeys
+  const TILT_MAX = 78;   // any steeper and it is a plan, not a model
+  let spin = START;
+  let tilt = TILT_START;
+  let dragging = false;
+  let moved = 0;
+  let lastX = 0;
+  let lastY = 0;
+  let openBuilding = null;
+
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  const setView = (deg, deg2) => {
+    spin = deg;
+    tilt = clamp(deg2, TILT_MIN, TILT_MAX);
+    root.style.setProperty("--spin", spin + "deg");
+    root.style.setProperty("--tilt", tilt + "deg");
+  };
+  setView(spin, tilt);
+
+  // Deliberately no setPointerCapture: capturing retargets the click that
+  // follows to this container, so a click on a building would never reach the
+  // building. Listening on the window keeps a drag alive past the panel edge
+  // without stealing the click.
+  root.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    moved = 0;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    root.classList.add("is-dragging", "is-touched");
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    // Sideways turns the site, up and down raises and lowers the eye. Dragging
+    // up looks down on it, which is the way round people expect.
+    setView(spin + dx * 0.4, tilt + dy * 0.16);
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  ["pointerup", "pointercancel"].forEach((type) =>
+    window.addEventListener(type, () => {
+      dragging = false;
+      root.classList.remove("is-dragging");
+    })
+  );
+
+  // A face of a 3D box is a thin target near its edges, and a click a pixel
+  // outside it would otherwise do nothing. Probe a small ring before giving up.
+  function slabAt(x, y) {
+    const ring = [[0, 0], [0, -3], [3, 0], [0, 3], [-3, 0], [3, -3], [-3, 3], [3, 3], [-3, -3]];
+    for (const [dx, dy] of ring) {
+      const el = document.elementFromPoint(x + dx, y + dy);
+      const hit = el && el.closest ? el.closest(".b3d-slab--rent") : null;
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  function showBuilding(id) {
+    openBuilding = String(id);
+    root.querySelectorAll(".b3d-slab--rent, .b3d-tag").forEach((el) => {
+      el.classList.toggle("is-on", el.getAttribute("data-building") === openBuilding);
+    });
+    root.querySelectorAll(".site3d__floors").forEach((list) => {
+      list.hidden = list.getAttribute("data-building") !== openBuilding;
+    });
+    markFloor(null);
+    const tag = root.querySelector('.b3d-tag[data-building="' + openBuilding + '"]');
+    if (tag && info) {
+      info.querySelector("b").textContent = tag.getAttribute("data-name") || "";
+      info.querySelector("span").innerHTML = tag.getAttribute("data-sub") || "";
+    }
+    if (hint) hint.innerHTML = "DRAG TO ROTATE &middot; CLICK A STOREY";
+  }
+
+  function markFloor(floor) {
+    root.querySelectorAll(".b3d-slab--rent").forEach((el) => {
+      el.classList.toggle(
+        "is-floor",
+        floor !== null &&
+          el.classList.contains("is-on") &&
+          el.getAttribute("data-floor") === String(floor)
+      );
+    });
+    root.querySelectorAll(".site3d__floor").forEach((btn) => {
+      btn.classList.toggle(
+        "is-floor",
+        floor !== null &&
+          btn.getAttribute("data-building") === openBuilding &&
+          btn.getAttribute("data-floor") === String(floor)
+      );
+    });
+  }
+
+  // Drives the existing pill so the sections below filter exactly as they do
+  // when the pill itself is used.
+  function chooseFloor(floor) {
+    const bar = document.getElementById("floorFilterBar");
+    if (!bar) return;
+    const pill = bar.querySelector('.floor-pill[data-floor="' + floor + '"]');
+    if (pill) pill.click();
+    markFloor(floor);
+
+    // Picking a storey off the model filters the tiles below, which are off
+    // screen at that moment — bring them into view so the two halves read as
+    // one action rather than as nothing having happened.
+    const section = document.querySelector(
+      '.floor-section[data-building="' + openBuilding + '"][data-floor="' + floor + '"]'
+    );
+    if (section) section.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  root.addEventListener("click", (e) => {
+    // A drag that happens to end over a building must not also select it.
+    if (moved > 6) return;
+
+    const chip = e.target.closest ? e.target.closest(".b3d-tag") : null;
+    const slab = chip || (e.target.closest ? e.target.closest(".b3d-slab--rent") : null) || slabAt(e.clientX, e.clientY);
+    if (!slab) return;
+
+    const id = slab.getAttribute("data-building");
+    // Clicking a storey of the building already open drops onto that storey
+    // instead of re-selecting the building.
+    if (!chip && id === openBuilding && slab.getAttribute("data-floor")) {
+      chooseFloor(slab.getAttribute("data-floor"));
+      return;
+    }
+    const btn = document.querySelector('.building-btn[data-building="' + id + '"]');
+    if (btn) btn.click();
+    else showBuilding(id);
+  });
+
+  const info = document.getElementById("site3dInfo");
+  if (info) {
+    info.addEventListener("click", (e) => {
+      const btn = e.target.closest ? e.target.closest(".site3d__floor") : null;
+      if (!btn) return;
+      e.stopPropagation();
+      chooseFloor(btn.getAttribute("data-floor"));
+    });
+  }
+
+  if (reset) {
+    reset.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setView(START, TILT_START);
+      const all = document.querySelector('#floorFilterBar .floor-pill[data-floor="all"]');
+      if (all) all.click();
+      markFloor(null);
+    });
+  }
+
+  document.querySelectorAll(".building-btn").forEach((btn) => {
+    btn.addEventListener("click", () => showBuilding(btn.getAttribute("data-building")));
+  });
+
+  // The pills are rebuilt whenever a building changes, so the listener goes on
+  // the bar rather than on each pill.
+  const bar = document.getElementById("floorFilterBar");
+  if (bar) {
+    bar.addEventListener("click", (e) => {
+      const pill = e.target.closest ? e.target.closest(".floor-pill") : null;
+      if (!pill) return;
+      const f = pill.getAttribute("data-floor");
+      markFloor(f === "all" ? null : f);
+    });
+  }
+
+  // ---- photo spots -------------------------------------------------------
+  // A pin opens the photograph taken from that point. Handled here rather
+  // than on each pin because the click on a 3D-transformed element reports
+  // the panel as its target.
+  const photo = document.getElementById("sitePhoto");
+  const photoImg = document.getElementById("sitePhotoImg");
+  const photoCap = document.getElementById("sitePhotoCap");
+
+  function openPhoto(src, title) {
+    if (!photo) return;
+    photoImg.src = src;
+    photoImg.alt = title || "";
+    photoCap.textContent = title || "";
+    photo.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  function closePhoto() {
+    if (!photo) return;
+    photo.hidden = true;
+    photoImg.src = "";
+    document.body.style.overflow = "";
+  }
+
+  root.addEventListener("click", (e) => {
+    if (moved > 6) return;
+    const spot = e.target.closest ? e.target.closest(".b3d-spot") : null;
+    if (!spot) return;
+    e.stopPropagation();
+    openPhoto(spot.getAttribute("data-photo"), spot.getAttribute("data-title"));
+  }, true);
+
+  if (photo) {
+    photo.addEventListener("click", (e) => {
+      if (e.target.closest("[data-close]")) closePhoto();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !photo.hidden) closePhoto();
+    });
+  }
+
+  const first = document.querySelector(".building-btn.is-active") || document.querySelector(".building-btn");
+  if (first) showBuilding(first.getAttribute("data-building"));
+});
