@@ -148,6 +148,23 @@ def home():
             # Default to floor 1 if no floor specified
             units_by_building[u.building_id]["floor_1"].append(unit_data)
     
+    # One photograph per building for the picker cards. The boxes carried
+    # only an icon and a line of text, which told a visitor nothing about
+    # what the building actually looks like. Takes the first unit that has
+    # a real photograph of its own, so a building whose units are all
+    # un-photographed falls back to the house shot rather than to nothing.
+    building_covers = {}
+    for bid, floors in units_by_building.items():
+        for key in ("floor_1", "floor_2", "floor_3", "floor_4"):
+            for unit in floors.get(key, []):
+                first = (unit.get("images") or [None])[0]
+                if first and "elis-building.jpg" not in first:
+                    building_covers[bid] = first
+                    break
+            if bid in building_covers:
+                break
+        building_covers.setdefault(bid, "img/elis-building.jpg")
+
     building_unit_counts = {
         building.id: sum(len(v) for v in units_by_building.get(building.id, {}).values())
         for building in buildings
@@ -234,6 +251,7 @@ def home():
         building_floor_limits=building_floor_limits,
         building_unit_types=building_unit_types,
         building_unit_counts=building_unit_counts,
+        building_covers=building_covers,
         units_by_building=units_by_building,
         can_reserve=can_reserve,
         can_view_details=can_view_details,

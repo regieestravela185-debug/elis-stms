@@ -889,7 +889,9 @@
       gap: 8px;
       flex: 1 1 300px;
       max-width: 340px;
-      padding: 28px 26px;
+      /* The photograph runs to the card's edge, so the padding moves off the
+         card and onto the text that follows it. */
+      padding: 0 0 22px;
       background: white;
       border: 1px solid rgba(0, 0, 0, 0.07);
       border-radius: 20px;
@@ -976,12 +978,45 @@
       color: #8A5116;
     }
 
+    /* ---- Building card photograph -------------------------------------
+       These boxes carried an icon and three lines of text on white, which
+       showed a visitor nothing of the place they were about to look at. A
+       real photograph of one of the building's own units goes on top, with
+       the code sitting on it the way it does on the unit cards. */
+    .building-box__media {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 132px;
+      overflow: hidden;
+      background: #E9E1D2;
+    }
+    .building-box__media img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform .55s cubic-bezier(.22,.61,.36,1);
+    }
+    .building-box:hover .building-box__media img { transform: scale(1.06) }
+    .building-box__scrim {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg,
+        rgba(28,22,14,0) 28%, rgba(28,22,14,.30) 62%, rgba(28,22,14,.78) 100%);
+    }
+    .building-box > .building-box__name,
+    .building-box > .building-box__meta,
+    .building-box > .building-box__cta { margin-left: 24px; margin-right: 24px }
+    .building-box > .building-box__name { margin-top: 14px }
+
     .building-box__code {
+      position: absolute;
+      left: 20px; bottom: 12px;
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 34px;
       font-weight: 700;
-      color: var(--text);
+      color: #FFFDF7;
       line-height: 1;
+      text-shadow: 0 2px 12px rgba(20,14,6,.5);
     }
 
     .building-box__name {
@@ -2647,9 +2682,14 @@
         font-size: 11.5px;
       }
 
-      /* Building boxes on the page itself: full width, tighter type. */
-      .building-box { padding: 16px 14px; }
-      .building-box__code { font-size: 22px; }
+      /* Building boxes on the page itself: full width, tighter type. The
+         photograph still runs edge to edge, so only the text is inset. */
+      .building-box { padding: 0 0 16px; }
+      .building-box > .building-box__name,
+      .building-box > .building-box__meta,
+      .building-box > .building-box__cta { margin-left: 16px; margin-right: 16px }
+      .building-box__media { height: 116px }
+      .building-box__code { font-size: 26px; left: 14px; bottom: 10px }
       .building-box__name { font-size: 14px; }
     }
 
@@ -2758,10 +2798,11 @@
               data-building="{{ building.id }}"
               aria-haspopup="dialog"
             >
-              <span class="building-box__icon building-box__icon--residential">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <span class="building-box__media">
+                <img src="{{ media_url(building_covers.get(building.id, 'img/elis-building.jpg')) }}" alt="" loading="lazy" />
+                <span class="building-box__scrim"></span>
+                <span class="building-box__code">{{ building.code }}</span>
               </span>
-              <span class="building-box__code">{{ building.code }}</span>
               <span class="building-box__name">{{ building.name }}</span>
               <span class="building-box__meta">
                 <span class="building-box__badge building-box__badge--residential">Residential</span>
@@ -2790,10 +2831,11 @@
               data-building="{{ building.id }}"
               aria-haspopup="dialog"
             >
-              <span class="building-box__icon building-box__icon--commercial">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              <span class="building-box__media">
+                <img src="{{ media_url(building_covers.get(building.id, 'img/elis-building.jpg')) }}" alt="" loading="lazy" />
+                <span class="building-box__scrim"></span>
+                <span class="building-box__code">{{ building.code }}</span>
               </span>
-              <span class="building-box__code">{{ building.code }}</span>
               <span class="building-box__name">{{ building.name }}</span>
               <span class="building-box__meta">
                 <span class="building-box__badge building-box__badge--commercial">Commercial</span>
