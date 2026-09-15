@@ -1835,6 +1835,26 @@ def update_unit(unit_id: int):
     unit.price_monthly = price_monthly
     unit.floor = floor
     unit.type = unit_type or None
+    # A pending reservation is a live claim on this unit. Moving the status off
+    # "reserved" while one stands puts the unit back on the homepage as free
+    # while somebody is still waiting on it, and a second person can reserve
+    # the same room. The reservation has to be settled first — approve it, or
+    # reject it — and either of those sets the unit's status itself.
+    if status != UnitStatus.RESERVED.value:
+        held = (db.session.query(Reservation)
+                .filter(Reservation.unit_id == unit.id,
+                        Reservation.status == ReservationStatus.PENDING)
+                .order_by(Reservation.created_at.asc())
+                .first())
+        if held:
+            flash(
+                f"{unit.unit_code} is being held for {held.full_name}, whose reservation is "
+                f"still pending. Approve or reject it under Reservations first — the status "
+                f"follows from that. Everything else you changed has been saved.",
+                "warning",
+            )
+            status = UnitStatus.RESERVED.value
+
     unit.status = UnitStatus(status)
     unit.description = description or None
     unit.pax_range = pax_range
@@ -1895,9 +1915,6 @@ def purge_unit(unit_id: int):
     reservations = db.session.query(Reservation).filter_by(unit_id=unit.id).count()
     if reservations:
         blockers.append(f"{reservations} reservation{'s' if reservations != 1 else ''}")
-    inventory = db.session.query(UnitInventoryItem).filter_by(unit_id=unit.id).count()
-    if inventory:
-        blockers.append(f"{inventory} inventory item{'s' if inventory != 1 else ''}")
     ratings = db.session.query(Feedback).filter_by(unit_id=unit.id).count()
     if ratings:
         blockers.append(f"{ratings} rating{'s' if ratings != 1 else ''}")
@@ -1910,7 +1927,13 @@ def purge_unit(unit_id: int):
         )
         return redirect(url_for("admin.units", archived="1"))
 
+    # The inventory is the unit's own description of what is inside it — the
+    # Kasunduan fixture rows — and nothing else points at it, so it goes with
+    # the unit. It used to be counted as a blocker, which meant a unit could
+    # never be deleted once inventoried; zeroing the quantities did not help,
+    # because a quantity of zero is still a row.
     code = unit.unit_code
+    db.session.query(UnitInventoryItem).filter_by(unit_id=unit.id).delete(synchronize_session=False)
     db.session.delete(unit)
     db.session.add(ActivityLog(actor_user_id=current_user.id, action="unit_deleted"))  # type: ignore[attr-defined]
     db.session.commit()
