@@ -131,7 +131,8 @@ def collection_outlook(as_of: date | None = None) -> dict:
             billing_next_month += 1
 
         arrears = get_rent_arrears(p, as_of, paid_by_tenant.get(p.id, set()))
-        utilities = utility_outstanding(p, latest_bills.get(p.id))
+        # Overdue means past its due date, the same test rent arrears use.
+        utilities = utility_outstanding(p, latest_bills.get(p.id), as_of)
         overdue_rent += arrears["total"]
         overdue_utilities += utilities
 

@@ -361,13 +361,20 @@ def get_payment_timeline(tenant_profile: TenantProfile, as_of: date | None = Non
     return rows
 
 
-def utility_outstanding(tenant_profile: TenantProfile, latest=_UNSET) -> float:
+def utility_outstanding(tenant_profile: TenantProfile, latest=_UNSET,
+                        as_of: date | None = None) -> float:
     """What a tenant still owes on electric and water, in total.
 
     This is the LATEST bill's outstanding, not the sum across bills. Each
     month's bill carries forward whatever the month before left unpaid, so
     the newest one is already the running total — adding the older ones to
     it counts the same peso once for every month it has rolled through.
+
+    Pass `as_of` to ask only for what is actually DUE by then. Without it
+    the answer includes a bill whose due date has not arrived, which is
+    correct for "what do they owe in total" and wrong for "what is
+    overdue" — the dashboard asked the second question and got the first,
+    reporting six tenants overdue on water none of them owed yet.
     """
     from .models import UtilityBill
 
@@ -376,7 +383,19 @@ def utility_outstanding(tenant_profile: TenantProfile, latest=_UNSET) -> float:
                   .filter(UtilityBill.tenant_profile_id == tenant_profile.id)
                   .order_by(UtilityBill.billing_month.desc())
                   .first())
-    return round(latest.total_outstanding, 2) if latest else 0.0
+    if not latest:
+        return 0.0
+    if as_of is not None and latest.due_date and latest.due_date > as_of:
+        # This month's charges are not due yet. What IS overdue is exactly
+        # the balance rolled into them from earlier months, which were —
+        # and it is already on this row, so no second query.
+        owed = 0.0
+        if not latest.electric_paid:
+            owed += float(latest.carried_over_electric or 0)
+        if not latest.water_paid:
+            owed += float(latest.carried_over_water or 0)
+        return round(owed, 2)
+    return round(latest.total_outstanding, 2)
 
 
 def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None,
@@ -386,7 +405,11 @@ def payment_standing(tenant_profile: TenantProfile, as_of: date | None = None,
     from .models import UtilityBill
 
     arrears = get_rent_arrears(tenant_profile, as_of, paid_months)
-    owed_on_utilities = utility_outstanding(tenant_profile, latest_bill)
+    # Behind means past due, for utilities as much as for rent — otherwise a
+    # tenant owing nothing reads as "Utilities only" the moment next month's
+    # bill row is created.
+    owed_on_utilities = utility_outstanding(tenant_profile, latest_bill,
+                                            as_of or date.today())
     oldest = arrears["oldest"]
     since = None
     if oldest:

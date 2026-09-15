@@ -559,7 +559,11 @@
           <span class="muted" style="font-size: 12px;">Furthest behind:</span>
           {% for t in collection.tenants_behind %}
             <a href="{{ url_for('admin.tenant_settlement', profile_id=t.profile_id) }}" class="fc-behind__chip">
-              {{ t.unit }} &middot; {{ t.months }}mo &middot; &#8369;{{ '{:,.0f}'.format(t.owed) }}
+              {# "0mo" reads as a fault in the figure. A tenant behind only on
+                 electricity and water is behind on no months of rent. #}
+              {{ t.unit }} &middot;
+              {% if t.months %}{{ t.months }}mo{% else %}utilities{% endif %}
+              &middot; &#8369;{{ '{:,.0f}'.format(t.owed) }}
             </a>
           {% endfor %}
         </div>
