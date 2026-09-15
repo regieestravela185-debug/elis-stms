@@ -1912,9 +1912,16 @@ def purge_unit(unit_id: int):
     tenancies = db.session.query(TenantProfile).filter_by(unit_id=unit.id).count()
     if tenancies:
         blockers.append(f"{tenancies} tenancy record{'s' if tenancies != 1 else ''}")
-    reservations = db.session.query(Reservation).filter_by(unit_id=unit.id).count()
-    if reservations:
-        blockers.append(f"{reservations} reservation{'s' if reservations != 1 else ''}")
+    # Only a live claim blocks. A reservation that was cancelled or rejected is
+    # a closed application against a unit that is itself about to disappear —
+    # counting those meant a unit anyone had ever applied for could never be
+    # deleted, the same trap the inventory count set.
+    live = (db.session.query(Reservation)
+            .filter(Reservation.unit_id == unit.id,
+                    Reservation.status.in_([ReservationStatus.PENDING, ReservationStatus.APPROVED]))
+            .count())
+    if live:
+        blockers.append(f"{live} open reservation{'s' if live != 1 else ''}")
     ratings = db.session.query(Feedback).filter_by(unit_id=unit.id).count()
     if ratings:
         blockers.append(f"{ratings} rating{'s' if ratings != 1 else ''}")
@@ -1933,11 +1940,36 @@ def purge_unit(unit_id: int):
     # never be deleted once inventoried; zeroing the quantities did not help,
     # because a quantity of zero is still a row.
     code = unit.unit_code
+
+    # Closed applications go with the unit, and so do the identity checks made
+    # for them: those hold an applicant's ID number and photograph, and once
+    # both the application and the unit are gone there is nothing left for them
+    # to be evidence of.
+    closed = (db.session.query(Reservation)
+              .filter(Reservation.unit_id == unit.id)
+              .all())
+    dropped = len(closed)
+    if closed:
+        ids = [r.id for r in closed]
+        db.session.query(IdentityVerification).filter(
+            IdentityVerification.reservation_id.in_(ids)
+        ).delete(synchronize_session=False)
+        db.session.query(Reservation).filter(
+            Reservation.id.in_(ids)
+        ).delete(synchronize_session=False)
+
     db.session.query(UnitInventoryItem).filter_by(unit_id=unit.id).delete(synchronize_session=False)
     db.session.delete(unit)
     db.session.add(ActivityLog(actor_user_id=current_user.id, action="unit_deleted"))  # type: ignore[attr-defined]
     db.session.commit()
-    flash(f"{code} deleted permanently.", "success")
+    if dropped:
+        flash(
+            f"{code} deleted permanently, along with {dropped} closed "
+            f"reservation{'s' if dropped != 1 else ''} made against it.",
+            "success",
+        )
+    else:
+        flash(f"{code} deleted permanently.", "success")
     return redirect(url_for("admin.units", archived="1"))
 
 

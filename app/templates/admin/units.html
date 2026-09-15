@@ -710,7 +710,7 @@
                           <button class="btn btn--sm btn--restore" type="submit" title="Restore Unit">Restore</button>
                         </form>
                         <form method="post" action="{{ url_for('admin.purge_unit', unit_id=unit.id) }}" style="display: inline;"
-                              onsubmit="return confirm('Delete {{ unit.unit_code }} for good?\n\nThis cannot be undone. A unit that still has a tenancy, reservation, inventory or rating behind it will be kept instead, and you will be told why.');">
+                              onsubmit="return confirm('Delete {{ unit.unit_code }} for good?\n\nIts inventory and any closed reservations made against it go with it. This cannot be undone.\n\nA unit with a tenancy, an open reservation or a rating behind it will be kept instead, and you will be told why.');">
                           <button class="btn btn--sm btn--purge" type="submit" title="Delete this unit permanently">Delete</button>
                         </form>
                       {% endif %}
