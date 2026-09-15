@@ -827,7 +827,15 @@
 </div>
         <div class="metric">
           <div class="metric__num">₱{{ '{:,.2f}'.format(cards.total_revenue|float) }}</div>
-          <div class="metric__label">Revenue</div>
+          <div class="metric__label">Total Revenue</div>
+</div>
+        <div class="metric">
+          <div class="metric__num">₱{{ '{:,.2f}'.format(cards.rent_revenue|float) }}</div>
+          <div class="metric__label">Rent Collected</div>
+</div>
+        <div class="metric">
+          <div class="metric__num">₱{{ '{:,.2f}'.format(cards.deposit_revenue|float) }}</div>
+          <div class="metric__label">Deposits Collected</div>
 </div>
         <div class="metric">
           <div class="metric__num">₱{{ '{:,.2f}'.format(cards.total_deposits|float) }}</div>

@@ -42,6 +42,27 @@
       color: var(--text);
     }
     .rev-period__caption { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    /* Rent and deposits named separately under the period figure. */
+    .rev-period__split {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 28px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .rev-period__splitnum {
+      font-size: 17px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      display: block;
+    }
+    .rev-period__splitlbl {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
     .rev-period__months {
       width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px;
     }
@@ -124,6 +145,12 @@
     .stat-card--last { border-color: rgba(59, 130, 246, 0.4); }
     .stat-card--last .stat-card__number { color: #3b82f6; }
     
+    .stat-card--rent { border-color: rgba(34, 197, 94, 0.4); }
+    .stat-card--rent .stat-card__number { color: #22c55e; }
+
+    .stat-card--deposit { border-color: rgba(168, 85, 247, 0.4); }
+    .stat-card--deposit .stat-card__number { color: #a855f7; }
+
     .stat-card--tenants { border-color: rgba(234, 179, 8, 0.4); }
     .stat-card--tenants .stat-card__number { color: #eab308; }
     
@@ -396,6 +423,16 @@
         <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.total_revenue) }}</div>
         <div class="stat-card__label">Total Revenue</div>
 </div>
+      <div class="stat-card stat-card--rent">
+        <span class="stat-card__icon"></span>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.total_rent) }}</div>
+        <div class="stat-card__label">Rent Collected</div>
+</div>
+      <div class="stat-card stat-card--deposit">
+        <span class="stat-card__icon"></span>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.total_deposit) }}</div>
+        <div class="stat-card__label">Deposits Collected</div>
+</div>
       <div class="stat-card stat-card--month">
         <span class="stat-card__icon"></span>
         <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.this_month_revenue) }}</div>
@@ -422,6 +459,8 @@
           <p class="muted" style="margin: 0; font-size: 13px;">
             Pick one month or a range of them &mdash; the totals above cover all
             time. Confirmed payments only; voided and rejected ones are left out.
+            Rent and security deposits are broken out, since a deposit is money
+            held for the tenant rather than income.
           </p>
         </div>
       </div>
@@ -473,16 +512,31 @@
             payment{{ 's' if payment_stats.period_count != 1 }}
           </div>
 
+          {# The figure above is rent and deposits together. A deposit is
+             held, not earned, so the two are named separately here. #}
+          <div class="rev-period__split">
+            <div>
+              <span class="rev-period__splitnum">&#8369;{{ '{:,.2f}'.format(payment_stats.period_rent) }}</span>
+              <span class="rev-period__splitlbl">from rent</span>
+            </div>
+            <div>
+              <span class="rev-period__splitnum">&#8369;{{ '{:,.2f}'.format(payment_stats.period_deposit) }}</span>
+              <span class="rev-period__splitlbl">security deposits</span>
+            </div>
+          </div>
+
           {% if payment_stats.period_months|length > 1 %}
             <table class="rev-period__months">
               <thead>
-                <tr><th>Month</th><th>Payments</th><th>Revenue</th></tr>
+                <tr><th>Month</th><th>Payments</th><th>Rent</th><th>Deposits</th><th>Total</th></tr>
               </thead>
               <tbody>
                 {% for m in payment_stats.period_months %}
                   <tr>
                     <td>{{ m.label }}</td>
                     <td>{{ m.count }}</td>
+                    <td>&#8369;{{ '{:,.2f}'.format(m.rent) }}</td>
+                    <td>&#8369;{{ '{:,.2f}'.format(m.deposit) }}</td>
                     <td>&#8369;{{ '{:,.2f}'.format(m.amount) }}</td>
                   </tr>
                 {% endfor %}

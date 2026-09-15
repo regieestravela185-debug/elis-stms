@@ -30,6 +30,8 @@
 .dash-body .stat-card--total .stat-card__number,
 .dash-body .stat-card--month .stat-card__number,
 .dash-body .stat-card--last  .stat-card__number,
+.dash-body .stat-card--rent  .stat-card__number,
+.dash-body .stat-card--deposit .stat-card__number,
 .dash-body .stat-card--count .stat-card__number,
 .dash-body .stat-card--active .stat-card__number{
   color:var(--g700);
@@ -39,6 +41,7 @@
 }
 .dash-body .stat-card--total,.dash-body .stat-card--month,
 .dash-body .stat-card--last,.dash-body .stat-card--count,
+.dash-body .stat-card--rent,.dash-body .stat-card--deposit,
 .dash-body .stat-card--active{ border-color:var(--line-2) }
 .dash-body .stat-card__label{
   text-transform:uppercase; letter-spacing:.14em;
