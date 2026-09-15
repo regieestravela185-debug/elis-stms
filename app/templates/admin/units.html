@@ -177,6 +177,27 @@
       image-rendering: high-quality;
     }
     
+    /* A photo can be taken off a unit here. Without it a unit already holding
+       four silently swallowed every new upload, because the uploader only
+       ever appended and stopped at four. */
+    .unit-image-slot { position: relative; display: inline-block; line-height: 0 }
+    .unit-image-slot .unit-image-thumb { cursor: default }
+    .unit-image-slot:hover .unit-image-thumb { transform: none; box-shadow: none }
+    .unit-image-x {
+      position: absolute; top: -7px; right: -7px;
+      width: 20px; height: 20px; padding: 0;
+      display: grid; place-items: center;
+      border: 0; border-radius: 50%;
+      font: 700 14px/1 system-ui, sans-serif;
+      color: #fff; background: #dc2626;
+      box-shadow: 0 1px 4px rgba(0,0,0,.3);
+      cursor: pointer; opacity: .92;
+      transition: transform .15s ease, background .15s ease;
+    }
+    .unit-image-x:hover { transform: scale(1.14); opacity: 1 }
+    .unit-image-slot.is-removing .unit-image-thumb { opacity: .3; filter: grayscale(1) }
+    .unit-image-slot.is-removing .unit-image-x { background: #16a34a; font-size: 12px }
+
     .unit-image-thumb:hover {
       transform: scale(1.5);
       z-index: 10;
@@ -411,14 +432,18 @@
           {% if edit_unit and current_images %}
             <div class="mt-8">
               <div class="kicker">Current Images ({{ current_images|length }} of 4)</div>
-              <div class="unit-images-preview">
+              <div class="unit-images-preview" id="currentImages">
                 {% for image_url in current_images %}
-                  <img src="{{ media_url(image_url) }}" alt="Unit image" class="unit-image-thumb" />
+                  <div class="unit-image-slot" data-url="{{ image_url }}">
+                    <img src="{{ media_url(image_url) }}" alt="Unit image" class="unit-image-thumb" />
+                    <button type="button" class="unit-image-x" title="Remove this photo" aria-label="Remove this photo">&times;</button>
+                  </div>
                 {% endfor %}
 </div>
+              <p class="muted" id="removeNote" style="font-size: 0.8125rem; margin-top: 8px; display: none;"></p>
               {% if current_images|length >= 4 %}
-                <p class="muted" style="font-size: 0.875rem; margin-top: 8px; color: #eab308;">
-                   Maximum images reached (4 of 4). New uploads will be ignored until this unit has fewer than 4 images.
+                <p class="muted" id="fullNote" style="font-size: 0.875rem; margin-top: 8px; color: #eab308;">
+                   All 4 photo slots are used. Remove one with its &times; above, then choose the new photo — both happen on the same Save.
 </p>
               {% endif %}
 </div>
@@ -492,6 +517,57 @@
               preview.appendChild(img);
             });
           }
+
+          // Taking a photo off the unit.
+          //
+          // The click marks the photo rather than deleting it there and then:
+          // nothing leaves the unit until Save, and a second click puts it
+          // back. Each marked photo carries a hidden field that the edit
+          // route reads, drops from the unit's list, and only then fills the
+          // freed slot with whatever was newly chosen.
+          (function () {
+            const wrap = document.getElementById('currentImages');
+            if (!wrap) return;
+            const note = document.getElementById('removeNote');
+            const full = document.getElementById('fullNote');
+
+            function refresh() {
+              const marked = wrap.querySelectorAll('.unit-image-slot.is-removing').length;
+              const left = wrap.querySelectorAll('.unit-image-slot').length - marked;
+              if (note) {
+                note.style.display = marked ? '' : 'none';
+                note.textContent = marked
+                  ? marked + ' photo' + (marked === 1 ? '' : 's') + ' will be removed when you save — '
+                    + (4 - left) + ' slot' + (4 - left === 1 ? '' : 's') + ' free for new ones.'
+                  : '';
+              }
+              if (full) full.style.display = left >= 4 ? '' : 'none';
+            }
+
+            wrap.addEventListener('click', function (e) {
+              const btn = e.target.closest('.unit-image-x');
+              if (!btn) return;
+              e.preventDefault();
+              const slot = btn.closest('.unit-image-slot');
+              const on = slot.classList.toggle('is-removing');
+              btn.innerHTML = on ? '&#8634;' : '&times;';
+              btn.title = on ? 'Keep this photo' : 'Remove this photo';
+              const existing = slot.querySelector('input[name="remove_images"]');
+              if (on && !existing) {
+                const f = document.createElement('input');
+                f.type = 'hidden';
+                f.name = 'remove_images';
+                f.value = slot.getAttribute('data-url');
+                slot.appendChild(f);
+              } else if (!on && existing) {
+                existing.remove();
+              }
+              refresh();
+            });
+
+            refresh();
+          })();
+
         </script>
 
         <div style="display: flex; gap: 12px; margin-top: 24px;">
