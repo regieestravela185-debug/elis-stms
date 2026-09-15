@@ -871,10 +871,30 @@ def payments():
     # Unpaid rent accumulates in Payment/PaymentLedger, not on the bill row,
     # so the itemized card reads it from there to show the true total owed.
     rent_arrears = get_rent_arrears(profile)
+    # Which bill the card shows. Viewing a month on the admin billing page
+    # creates it, so a tenant can have rows for months that have not started
+    # — and taking the newest unpaid one showed a tenant who was fully
+    # settled a December bill due in 102 days, labelled as this month's.
+    #
+    # Among months that HAVE started, the newest unpaid one is the right
+    # choice: carry-over means it already includes every earlier unpaid
+    # balance. Only when nothing owing has started do we look ahead, and
+    # then to the nearest month, so the tenant still sees what is coming.
+    # Own import: this function also does `from datetime import date` inside a
+    # conditional above, which makes `date` function-local and unbound here
+    # whenever that branch is skipped.
+    from datetime import date as _date
+    _this_month = _date.today().strftime("%Y-%m")
+    _unpaid = db.session.query(UtilityBill).filter(
+        UtilityBill.tenant_profile_id == profile.id,
+        UtilityBill.is_paid == False,  # noqa: E712
+    )
     current_utility_bill = (
-        db.session.query(UtilityBill)
-        .filter(UtilityBill.tenant_profile_id == profile.id, UtilityBill.is_paid == False)  # noqa: E712
+        _unpaid.filter(UtilityBill.billing_month <= _this_month)
         .order_by(UtilityBill.billing_month.desc())
+        .first()
+        or _unpaid.filter(UtilityBill.billing_month > _this_month)
+        .order_by(UtilityBill.billing_month.asc())
         .first()
     )
 
@@ -891,6 +911,7 @@ def payments():
     return render_template(
         "tenant/payments.html", payments=payments, pagination=pagination, stats=stats,
         profile=profile, current_utility_bill=current_utility_bill,
+        this_month=_this_month,
         rent_arrears=rent_arrears,
         utility_bill_history=utility_bill_history,
     )

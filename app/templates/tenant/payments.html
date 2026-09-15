@@ -74,8 +74,16 @@
     <!-- Current Month's Bill: Rent + Electricity + Water (+ carried over) -->
     <div class="card" style="margin-bottom: 24px; padding: 24px;">
       <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-        <h3 style="margin: 0; font-size: 16px;">This Month's Bill</h3>
-        <span class="muted" style="font-size: 13px;">Due {{ ph(current_utility_bill.due_date).strftime('%b %d, %Y') }}</span>
+        {# Name the month rather than assuming it is this one: a tenant who is
+           settled up sees their next month here, and one behind sees the month
+           they are behind on. The due date always falls inside the billed
+           month, so it names the month too. #}
+        <h3 style="margin: 0; font-size: 16px;">
+          {{ ph(current_utility_bill.due_date).strftime('%B %Y') }} Bill
+        </h3>
+        <span class="muted" style="font-size: 13px;">
+          {% if current_utility_bill.billing_month > this_month %}Not due yet &middot; {% endif %}Due {{ ph(current_utility_bill.due_date).strftime('%b %d, %Y') }}
+        </span>
       </div>
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
         <tr>

@@ -12,16 +12,6 @@ _UNSET = object()
 from .ai_utils import compute_water_bill
 
 
-def _prev_billing_month(billing_month: str) -> str:
-    """"YYYY-MM" -> the "YYYY-MM" string for the month before it."""
-    year, month = (int(x) for x in billing_month.split("-"))
-    month -= 1
-    if month == 0:
-        month = 12
-        year -= 1
-    return f"{year:04d}-{month:02d}"
-
-
 def first_utility_month(tenant_profile: TenantProfile) -> str | None:
     """The first month a tenant is billed for electric and water.
 
@@ -88,12 +78,18 @@ def get_or_create_utility_bill(tenant_profile: TenantProfile,
     water_amount = compute_water_bill(unit.pax_range) if unit else None
     rent_amount = tenant_profile.contract_rent
 
+    # The most recent EARLIER bill, not strictly last month's. Viewing a
+    # month on the admin billing page creates it, so an administrator who
+    # skips ahead — October, then December — leaves a gap. Asking only for
+    # the month immediately before would find nothing there and silently
+    # drop the balance October was still owed.
     prior_bill = (
         db.session.query(UtilityBill)
         .filter(
             UtilityBill.tenant_profile_id == tenant_profile.id,
-            UtilityBill.billing_month == _prev_billing_month(billing_month),
+            UtilityBill.billing_month < billing_month,
         )
+        .order_by(UtilityBill.billing_month.desc())
         .first()
     )
     carried_electric = prior_bill.electric_outstanding if prior_bill else 0
