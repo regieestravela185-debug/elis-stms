@@ -71,10 +71,18 @@ body.dash-body{
 }
 
 /* ── Type ─────────────────────────────────────────────────────────────── */
-.dash-body h1,.dash-body h2,.dash-body h3,
-.topbar__title,.metric__num,.metric__value,.kpi-tile__value,.stat-mini__number{
+.dash-body h1,.dash-body h2,.dash-body h3,.topbar__title{
   font-family:'Playfair Display',Georgia,serif;
   font-weight:600; letter-spacing:-.012em; color:var(--ink);
+}
+/* Figures are Inter, not Playfair. Playfair's numerals are old-style and
+   slope, so a column of them read as italic beside the rest of the page —
+   and a serif figure next to a sans label looks like a third typeface even
+   though it is the second. Headings keep the serif; numbers do not. */
+.metric__num,.metric__value,.kpi-tile__value,.stat-mini__number{
+  font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-weight:700; letter-spacing:-.02em; color:var(--ink);
+  font-variant-numeric:tabular-nums lining-nums;
 }
 .dash-body h2{ font-size:clamp(18px,1.5vw,22px); margin:0 }
 .dash-body h3{ font-size:clamp(15px,1.2vw,17px); margin:0 }

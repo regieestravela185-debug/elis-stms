@@ -22,7 +22,7 @@
 
     {# Design system: tokens, components, motion. Loaded after app.css and
        before the per-page head block, so a page can still own a rule it needs to. #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v=1" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v=2" />
     
     <!-- Socket.IO Client -->
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
@@ -47,7 +47,7 @@
     {% block head %}{% endblock %}
     {# Consistency layer: loaded after the page's own <style> so the few
        components that appear on many pages settle on one appearance. #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-final.css') }}?v=1" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-final.css') }}?v=2" />
   </head>
   <body class="dash-body" {% block body_attrs %}{% endblock %}>
     <div class="sidebar-backdrop js-sidebar-backdrop"></div>

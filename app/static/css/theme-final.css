@@ -36,9 +36,9 @@
 .dash-body .stat-card--count .stat-card__number,
 .dash-body .stat-card--active .stat-card__number{
   color:var(--g700);
-  font-family:'Playfair Display',Georgia,serif;
-  font-weight:600; letter-spacing:-.015em;
-  font-variant-numeric:tabular-nums;
+  font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-weight:700; letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums lining-nums;
 }
 .dash-body .stat-card--total,.dash-body .stat-card--month,
 .dash-body .stat-card--last,.dash-body .stat-card--count,
@@ -172,8 +172,9 @@
 .dash-body .stat-mini--unpaid .stat-mini__number,
 .dash-body .stat-mini--archived .stat-mini__number{
   color:var(--g700) !important;
-  font-family:'Playfair Display',Georgia,serif;
-  font-weight:600; font-variant-numeric:tabular-nums;
+  font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-weight:700; letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums lining-nums;
 }
 .dash-body .stat-mini__label{
   display:inline-flex; align-items:center; gap:6px;
@@ -197,10 +198,10 @@
    than its own label. */
 .dash-body .card--lift > h3,
 .dash-body .card--lift > h3.mono{
-  font-family:'Playfair Display',Georgia,serif;
+  font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   font-size:clamp(26px,2.4vw,32px); line-height:1.1;
-  font-weight:600; color:var(--g700);
-  font-variant-numeric:tabular-nums;
+  font-weight:700; letter-spacing:-.02em; color:var(--g700);
+  font-variant-numeric:tabular-nums lining-nums;
   margin:8px 0 6px;
 }
 .dash-body .card--lift > .kicker{ color:var(--g600) }
@@ -259,3 +260,20 @@
 .dash-body .dash__brandSub{ color:rgba(247,243,232,.55) !important }
 .dash-body .side-link{ color:rgba(247,243,232,.86) !important }
 .dash-body .side-link:hover:not(.is-active){ color:#F7F3E8 !important }
+
+/* ── Figures are Inter, wherever a page declared its own ──────────────── */
+/* Several pages set their own Playfair on their figure class inside a
+   <style> block, which outranks theme.css. This sheet loads last, so one
+   .dash-body-qualified rule catches them all: the serif stays on headings,
+   and every number reads as the same typeface as its own label. */
+.dash-body .metric__num,
+.dash-body .metric__value,
+.dash-body .stat-card__number,
+.dash-body .stat-card__value,
+.dash-body .stat-mini__number,
+.dash-body .kpi-tile__value,
+.dash-body .insight-tile__value{
+  font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-weight:700; letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums lining-nums;
+}
