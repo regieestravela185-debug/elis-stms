@@ -189,6 +189,33 @@
       overflow-x: auto;
     }
     
+    .payload-note {
+      margin: 0 0 12px 0;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .payload-note--raw { margin-top: 16px; }
+    .payload-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+    .payload-table td {
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .payload-table tr:last-child td { border-bottom: 0; }
+    .payload-table td:first-child {
+      color: var(--muted);
+      width: 46%;
+    }
+    .payload-table td:last-child {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      word-break: break-all;
+    }
+
     .payload-content pre {
       margin: 0;
       font-size: 12px;
@@ -319,9 +346,30 @@
       <div class="payload-details">
         <details>
           <summary class="payload-summary">
-             View Technical Payload (JSON Data)
+             What was signed
           </summary>
           <div class="payload-content">
+            {# The five fields the hash covers, read back from the ledger row
+               rather than from the payment, so an edited payment shows here
+               as it was at the time it was signed. #}
+            {% set signed = ledger.payload_json|from_json %}
+            <p class="payload-note">
+              These are the five fields the signature covers. Change any one of
+              them in the database and the hash above no longer matches, which
+              is what the integrity check on the Payments page looks for.
+            </p>
+            <table class="payload-table">
+              <tr><td>Amount</td><td>&#8369;{{ '{:,.2f}'.format(signed.amount) }}</td></tr>
+              <tr><td>Paid at</td><td>{{ signed.paid_at|replace('T', ' at ') }}</td></tr>
+              <tr><td>Reference</td><td>{{ signed.reference or '&mdash;'|safe }}</td></tr>
+              <tr><td>Payment ID</td><td>#{{ signed.payment_id }}</td></tr>
+              <tr><td>Tenant profile ID</td><td>#{{ signed.tenant_profile_id }}</td></tr>
+            </table>
+            <p class="payload-note payload-note--raw">
+              Below is the exact text fed into SHA-256 &mdash; character for
+              character, which is why it is neither indented nor reordered.
+              Anyone can hash it themselves and get the same signature.
+            </p>
             <pre>{{ ledger.payload_json }}</pre>
 </div>
         </details>
