@@ -1778,16 +1778,33 @@ def update_unit(unit_id: int):
             if not _ok:
                 flash(_why, "warning")
                 return redirect(request.referrer or url_for("admin.units"))
+    # Photos the administrator ticked off in the form. Dropped from the unit's
+    # list before anything new is added, so replacing a photo is one save:
+    # remove the old, pick the new. Until this existed a unit already holding
+    # four photos silently ignored every upload, with no way to free a slot.
+    #
+    # Only the reference is dropped, never the stored file: a unit copied with
+    # "duplicate" shares the same image paths, and deleting the file would
+    # empty the copy too.
+    removed_images = {u for u in request.form.getlist("remove_images") if u}
+    image_urls = json.loads(unit.unit_images_json) if unit.unit_images_json else []
+    if removed_images:
+        kept = [u for u in image_urls if u not in removed_images]
+        if len(kept) != len(image_urls):
+            image_urls = kept
+            unit.unit_images_json = json.dumps(image_urls) if image_urls else None
+
     if image_files:
         upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
         Path(upload_folder).mkdir(parents=True, exist_ok=True)
 
-        image_urls = json.loads(unit.unit_images_json) if unit.unit_images_json else []
-
         # Calculate remaining slots
         remaining_slots = 4 - len(image_urls)
-        
-        if len(image_files) > remaining_slots:
+
+        if remaining_slots <= 0:
+            flash("This unit already holds 4 photos. Remove one with its \u00d7 first, then upload.", "warning")
+            image_files = []
+        elif len(image_files) > remaining_slots:
             flash(f"Maximum 4 images total. You have {len(image_urls)} existing images. Only {remaining_slots} new image(s) will be added.", "warning")
             image_files = image_files[:remaining_slots]
 
