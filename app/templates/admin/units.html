@@ -213,6 +213,17 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
+    /* Running count beside the photo, so the rows can be tallied at a
+       glance. It continues across pages — page 2 starts at 31. */
+    .unit-row-num {
+      width: 40px;
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      padding-right: 4px;
+    }
+
     /* Photo column thumbnail in the All Units table */
     .unit-row-thumb {
       width: 48px;
@@ -655,6 +666,7 @@
           <table class="table" id="unitsTable">
             <thead>
               <tr>
+                <th class="unit-row-num">#</th>
                 <th>Photo</th>
                 <th>Unit Code</th>
                 <th>Building</th>
@@ -672,6 +684,7 @@
                     data-building="{{ unit.building.code }}" 
                     data-status="{{ unit.status.value }}" 
                     data-type="{{ unit.type or '' }}">
+                  <td class="unit-row-num">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
                   <td>
                     {% set unit_thumb = (unit.unit_images_json|from_json) %}
                     {% if unit_thumb %}
