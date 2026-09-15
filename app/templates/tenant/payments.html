@@ -553,7 +553,7 @@
           {# Filled in with the month actually owed. Paying a month ahead while
              an earlier one is open leaves that earlier one owing. #}
           <p class="muted" style="font-size: 12px; margin-top: 4px;">
-            {% if next_rent.rent_state == 'upcoming' %}
+            {% if next_rent.state == 'upcoming' %}
               Your next rent is for <strong>{{ next_rent.label }}</strong>, due
               {{ ph(next_rent.due_date).strftime('%b %d, %Y') }}.
             {% else %}

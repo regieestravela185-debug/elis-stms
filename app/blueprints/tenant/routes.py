@@ -219,28 +219,19 @@ def dashboard():
 
     # Calculate days until next payment (assuming monthly on contract start day)
     from datetime import date, timedelta
+    # Which month is owed, not merely the next date on the calendar: this
+    # counted forward from the contract day and ignored what had been paid,
+    # so a tenant who had just settled September was still told rent was due
+    # in eleven days. next_rent_due answers from the payment record, and the
+    # Payments page reads the same answer.
     days_until_payment = None
+    next_rent = None
     if profile.contract_start and not is_expired:
         today = date.today()
-        contract_day = profile.contract_start.day
-        try:
-            next_payment_day = date(today.year, today.month, contract_day)
-        except ValueError:
-            next_payment_day = date(today.year, today.month, 28)
-        if next_payment_day <= today:
-            # Move to next month
-            if today.month == 12:
-                next_payment_day = date(today.year + 1, 1, contract_day)
-            else:
-                try:
-                    next_payment_day = date(today.year, today.month + 1, contract_day)
-                except ValueError:
-                    next_payment_day = date(today.year, today.month + 1, 28)
-        # Don't show next payment beyond contract end
-        if profile.contract_end and next_payment_day > profile.contract_end:
-            days_until_payment = None
-        else:
-            days_until_payment = (next_payment_day - today).days
+        from ...billing_utils import next_rent_due
+        next_rent = next_rent_due(profile, today)
+        if next_rent:
+            days_until_payment = (next_rent["due_date"] - today).days
 
     # Calculate contract progress and days remaining
     days_remaining = None
@@ -329,6 +320,7 @@ def dashboard():
         first_utility_month_label=first_utility_month_label,
         contract_end_date=contract_end_date,
         days_until_payment=days_until_payment,
+        next_rent=next_rent,
         days_remaining=days_remaining,
         contract_progress=contract_progress,
         unit_images=unit_images,
@@ -912,26 +904,8 @@ def payments():
     # used to open blank, so the tenant guessed — one picked October while
     # September was still unpaid, which recorded a month ahead and left the
     # real one owing, with nothing on either side saying so.
-    from ...billing_utils import get_payment_timeline
-    _timeline = get_payment_timeline(profile)
-    next_rent = next((r for r in reversed(_timeline) if r["rent_state"] != "paid"), None)
-    if next_rent is None and _timeline and profile.contract_start:
-        # Every month up to the current cycle is settled, so what they owe
-        # next is the cycle after the last one the timeline covers. Same
-        # due-day convention as everywhere else: the contract-start day,
-        # clamped to the length of that month.
-        import calendar as _cal
-        _y, _m = (int(x) for x in _timeline[0]["month"].split("-"))
-        _m += 1
-        if _m > 12:
-            _m, _y = 1, _y + 1
-        _day = min(profile.contract_start.day, _cal.monthrange(_y, _m)[1])
-        next_rent = {
-            "month": f"{_y:04d}-{_m:02d}",
-            "label": _date(_y, _m, 1).strftime("%B %Y"),
-            "due_date": _date(_y, _m, _day),
-            "rent_state": "upcoming",
-        }
+    from ...billing_utils import next_rent_due
+    next_rent = next_rent_due(profile)
 
     return render_template(
         "tenant/payments.html", payments=payments, pagination=pagination, stats=stats,

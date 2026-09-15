@@ -352,8 +352,25 @@ a[href^="tel:"]:hover {
       <h3 class="mono" style="color: #ef4444;">N/A</h3>
       <p class="muted">No active contract</p>
       {% else %}
-      <h3 class="mono">{{ days_until_payment }} days</h3>
-      <p class="muted">Until due date</p>
+      {% if next_rent %}
+        {# An overdue month gives a negative count; say it in words rather
+           than showing "-5 days". #}
+        {% set overdue = days_until_payment is not none and days_until_payment < 0 %}
+        {% set n = (-days_until_payment) if overdue else days_until_payment %}
+        <h3 class="mono"{% if overdue %} style="color: #ef4444;"{% endif %}>
+          {{ n }} day{{ '' if n == 1 else 's' }}{% if overdue %} late{% endif %}
+        </h3>
+        {# Name the month. "11 days" alone left a tenant guessing which
+           month it was for, and guessing wrong. #}
+        <p class="muted">
+          {{ next_rent.label }} rent &middot;
+          {% if next_rent.state == 'upcoming' %}due{% else %}was due{% endif %}
+          {{ ph(next_rent.due_date).strftime('%b %d, %Y') }}
+        </p>
+      {% else %}
+        <h3 class="mono">&mdash;</h3>
+        <p class="muted">Nothing due</p>
+      {% endif %}
       {% endif %}
     </div>
   </div>

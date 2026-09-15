@@ -254,6 +254,41 @@ def get_rent_arrears(tenant_profile: TenantProfile, as_of: date | None = None,
     }
 
 
+def next_rent_due(tenant_profile: TenantProfile, as_of: date | None = None):
+    """The rent month this tenant owes next — {month, label, due_date, state}.
+
+    "Next" means the earliest month they have not settled, which is not the
+    same as the next date on the calendar: a tenant who has paid this month
+    owes the month after, and one who missed a month owes that one, however
+    long ago it fell. Computing it from the calendar alone told a tenant who
+    had just paid that rent was due in eleven days.
+
+    `state` is "unpaid" when that month's due date has already passed and
+    "upcoming" when it has not. Returns None for a tenant with no contract
+    start, or one whose contract has ended before the month they owe.
+    """
+    as_of = as_of or date.today()
+    start = tenant_profile.contract_start
+    if not start:
+        return None
+
+    timeline = get_payment_timeline(tenant_profile, as_of)
+    row = next((r for r in reversed(timeline) if r["rent_state"] != "paid"), None)
+    if row is not None:
+        return {"month": row["month"], "label": row["label"],
+                "due_date": row["due_date"], "state": row["rent_state"]}
+
+    # Every month up to the current cycle is settled, so what they owe next
+    # is the cycle after the last one the timeline covers.
+    month_str = timeline[0]["month"] if timeline else f"{as_of.year:04d}-{as_of.month:02d}"
+    year, month = (int(x) for x in _month_add(month_str, 1).split("-"))
+    due = date(year, month, min(start.day, calendar.monthrange(year, month)[1]))
+    if tenant_profile.contract_end and due > tenant_profile.contract_end:
+        return None
+    return {"month": f"{year:04d}-{month:02d}",
+            "label": due.strftime("%B %Y"), "due_date": due, "state": "upcoming"}
+
+
 def get_payment_timeline(tenant_profile: TenantProfile, as_of: date | None = None):
     """Month-by-month record of what this tenant owed and what they paid,
     newest first, from their move-in to the current cycle.
