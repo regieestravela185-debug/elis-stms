@@ -673,6 +673,7 @@
                 <th>Number</th>
                 <th>Floor</th>
                 <th>Type</th>
+                <th>Pax</th>
                 <th>Price</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -698,6 +699,7 @@
                   <td class="mono">{{ unit.unit_number }}</td>
                   <td>{{ unit.floor or '—' }}</td>
                   <td>{{ unit.type|title if unit.type else '—' }}</td>
+                  <td class="mono">{{ unit.pax_range or '—' }}</td>
                   <td class="mono">₱{{ '{:,.2f}'.format(unit.price_monthly|float) }}</td>
                   <td>
                     <span class="badge badge--{{ unit.status.value }}">{{ unit.status.value|title }}</span>
