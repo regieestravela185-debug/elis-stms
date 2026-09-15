@@ -151,6 +151,9 @@
     .stat-card--deposit { border-color: rgba(168, 85, 247, 0.4); }
     .stat-card--deposit .stat-card__number { color: #a855f7; }
 
+    .stat-card--returned { border-color: rgba(239, 68, 68, 0.4); }
+    .stat-card--returned .stat-card__number { color: #ef4444; }
+
     .stat-card--tenants { border-color: rgba(234, 179, 8, 0.4); }
     .stat-card--tenants .stat-card__number { color: #eab308; }
     
@@ -433,6 +436,11 @@
         <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.total_deposit) }}</div>
         <div class="stat-card__label">Deposits Collected</div>
 </div>
+      <div class="stat-card stat-card--returned">
+        <span class="stat-card__icon"></span>
+        <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.total_returned) }}</div>
+        <div class="stat-card__label">Deposits Returned</div>
+</div>
       <div class="stat-card stat-card--month">
         <span class="stat-card__icon"></span>
         <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.this_month_revenue) }}</div>
@@ -460,7 +468,8 @@
             Pick one month or a range of them &mdash; the totals above cover all
             time. Confirmed payments only; voided and rejected ones are left out.
             Rent and security deposits are broken out, since a deposit is money
-            held for the tenant rather than income.
+            held for the tenant rather than income &mdash; and a deposit given
+            back is subtracted, not added.
           </p>
         </div>
       </div>
@@ -523,12 +532,16 @@
               <span class="rev-period__splitnum">&#8369;{{ '{:,.2f}'.format(payment_stats.period_deposit) }}</span>
               <span class="rev-period__splitlbl">security deposits</span>
             </div>
+            <div>
+              <span class="rev-period__splitnum">&minus;&#8369;{{ '{:,.2f}'.format(payment_stats.period_returned) }}</span>
+              <span class="rev-period__splitlbl">deposits returned</span>
+            </div>
           </div>
 
           {% if payment_stats.period_months|length > 1 %}
             <table class="rev-period__months">
               <thead>
-                <tr><th>Month</th><th>Payments</th><th>Rent</th><th>Deposits</th><th>Total</th></tr>
+                <tr><th>Month</th><th>Payments</th><th>Rent</th><th>Deposits</th><th>Returned</th><th>Total</th></tr>
               </thead>
               <tbody>
                 {% for m in payment_stats.period_months %}
@@ -537,6 +550,7 @@
                     <td>{{ m.count }}</td>
                     <td>&#8369;{{ '{:,.2f}'.format(m.rent) }}</td>
                     <td>&#8369;{{ '{:,.2f}'.format(m.deposit) }}</td>
+                    <td>{% if m.returned %}&minus;{% endif %}&#8369;{{ '{:,.2f}'.format(m.returned) }}</td>
                     <td>&#8369;{{ '{:,.2f}'.format(m.amount) }}</td>
                   </tr>
                 {% endfor %}

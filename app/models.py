@@ -539,6 +539,21 @@ class UnitInventoryItem(db.Model):
 PAYMENT_STATUSES_NOT_COUNTED = ("pending", "rejected", "voided")
 
 
+def payment_revenue_amount():
+    """`Payment.amount`, signed the way revenue totals need it.
+
+    Returning a security deposit writes a Payment row of its own, so a
+    plain SUM(amount) adds back money that actually left the business. A
+    return counts negative here; every other payment counts as it stands.
+    Pair it with a PAYMENT_STATUSES_NOT_COUNTED filter as usual.
+    """
+    from sqlalchemy import case
+    return case(
+        (Payment.deposit_transaction_type == "deposit_returned", -Payment.amount),
+        else_=Payment.amount,
+    )
+
+
 class Payment(db.Model):
     __tablename__ = "payments"
 

@@ -40,6 +40,7 @@ from ...models import (
     UtilityBill,
     VerificationStatus,
     PAYMENT_STATUSES_NOT_COUNTED,
+    payment_revenue_amount,
     UnitInventoryItem,
 )
 from ...inventory import (ensure_unit_inventory, inventory_summary,
@@ -637,18 +638,28 @@ def dashboard():
     )
 
     total_tenants = db.session.query(TenantProfile).count()
-    total_payments = db.session.query(Payment).count()
+    # Voided and rejected rows do not count toward revenue, so counting them
+    # here made the tile disagree with every figure beside it.
+    total_payments = (db.session.query(Payment)
+                      .filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
+                      .count())
     # A voided or rejected payment must stop counting here too. The
     # Payments page already excluded them; this one did not, so voiding a
     # payment left the dashboard's revenue unchanged.
     _counted = db.session.query(db.func.sum(Payment.amount)).filter(
         Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
-    total_revenue = _counted.scalar() or 0
     # "Revenue" was rent and security deposits added together, which reads as
     # income the business does not have — a deposit is held and given back.
-    # The combined figure stays, but the two halves are now shown beside it.
+    # Worse, returning a deposit writes its own Payment row, so money paid
+    # OUT was being added to revenue as though it had come in. Each part is
+    # now counted for what it is.
     rent_revenue = _counted.filter(Payment.is_deposit == False).scalar() or 0  # noqa: E712
-    deposit_revenue = _counted.filter(Payment.is_deposit == True).scalar() or 0  # noqa: E712
+    _deposits = _counted.filter(Payment.is_deposit == True)  # noqa: E712
+    deposit_returned = _deposits.filter(
+        Payment.deposit_transaction_type == "deposit_returned").scalar() or 0
+    deposit_revenue = _deposits.filter(db.func.coalesce(
+        Payment.deposit_transaction_type, "") != "deposit_returned").scalar() or 0
+    total_revenue = rent_revenue + deposit_revenue - deposit_returned
     total_deposits = (
         db.session.query(db.func.sum(Reservation.deposit_amount))
         .filter(Reservation.status == ReservationStatus.APPROVED)
@@ -690,7 +701,7 @@ def dashboard():
     revenue_trend = []
     for i in range(6):
         month_date = start_month + relativedelta(months=i)
-        month_revenue = db.session.query(func.sum(Payment.amount)).filter(
+        month_revenue = db.session.query(func.sum(payment_revenue_amount())).filter(
             Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
             extract('year', Payment.paid_at) == month_date.year,
             extract('month', Payment.paid_at) == month_date.month
@@ -706,14 +717,14 @@ def dashboard():
 
     # NEW: This Month's Summary
     current_month_start = today.replace(day=1)
-    this_month_revenue = db.session.query(func.sum(Payment.amount)).filter(
+    this_month_revenue = db.session.query(func.sum(payment_revenue_amount())).filter(
         Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
         Payment.paid_at >= current_month_start
     ).scalar() or 0
     
     last_month_start = (current_month_start - relativedelta(months=1))
     last_month_end = current_month_start - timedelta(days=1)
-    last_month_revenue = db.session.query(func.sum(Payment.amount)).filter(
+    last_month_revenue = db.session.query(func.sum(payment_revenue_amount())).filter(
         Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
         Payment.paid_at >= last_month_start,
         Payment.paid_at <= last_month_end
@@ -829,6 +840,7 @@ def dashboard():
         "total_revenue": total_revenue,
         "rent_revenue": rent_revenue,
         "deposit_revenue": deposit_revenue,
+        "deposit_returned": deposit_returned,
         "total_deposits": total_deposits,
         "res_pending": res_pending,
         "res_approved": res_approved,
@@ -2615,13 +2627,23 @@ def payments():
 
     _rent_only = _confirmed.filter(Payment.is_deposit == False)  # noqa: E712
     _deposit_only = _confirmed.filter(Payment.is_deposit == True)  # noqa: E712
-    total_revenue = _confirmed.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
-    # Total Revenue is rent and deposits in one number, which hides how much
-    # of it is actually earned. Both halves are reported alongside it.
-    total_rent = _rent_only.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
-    total_deposit = _deposit_only.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
-    this_month_revenue = _confirmed.filter(Payment.paid_at >= this_month_start_dt).with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
-    last_month_revenue = _confirmed.filter(Payment.paid_at >= last_month_start_dt, Payment.paid_at < last_month_end_dt).with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
+    # Returning a deposit records a Payment of its own, so it has to be taken
+    # back out rather than added: it is money leaving, not arriving.
+    _returned = Payment.deposit_transaction_type == "deposit_returned"
+    _not_returned = _func.coalesce(Payment.deposit_transaction_type, "") != "deposit_returned"
+
+    def _sum(q):
+        return float(q.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar() or 0)
+
+    # Total Revenue was rent and deposits in one number, which hides how much
+    # of it is actually earned. Every part is reported alongside it.
+    total_rent = _sum(_rent_only)
+    total_deposit = _sum(_deposit_only.filter(_not_returned))
+    total_returned = _sum(_deposit_only.filter(_returned))
+    total_revenue = total_rent + total_deposit - total_returned
+    _net = _func.coalesce(_func.sum(payment_revenue_amount()), 0)
+    this_month_revenue = _confirmed.filter(Payment.paid_at >= this_month_start_dt).with_entities(_net).scalar()
+    last_month_revenue = _confirmed.filter(Payment.paid_at >= last_month_start_dt, Payment.paid_at < last_month_end_dt).with_entities(_net).scalar()
     tenants_paid_count = _confirmed.with_entities(_func.count(_func.distinct(Payment.tenant_profile_id))).scalar()
 
     # Revenue over a chosen period. "Total revenue" answers how much has
@@ -2651,12 +2673,12 @@ def payments():
     if rev_to:
         period_q = period_q.filter(Payment.paid_at < dt.combine(rev_to + timedelta(days=1), dt.min.time()))
 
-    period_revenue = period_q.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar()
     period_count = period_q.with_entities(_func.count(Payment.id)).scalar()
-    period_rent = (period_q.filter(Payment.is_deposit == False)  # noqa: E712
-                   .with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar())
-    period_deposit = (period_q.filter(Payment.is_deposit == True)  # noqa: E712
-                      .with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar())
+    period_rent = _sum(period_q.filter(Payment.is_deposit == False))  # noqa: E712
+    _period_dep = period_q.filter(Payment.is_deposit == True)  # noqa: E712
+    period_deposit = _sum(_period_dep.filter(_not_returned))
+    period_returned = _sum(_period_dep.filter(_returned))
+    period_revenue = period_rent + period_deposit - period_returned
 
     # Month-by-month inside the chosen period, so a range of several months
     # shows where the money actually came from rather than one lump sum.
@@ -2670,16 +2692,22 @@ def payments():
                                    (Payment.is_deposit == False, Payment.amount),  # noqa: E712
                                    else_=0)), 0),
                                _func.coalesce(_func.sum(_case(
-                                   (Payment.is_deposit == True, Payment.amount),  # noqa: E712
+                                   (db.and_(Payment.is_deposit == True,  # noqa: E712
+                                            _not_returned), Payment.amount),
+                                   else_=0)), 0),
+                               _func.coalesce(_func.sum(_case(
+                                   (db.and_(Payment.is_deposit == True,  # noqa: E712
+                                            _returned), Payment.amount),
                                    else_=0)), 0))
                 .group_by('m').order_by('m').all())
-        for month, amount, count, rent, deposit in rows:
+        for month, _gross, count, rent, deposit, returned in rows:
             period_months.append({
                 'month': month,
                 'label': dt.strptime(month, '%Y-%m').strftime('%B %Y'),
-                'amount': float(amount or 0),
                 'rent': float(rent or 0),
                 'deposit': float(deposit or 0),
+                'returned': float(returned or 0),
+                'amount': float(rent or 0) + float(deposit or 0) - float(returned or 0),
                 'count': count or 0,
             })
 
@@ -2687,12 +2715,14 @@ def payments():
         'total_revenue': float(total_revenue or 0),
         'total_rent': float(total_rent or 0),
         'total_deposit': float(total_deposit or 0),
+        'total_returned': float(total_returned or 0),
         'this_month_revenue': float(this_month_revenue or 0),
         'last_month_revenue': float(last_month_revenue or 0),
         'tenants_paid': tenants_paid_count or 0,
         'period_revenue': float(period_revenue or 0),
         'period_rent': float(period_rent or 0),
         'period_deposit': float(period_deposit or 0),
+        'period_returned': float(period_returned or 0),
         'period_count': period_count or 0,
         'period_months': period_months,
         'rev_from': rev_from.isoformat() if rev_from else '',

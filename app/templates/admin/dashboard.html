@@ -838,6 +838,10 @@
           <div class="metric__label">Deposits Collected</div>
 </div>
         <div class="metric">
+          <div class="metric__num">₱{{ '{:,.2f}'.format(cards.deposit_returned|float) }}</div>
+          <div class="metric__label">Deposits Returned</div>
+</div>
+        <div class="metric">
           <div class="metric__num">₱{{ '{:,.2f}'.format(cards.total_deposits|float) }}</div>
           <div class="metric__label">Deposits Held</div>
 </div>

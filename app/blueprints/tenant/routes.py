@@ -13,6 +13,7 @@ from ...models import (
     Payment, RenewalRequest, RenewalRequestStatus, Reservation, ReservationStatus,
     Role, TenantProfile, Unit, UnitStatus, User,
     PAYMENT_STATUSES_NOT_COUNTED,
+    payment_revenue_amount,
 )
 
 bp = Blueprint("tenant", __name__, url_prefix="/tenant")
@@ -796,7 +797,10 @@ def payments():
     # non-aggregated/non-grouped column is invalid in Postgres.
     from sqlalchemy import func as _func
     confirmed_query = query.filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
-    total_amount = float(confirmed_query.with_entities(_func.coalesce(_func.sum(Payment.amount), 0)).scalar() or 0)
+    # A deposit given back is its own Payment row; it is money the tenant
+    # received, so it must not swell the total they have paid.
+    total_amount = float(confirmed_query.with_entities(
+        _func.coalesce(_func.sum(payment_revenue_amount()), 0)).scalar() or 0)
     total_count = confirmed_query.count()
     last_payment = confirmed_query.order_by(Payment.paid_at.desc()).first()
 
@@ -837,7 +841,10 @@ def payments():
     yearly_totals = defaultdict(lambda: {'total': 0.0, 'count': 0})
     for p in all_payments:
         y = p.paid_at.year
-        yearly_totals[y]['total'] += float(p.amount)
+        # Same sign rule as total_amount above: a returned deposit is money
+        # that came back to the tenant, not another payment they made.
+        sign = -1 if p.deposit_transaction_type == "deposit_returned" else 1
+        yearly_totals[y]['total'] += sign * float(p.amount)
         yearly_totals[y]['count'] += 1
     yearly_summary = [
         {'year': y, 'total': v['total'], 'count': v['count']}
