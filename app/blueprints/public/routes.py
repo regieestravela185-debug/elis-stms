@@ -156,8 +156,13 @@ def home():
     # what the building actually looks like. Takes the first unit that has
     # a real photograph of its own, so a building whose units are all
     # un-photographed falls back to the house shot rather than to nothing.
-    building_covers = {}
+    # A cover set on the building itself wins: it is a photograph of the
+    # building, chosen for this card, where the fallback below is a photo of
+    # a room that happens to be inside it.
+    building_covers = {b.id: b.cover_image for b in buildings if b.cover_image}
     for bid, floors in units_by_building.items():
+        if bid in building_covers:
+            continue
         for key in ("floor_1", "floor_2", "floor_3", "floor_4"):
             for unit in floors.get(key, []):
                 first = (unit.get("images") or [None])[0]

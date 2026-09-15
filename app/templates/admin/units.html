@@ -224,6 +224,41 @@
       padding-right: 4px;
     }
 
+    /* Per-building homepage cover */
+    .bcover-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
+    }
+    .bcover {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .bcover__frame {
+      aspect-ratio: 16 / 10;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(20, 20, 23, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bcover__frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .bcover__empty {
+      color: var(--muted);
+      font-size: 11.5px;
+      text-align: center;
+      padding: 0 10px;
+      line-height: 1.5;
+    }
+    .bcover__name { font-weight: 700; font-size: 13px; }
+    .bcover__file { font-size: 11.5px; padding: 6px 8px; }
+    .bcover__actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
     /* Photo column thumbnail in the All Units table */
     .unit-row-thumb {
       width: 48px;
@@ -600,6 +635,39 @@
 </div>
       </form>
 </div>
+
+    <!-- Homepage cover photo per building -->
+    <div class="card mt-16">
+      <div class="section__header">
+        <h3>Building Photos on the Homepage</h3>
+        <p class="muted">One photo per building, shown on its card at
+          <a href="{{ url_for('public.home') }}#units" target="_blank" rel="noopener">Units</a>.
+          Without one the card falls back to a photo of a unit inside &mdash; a room, not the building.</p>
+      </div>
+      <div class="bcover-grid mt-16">
+        {% for building in buildings %}
+          <form class="bcover" method="post" enctype="multipart/form-data"
+                action="{{ url_for('admin.update_building_cover', building_id=building.id) }}">
+            <div class="bcover__frame">
+              {% if building.cover_image %}
+                <img src="{{ media_url(building.cover_image) }}" alt="{{ building.code }}" />
+              {% else %}
+                <div class="bcover__empty">No photo &mdash; showing a unit instead</div>
+              {% endif %}
+            </div>
+            <div class="bcover__name">{{ building.code }} &middot; {{ building.name }}</div>
+            <input class="input bcover__file" type="file" name="cover" accept="image/*" />
+            <div class="bcover__actions">
+              <button type="submit" class="btn btn--sm btn--primary">Save Photo</button>
+              {% if building.cover_image %}
+                <button type="submit" name="remove" value="1" class="btn btn--sm btn--ghost"
+                        onclick="return confirm('Remove {{ building.code }}\u2019s photo? Its card falls back to a unit photo.');">Remove</button>
+              {% endif %}
+            </div>
+          </form>
+        {% endfor %}
+      </div>
+    </div>
 
     <!-- Filters Section -->
     <div class="filters-section mt-16">

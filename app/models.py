@@ -164,6 +164,12 @@ class Building(db.Model):
     code = db.Column(db.String(16), unique=True, nullable=False)  # B1..B5
     name = db.Column(db.String(120), nullable=False)
 
+    # The photograph shown on the homepage's card for this building. Set it
+    # and the card shows the building itself; leave it and the card falls
+    # back to the first photographed unit inside (see building_covers in
+    # public/routes.py), which is a picture of a room, not of the building.
+    cover_image = db.Column(db.String(500), nullable=True)
+
     units = db.relationship("Unit", back_populates="building")
 
 

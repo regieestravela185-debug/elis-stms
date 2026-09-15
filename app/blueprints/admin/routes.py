@@ -1604,6 +1604,51 @@ def units():
     return render_template("admin/units.html", buildings=buildings, units=units, pagination=pagination, stats=stats, show_archived=show_archived, building_floor_limits=building_floor_limits, building_unit_types=building_unit_types)
 
 
+@bp.post("/buildings/<int:building_id>/cover")
+@login_required
+def update_building_cover(building_id: int):
+    """Set or clear the photograph the homepage shows on this building's card.
+
+    Stored on the building rather than borrowed from a unit, so the card can
+    show the building itself. Clearing it is not a gap: the homepage falls
+    back to a photographed unit inside, the way it did before covers existed.
+    """
+    _ensure_admin()
+    building = db.session.get(Building, building_id)
+    if not building:
+        abort(404)
+
+    if request.form.get("remove") == "1":
+        building.cover_image = None
+        db.session.commit()
+        flash(f"{building.code}'s photo removed — its card now shows a unit "
+              f"photo instead.", "success")
+        return redirect(request.referrer or url_for("admin.units"))
+
+    image = request.files.get("cover")
+    if not image or not image.filename:
+        flash("Choose a photo first.", "warning")
+        return redirect(request.referrer or url_for("admin.units"))
+
+    from pathlib import Path
+    from werkzeug.utils import secure_filename
+    from ... import supabase_storage
+    filename = secure_filename(f"{building.code}_{image.filename}")
+    if supabase_storage.is_enabled():
+        # Persistent storage — the host's own disk is wiped on every deploy.
+        building.cover_image = supabase_storage.upload_file_storage(
+            image, f"buildings/{filename}")
+    else:
+        upload_folder = current_app.config.get("UPLOAD_FOLDER", "uploads")
+        Path(upload_folder).mkdir(parents=True, exist_ok=True)
+        image.save(str(Path(upload_folder) / filename))
+        building.cover_image = f"uploads/{filename}"
+
+    db.session.commit()
+    flash(f"{building.code}'s homepage photo updated.", "success")
+    return redirect(request.referrer or url_for("admin.units"))
+
+
 @bp.post("/units/create")
 @login_required
 def create_unit():
