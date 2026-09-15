@@ -312,7 +312,12 @@
               <td style="color: #ff5050; font-weight: bold;">₱{{ '{:,.2f}'.format(issue.payment_amount|float) }}</td>
               <td>
                 <span style="color: #ff5050;">{{ issue.issue }}</span><br>
-                <a href="{{ url_for('admin.view_ledger', payment_id=issue.payment_id) }}" style="font-size: 11px;">View Hash Details</a>
+                {# An unsigned payment has no ledger row to show. #}
+                {% if issue.ledger_id %}
+                  <a href="{{ url_for('admin.view_ledger', payment_id=issue.payment_id) }}" style="font-size: 11px;">View Hash Details</a>
+                {% else %}
+                  <span class="muted" style="font-size: 11px;">No ledger entry exists for this payment.</span>
+                {% endif %}
 </td>
             </tr>
             {% endfor %}

@@ -7,7 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask
 
 from .extensions import db
-from .models import Payment, Reservation, ReservationStatus, TenantProfile, Unit, UnitStatus, UtilityBill
+from .models import PAYMENT_STATUSES_NOT_COUNTED, Payment, Reservation, ReservationStatus, TenantProfile, Unit, UnitStatus, UtilityBill
 from .email_helper import send_payment_reminder_email, send_renewal_reminder_email, send_utility_bill_reminder_email
 from .billing_utils import get_or_create_utility_bill
 from .socket_events import emit_utility_bill_notification
@@ -72,10 +72,15 @@ def send_renewal_and_payment_reminders(app: Flask) -> dict:
                 days_until_due = (next_due - today).days
                 if 0 <= days_until_due <= 7 and profile.last_payment_reminder_sent != today:
                     cycle_start = datetime.combine(shift_month(next_due, -1), datetime.min.time())
+                    # A rejected proof or a voided entry is not a payment.
+                    # Counting them here silenced the reminder for a tenant
+                    # who had in fact not paid — the one case the reminder
+                    # exists for.
                     already_paid = (
                         db.session.query(Payment)
                         .filter(Payment.tenant_profile_id == profile.id)
                         .filter(Payment.is_deposit == False)  # noqa: E712
+                        .filter(Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED))
                         .filter(Payment.paid_at >= cycle_start)
                         .first()
                         is not None

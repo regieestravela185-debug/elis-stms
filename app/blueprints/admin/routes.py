@@ -445,7 +445,33 @@ def verify_blockchain_chain() -> dict:
             })
         
         previous_hash = ledger.hash
-    
+
+    # A row written straight into `payments`, bypassing the app, never gets a
+    # ledger entry — and walking the ledger alone would never look at it. It
+    # would count toward revenue with nothing vouching for it, so the payments
+    # side is checked too. Tenant-submitted proofs awaiting review are signed
+    # at approval, not at submission, and a rejected one never is: neither is
+    # missing a signature it was ever meant to have.
+    signed = {l.payment_id for l in ledgers}
+    unsigned = (db.session.query(Payment)
+                .filter(Payment.payment_status.notin_(("pending", "rejected")))
+                .order_by(Payment.id.asc()).all())
+    for payment in unsigned:
+        if payment.id in signed:
+            continue
+        tenant_info = "Unknown Tenant"
+        if payment.tenant_profile and payment.tenant_profile.user:
+            tenant_info = (f"{payment.tenant_profile.user.full_name} "
+                           f"({payment.tenant_profile.unit.unit_code})")
+        issues.append({
+            "ledger_id": None,
+            "payment_id": payment.id,
+            "tenant_info": tenant_info,
+            "payment_amount": float(payment.amount),
+            "issue": "Unsigned payment - This payment has no blockchain entry. "
+                     "It was not recorded through the system.",
+        })
+
     return {
         "valid": len(issues) == 0,
         "message": "Blockchain chain is valid" if len(issues) == 0 else f"Found {len(issues)} integrity issue(s)",
