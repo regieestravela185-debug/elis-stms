@@ -108,11 +108,14 @@ def home():
             except Exception:
                 images = []
         if not images:
-            images = ["img/elis-building.jpg", "img/elis-building.jpg", "img/elis-building.jpg", "img/elis-building.jpg"]
+            images = ["img/elis-building.jpg"]
 
-        # Ensure we always have exactly 4 images (pad with last image if needed)
-        while len(images) < 4:
-            images.append(images[-1] if images else "img/elis-building.jpg")
+        # Deliberately not padded out to four. It used to repeat the last
+        # photograph until there were four of them, so a unit with two showed
+        # the second one three times — and an administrator who had just
+        # deleted two saw a gallery that still looked full and thought the
+        # deletion had not worked.
+        images = images[:4]
 
         unit_type = (u.type or "unit").lower()
         is_commercial = "commercial" in unit_type

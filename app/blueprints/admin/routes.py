@@ -1867,6 +1867,57 @@ def delete_unit(unit_id: int):
     return redirect(url_for("admin.units"))
 
 
+@bp.post("/units/<int:unit_id>/purge")
+@login_required
+def purge_unit(unit_id: int):
+    """Delete an archived unit for good.
+
+    Archiving is the normal way to retire a unit and it is reversible, but a
+    unit created by mistake — a duplicate, a test row — stayed in the archive
+    with no way to be rid of it. This removes it outright, and only when
+    nothing points at it: a unit with a tenancy, a reservation, an inventory
+    or a rating behind it is history the property may need, and deleting it
+    would leave those records pointing at a row that no longer exists.
+    """
+    _ensure_admin()
+    unit = db.session.get(Unit, unit_id)
+    if not unit:
+        abort(404)
+
+    if not unit.is_archived:
+        flash("Archive the unit first — permanent deletion only applies to archived units.", "warning")
+        return redirect(url_for("admin.units"))
+
+    blockers = []
+    tenancies = db.session.query(TenantProfile).filter_by(unit_id=unit.id).count()
+    if tenancies:
+        blockers.append(f"{tenancies} tenancy record{'s' if tenancies != 1 else ''}")
+    reservations = db.session.query(Reservation).filter_by(unit_id=unit.id).count()
+    if reservations:
+        blockers.append(f"{reservations} reservation{'s' if reservations != 1 else ''}")
+    inventory = db.session.query(UnitInventoryItem).filter_by(unit_id=unit.id).count()
+    if inventory:
+        blockers.append(f"{inventory} inventory item{'s' if inventory != 1 else ''}")
+    ratings = db.session.query(Feedback).filter_by(unit_id=unit.id).count()
+    if ratings:
+        blockers.append(f"{ratings} rating{'s' if ratings != 1 else ''}")
+
+    if blockers:
+        flash(
+            f"{unit.unit_code} cannot be deleted: it still has " + ", ".join(blockers)
+            + ". It stays archived, which keeps that history readable.",
+            "warning",
+        )
+        return redirect(url_for("admin.units", archived="1"))
+
+    code = unit.unit_code
+    db.session.delete(unit)
+    db.session.add(ActivityLog(actor_user_id=current_user.id, action="unit_deleted"))  # type: ignore[attr-defined]
+    db.session.commit()
+    flash(f"{code} deleted permanently.", "success")
+    return redirect(url_for("admin.units", archived="1"))
+
+
 @bp.post("/units/<int:unit_id>/restore")
 @login_required
 def restore_unit(unit_id: int):
