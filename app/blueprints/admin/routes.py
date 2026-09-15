@@ -2959,6 +2959,13 @@ def utility_billing():
     # A tenant is skipped for any month before their first billable one —
     # utilities start the month after move-in, so the month they moved in
     # has no bill and must not appear as an empty row to fill in.
+    # Whether the rent for this same month has been settled. The page shows
+    # rent beside the utilities, and the Outstanding column used to add it in
+    # unconditionally — so a tenant who had already paid their rent still read
+    # as owing it, on top of a water bill they did owe.
+    from ...billing_utils import load_paid_months
+    paid_months = load_paid_months([t.id for t in tenants])
+
     rows = []
     not_yet_billable = []
     for t in tenants:
@@ -2966,7 +2973,8 @@ def utility_billing():
         if bill is None:
             not_yet_billable.append(t)
         else:
-            rows.append({"profile": t, "bill": bill})
+            rows.append({"profile": t, "bill": bill,
+                         "rent_paid": billing_month in paid_months.get(t.id, set())})
     db.session.commit()  # persist any newly-created bill rows
 
     return render_template("admin/utility_billing.html", rows=rows,

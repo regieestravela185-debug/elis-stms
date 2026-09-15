@@ -39,6 +39,18 @@
       color: #d97706;
       font-weight: 600;
     }
+    .ub-rentpaid {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #15803d;
+      background: rgba(34, 197, 94, 0.14);
+    }
     .ub-carry--zero {
       color: var(--muted);
       font-weight: 400;
@@ -131,12 +143,18 @@
               {% for row in rows %}
                 {% set bill = row.bill %}
                 {% set profile = row.profile %}
-                <tr data-base-total="{{ (bill.rent_amount_snapshot|float) + (0 if bill.electric_paid else bill.carried_over_electric|float) + (0 if bill.water_paid else bill.carried_over_water|float) }}"
+                {# Rent counts toward Outstanding only while it is unpaid. #}
+                <tr data-base-total="{{ (0 if row.rent_paid else bill.rent_amount_snapshot|float) + (0 if bill.electric_paid else bill.carried_over_electric|float) + (0 if bill.water_paid else bill.carried_over_water|float) }}"
                     data-electric-paid="{{ 1 if bill.electric_paid else 0 }}"
                     data-water-paid="{{ 1 if bill.water_paid else 0 }}">
                   <td class="mono"><strong>{{ profile.unit.unit_code if profile.unit else '—' }}</strong></td>
                   <td>{{ profile.user.full_name if profile.user else '—' }}</td>
-                  <td class="mono">₱{{ '{:,.2f}'.format(bill.rent_amount_snapshot|float) }}</td>
+                  <td class="mono">
+                    ₱{{ '{:,.2f}'.format(bill.rent_amount_snapshot|float) }}
+                    {% if row.rent_paid %}
+                      <span class="ub-rentpaid" title="Rent for this month is settled — it is not counted in Outstanding.">paid</span>
+                    {% endif %}
+                  </td>
                   <td>
                     <input
                       type="number" step="0.01" min="0"
@@ -222,7 +240,7 @@
                       <span class="ub-carry--zero">—</span>
                     {% endif %}
                   </td>
-                  <td class="mono ub-total" id="total_{{ bill.id }}">₱{{ '{:,.2f}'.format(bill.total_outstanding + (bill.rent_amount_snapshot|float)) }}</td>
+                  <td class="mono ub-total" id="total_{{ bill.id }}">₱{{ '{:,.2f}'.format(bill.total_outstanding + (0 if row.rent_paid else bill.rent_amount_snapshot|float)) }}</td>
                   <td>{{ ph(bill.due_date).strftime('%b %d, %Y') }}</td>
                   <td>
                     {% if bill.is_paid %}

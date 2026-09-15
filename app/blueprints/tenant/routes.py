@@ -908,10 +908,36 @@ def payments():
         .all()
     )
 
+    # The month the tenant actually owes next. The proof form's month picker
+    # used to open blank, so the tenant guessed — one picked October while
+    # September was still unpaid, which recorded a month ahead and left the
+    # real one owing, with nothing on either side saying so.
+    from ...billing_utils import get_payment_timeline
+    _timeline = get_payment_timeline(profile)
+    next_rent = next((r for r in reversed(_timeline) if r["rent_state"] != "paid"), None)
+    if next_rent is None and _timeline and profile.contract_start:
+        # Every month up to the current cycle is settled, so what they owe
+        # next is the cycle after the last one the timeline covers. Same
+        # due-day convention as everywhere else: the contract-start day,
+        # clamped to the length of that month.
+        import calendar as _cal
+        _y, _m = (int(x) for x in _timeline[0]["month"].split("-"))
+        _m += 1
+        if _m > 12:
+            _m, _y = 1, _y + 1
+        _day = min(profile.contract_start.day, _cal.monthrange(_y, _m)[1])
+        next_rent = {
+            "month": f"{_y:04d}-{_m:02d}",
+            "label": _date(_y, _m, 1).strftime("%B %Y"),
+            "due_date": _date(_y, _m, _day),
+            "rent_state": "upcoming",
+        }
+
     return render_template(
         "tenant/payments.html", payments=payments, pagination=pagination, stats=stats,
         profile=profile, current_utility_bill=current_utility_bill,
         this_month=_this_month,
+        next_rent=next_rent,
         rent_arrears=rent_arrears,
         utility_bill_history=utility_bill_history,
     )

@@ -546,8 +546,23 @@
         <label class="label">Bank Transfer Reference Number</label>
         <input class="input" type="text" name="reference" required placeholder="Reference/transaction number from your bank" />
 
-        <label class="label">For Billing Month (optional)</label>
-        <input class="input" type="month" name="payment_month" />
+        <label class="label">For Billing Month</label>
+        <input class="input" type="month" name="payment_month"
+               {% if next_rent %}value="{{ next_rent.month }}"{% endif %} />
+        {% if next_rent %}
+          {# Filled in with the month actually owed. Paying a month ahead while
+             an earlier one is open leaves that earlier one owing. #}
+          <p class="muted" style="font-size: 12px; margin-top: 4px;">
+            {% if next_rent.rent_state == 'upcoming' %}
+              Your next rent is for <strong>{{ next_rent.label }}</strong>, due
+              {{ ph(next_rent.due_date).strftime('%b %d, %Y') }}.
+            {% else %}
+              <span style="color: #dc2626; font-weight: 600;">{{ next_rent.label }} is still unpaid</span>
+              &mdash; it was due {{ ph(next_rent.due_date).strftime('%b %d, %Y') }}.
+            {% endif %}
+            Change this only if you are paying a different month.
+          </p>
+        {% endif %}
 
         <label class="label">Notes (optional)</label>
         <textarea class="input" name="notes" rows="2" placeholder="Any additional details..."></textarea>
