@@ -2814,6 +2814,25 @@ def payments():
         .all()
     )
 
+    # What each pending proof's month still owes on electric and water, so the
+    # approval screen can offer to settle them in the same action rather than
+    # sending the administrator off to Utility Billing afterwards.
+    proof_utilities = {}
+    for proof in pending_proofs:
+        profile = proof.tenant_profile
+        if not profile or not profile.unit or profile.unit.type != "residential":
+            continue
+        bill = _bill_for_payment(proof, profile)
+        if bill is None or bill.is_paid:
+            continue
+        proof_utilities[proof.id] = {
+            "billing_month": bill.billing_month,
+            "electric": None if bill.electric_paid else bill.electric_due,
+            "water": None if bill.water_paid else bill.water_due,
+            "rent": float(profile.contract_rent or 0),
+            "total": bill.total_outstanding,
+        }
+
     # Rent arrears per tenant, so the Add Payment form can tell the admin
     # "this tenant has 3 unpaid months" and prefill the real total instead of
     # a single month's rate. Keyed by profile id for the template's data-*
@@ -2839,6 +2858,7 @@ def payments():
         unpaid_this_month=unpaid_this_month,
         blockchain_status=blockchain_status,
         pending_proofs=pending_proofs,
+        proof_utilities=proof_utilities,
     )
 
 
@@ -3093,6 +3113,46 @@ def notify_utility_bill(bill_id: int):
     return redirect(url_for("admin.utility_billing", month=request.form.get("billing_month")))
 
 
+def _settle_utility_components(bill, component: str, settled_by: int, undo: bool = False) -> int:
+    """Mark a utility bill's electric, water, or both as settled.
+
+    Earlier months whose charge this bill already carries are settled with
+    it: this bill's amount INCLUDES what rolled forward from them, so
+    leaving them open would count the same peso twice — once here and once
+    there. Returns how many earlier months were closed along the way.
+
+    Undo only reopens THIS bill. An earlier month may have been settled on
+    its own before this one existed, and reopening it would assert
+    something the administrator never said.
+
+    Does not commit — the caller owns the transaction.
+    """
+    now = None if undo else datetime.utcnow()
+    earlier = (db.session.query(UtilityBill)
+               .filter(UtilityBill.tenant_profile_id == bill.tenant_profile_id,
+                       UtilityBill.billing_month < bill.billing_month)
+               .all())
+
+    def apply(target, field):
+        setattr(target, f"{field}_paid", not undo)
+        setattr(target, f"{field}_paid_at", now)
+
+    cascaded = 0
+    for field in ("electric", "water"):
+        if component not in (field, "both"):
+            continue
+        apply(bill, field)
+        for prior in earlier:
+            if not undo and not getattr(prior, f"{field}_paid"):
+                apply(prior, field)
+                prior.sync_totals()
+                cascaded += 1
+
+    bill.marked_paid_by = None if undo else settled_by
+    bill.sync_totals()
+    return cascaded
+
+
 @bp.post("/tenants/utility-bills/<int:bill_id>/mark-paid")
 @login_required
 def mark_utility_bill_paid(bill_id: int):
@@ -3115,37 +3175,8 @@ def mark_utility_bill_paid(bill_id: int):
     if component not in ("electric", "water", "both"):
         component = "both"
     undo = request.form.get("undo") == "1"
-    now = None if undo else datetime.utcnow()
 
-    # Earlier bills for the same tenant whose charge this one already
-    # carries. Settling a component settles every earlier month of it too:
-    # this bill's amount INCLUDES what rolled forward from them, so leaving
-    # them open would count the same peso twice — once here and once there.
-    earlier = (db.session.query(UtilityBill)
-               .filter(UtilityBill.tenant_profile_id == bill.tenant_profile_id,
-                       UtilityBill.billing_month < bill.billing_month)
-               .all())
-
-    def apply(target, field):
-        setattr(target, f"{field}_paid", not undo)
-        setattr(target, f"{field}_paid_at", now)
-
-    cascaded = 0
-    for field in ("electric", "water"):
-        if component not in (field, "both"):
-            continue
-        apply(bill, field)
-        for prior in earlier:
-            # Undo only reopens THIS bill. An earlier month may have been
-            # settled on its own before this one existed, and reopening it
-            # would assert something the administrator never said.
-            if not undo and not getattr(prior, f"{field}_paid"):
-                apply(prior, field)
-                prior.sync_totals()
-                cascaded += 1
-
-    bill.marked_paid_by = None if undo else current_user.id
-    bill.sync_totals()
+    cascaded = _settle_utility_components(bill, component, current_user.id, undo)
     db.session.commit()
 
     label = {"electric": "Electric", "water": "Water", "both": "Electric and water"}[component]
@@ -4305,6 +4336,29 @@ def add_payment():
     return redirect(url_for("admin.payments"))
 
 
+def _bill_for_payment(payment, profile, create: bool = False):
+    """The utility bill the month of this payment belongs to, or None.
+
+    A payment carries the rent month it settles; the utility bill for the
+    same month is the one the tenant would have been shown alongside it.
+    Falls back to the current calendar month when the payment names none,
+    which is what the reminder job bills on too. Returns None when the
+    tenant has no bill for that month — utilities begin the month after
+    move-in, so their first month genuinely has none.
+
+    `create` stays off for the read path: rendering a page is no reason to
+    write a bill row the administrator never asked for.
+    """
+    month = payment.payment_month or date.today().strftime("%Y-%m")
+    if create:
+        from ...billing_utils import get_or_create_utility_bill
+        return get_or_create_utility_bill(profile, month)
+    return (db.session.query(UtilityBill)
+            .filter(UtilityBill.tenant_profile_id == profile.id,
+                    UtilityBill.billing_month == month)
+            .first())
+
+
 @bp.post("/payments/<int:payment_id>/approve")
 @login_required
 def approve_payment_proof(payment_id: int):
@@ -4341,6 +4395,29 @@ def approve_payment_proof(payment_id: int):
     if unit and unit.status == UnitStatus.UNPAID:
         unit.status = UnitStatus.OCCUPIED
 
+    # A tenant sending one transfer for rent plus electric and water used to
+    # need two separate actions from the administrator — this approval, then
+    # a second trip to Utility Billing — and the second was easy to forget,
+    # leaving a tenant chased for a bill they had already settled. The
+    # approval screen now offers the month's outstanding components, and
+    # whichever were ticked are settled here, in the same transaction.
+    # Untouched by default: only what the administrator ticks is settled,
+    # because only they can see whether the amount actually covered it.
+    settled_note = ""
+    components = [c for c in request.form.getlist("settle_utility")
+                  if c in ("electric", "water")]
+    if components:
+        bill = _bill_for_payment(payment, profile, create=True)
+        if bill:
+            component = "both" if len(components) == 2 else components[0]
+            cascaded = _settle_utility_components(bill, component, current_user.id)
+            label = {"electric": "Electric", "water": "Water",
+                     "both": "Electric and water"}[component]
+            settled_note = f" {label} for {bill.billing_month} settled too."
+            if cascaded:
+                settled_note += (f" {cascaded} earlier unpaid month(s) closed with it "
+                                 f"— this bill already carried their balance.")
+
     db.session.commit()
 
     from ...socket_events import emit_payment_notification
@@ -4361,7 +4438,7 @@ def approve_payment_proof(payment_id: int):
             payment_month=payment.payment_month,
         )
 
-    flash("Payment proof approved and recorded (with ledger hash).", "success")
+    flash(f"Payment proof approved and recorded (with ledger hash).{settled_note}", "success")
     return redirect(url_for("admin.payments"))
 
 

@@ -42,6 +42,32 @@
       color: var(--text);
     }
     .rev-period__caption { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    /* Settle-with-approval block inside the Approve Payment modal */
+    .ap-util {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(215, 179, 91, 0.45);
+      background: rgba(215, 179, 91, 0.07);
+    }
+    .ap-util__head { font-size: 13px; margin-bottom: 8px; }
+    .ap-util__row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      padding: 3px 0;
+      cursor: pointer;
+    }
+    .ap-util__amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ap-util__foot {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(215, 179, 91, 0.3);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
     /* Rent and deposits named separately under the period figure. */
     .rev-period__split {
       display: flex;
@@ -411,7 +437,10 @@
                 {% if p.proof_file %}
                   <a href="{{ media_url(p.proof_file) }}" target="_blank" class="btn btn--ghost btn--sm">View Receipt</a>
                 {% endif %}
-                <button type="button" class="btn btn--primary btn--sm" onclick="openApproveProofModal({{ p.id }}, {{ p.amount|float }})">Approve</button>
+                <button type="button" class="btn btn--primary btn--sm js-approve-proof"
+                        data-payment-id="{{ p.id }}" data-amount="{{ p.amount|float }}"
+                        {% set ub = proof_utilities.get(p.id) %}
+                        {% if ub %}data-utilities="{{ ub|tojson|forceescape }}"{% endif %}>Approve</button>
                 <button type="button" class="btn btn--ghost btn--sm" style="color: #ef4444;" onclick="openRejectProofModal({{ p.id }})">Reject</button>
               </div>
             </div>
@@ -882,6 +911,33 @@
       <form method="post" id="approveProofForm">
         <label class="label">Amount</label>
         <input class="input" type="number" step="0.01" min="0.01" name="amount" id="approveProofAmount" required />
+
+        {# The tenant may have sent rent and utilities in one transfer. Nothing
+           is ticked by default — only the administrator can see whether the
+           amount actually covered them. #}
+        <div id="approveProofUtilities" hidden>
+          <div class="ap-util">
+            <div class="ap-util__head">
+              This tenant also has electric and water outstanding for
+              <strong id="apUtilMonth"></strong>.
+            </div>
+            <label class="ap-util__row" id="apUtilElectricRow">
+              <input type="checkbox" name="settle_utility" value="electric" />
+              <span>Electric <span class="ap-util__amt" id="apUtilElectric"></span></span>
+            </label>
+            <label class="ap-util__row" id="apUtilWaterRow">
+              <input type="checkbox" name="settle_utility" value="water" />
+              <span>Water <span class="ap-util__amt" id="apUtilWater"></span></span>
+            </label>
+            <div class="ap-util__foot">
+              Rent <span id="apUtilRent"></span> + ticked utilities =
+              <strong id="apUtilTotal"></strong>.
+              Tick only what this payment actually covered &mdash; anything left
+              unticked carries into next month, as before.
+            </div>
+          </div>
+        </div>
+
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" onclick="closeApproveProofModal()">Cancel</button>
           <button type="submit" class="btn btn--primary">Approve Payment</button>
@@ -916,11 +972,55 @@
     function closeRejectProofModal() {
       document.getElementById('rejectProofModal').hidden = true;
     }
-    function openApproveProofModal(paymentId, amount) {
+    const peso = (n) => '\u20b1' + Number(n).toLocaleString('en-PH',
+      { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function openApproveProofModal(paymentId, amount, utilities) {
       document.getElementById('approveProofModal').hidden = false;
       document.getElementById('approveProofForm').action = '/admin/payments/' + paymentId + '/approve';
       document.getElementById('approveProofAmount').value = amount;
+
+      const box = document.getElementById('approveProofUtilities');
+      const eRow = document.getElementById('apUtilElectricRow');
+      const wRow = document.getElementById('apUtilWaterRow');
+      box.querySelectorAll('input[name="settle_utility"]').forEach((c) => { c.checked = false; });
+      if (!utilities) { box.hidden = true; return; }
+
+      box.hidden = false;
+      document.getElementById('apUtilMonth').textContent = utilities.billing_month;
+      document.getElementById('apUtilRent').textContent = peso(utilities.rent || 0);
+      // A component already settled has no row to offer.
+      eRow.hidden = utilities.electric === null;
+      wRow.hidden = utilities.water === null;
+      if (utilities.electric !== null) {
+        document.getElementById('apUtilElectric').textContent = peso(utilities.electric);
+      }
+      if (utilities.water !== null) {
+        document.getElementById('apUtilWater').textContent = peso(utilities.water);
+      }
+
+      const total = document.getElementById('apUtilTotal');
+      const recalc = () => {
+        let sum = Number(utilities.rent || 0);
+        box.querySelectorAll('input[name="settle_utility"]:checked').forEach((c) => {
+          sum += Number(utilities[c.value] || 0);
+        });
+        total.textContent = peso(sum);
+      };
+      box.querySelectorAll('input[name="settle_utility"]').forEach((c) => {
+        c.onchange = recalc;
+      });
+      recalc();
     }
+
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.js-approve-proof');
+      if (!btn) return;
+      const raw = btn.getAttribute('data-utilities');
+      openApproveProofModal(btn.getAttribute('data-payment-id'),
+                            btn.getAttribute('data-amount'),
+                            raw ? JSON.parse(raw) : null);
+    });
     function closeApproveProofModal() {
       document.getElementById('approveProofModal').hidden = true;
     }
