@@ -129,11 +129,14 @@
       const thumb3 = document.getElementById("unitImageThumb3");
       const thumb4 = document.getElementById("unitImageThumb4");
 
-      const img1 = card.getAttribute("data-unit-image-1") || "";
-      const img2 = card.getAttribute("data-unit-image-2") || img1;
-      const img3 = card.getAttribute("data-unit-image-3") || img1;
-      const img4 = card.getAttribute("data-unit-image-4") || img1;
-      const images = [img1, img2, img3, img4];
+      // Only the photographs the unit actually has. The missing slots used to
+      // fall back to the first one, so a unit with two showed the same picture
+      // four times and a deleted photo looked as though it were still there.
+      const images = [1, 2, 3, 4]
+        .map((n) => card.getAttribute("data-unit-image-" + n) || "")
+        .filter((src) => src && src !== "None");
+      if (!images.length) images.push("");
+      const thumbs = [thumb1, thumb2, thumb3, thumb4];
       if (title) title.textContent = `${card.getAttribute("data-unit-code") || "Unit"} details`;
       if (meta) {
         meta.textContent = `${card.getAttribute("data-unit-type") || "Unit"} • ₱${card.getAttribute("data-unit-price") || "0"} / month • ${card.getAttribute("data-unit-status") || ""}`;
@@ -175,10 +178,16 @@
 
       // Initialize carousel
       if (main) main.setAttribute("src", images[0]);
-      if (thumb1) thumb1.setAttribute("src", images[0]);
-      if (thumb2) thumb2.setAttribute("src", images[1]);
-      if (thumb3) thumb3.setAttribute("src", images[2]);
-      if (thumb4) thumb4.setAttribute("src", images[3]);
+      thumbs.forEach((t, i) => {
+        if (!t) return;
+        const slot = t.closest(".unit-thumbnail");
+        if (i < images.length) {
+          t.setAttribute("src", images[i]);
+          if (slot) slot.hidden = false;
+        } else if (slot) {
+          slot.hidden = true;            // no photo for this slot
+        }
+      });
 
       // Create dots
       const dotsContainer = document.getElementById("carouselDots");
@@ -195,6 +204,11 @@
       // Navigation arrows
       const prevBtn = document.getElementById("carouselPrev");
       const nextBtn = document.getElementById("carouselNext");
+      // One photograph is not a carousel.
+      const single = images.length < 2;
+      if (prevBtn) prevBtn.hidden = single;
+      if (nextBtn) nextBtn.hidden = single;
+      if (dotsContainer) dotsContainer.hidden = single;
       if (prevBtn) {
         prevBtn.onclick = () => {
           const newIndex = (currentIndex - 1 + images.length) % images.length;
