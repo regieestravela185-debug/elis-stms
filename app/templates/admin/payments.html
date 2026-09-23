@@ -230,6 +230,14 @@
       overflow: hidden;
     }
     
+    /* Eleven columns in a card this wide squeeze the date into five lines
+       ("Sep / 16, / 2026 / 08:50 / AM") and split the unit code in half.
+       A min-width lets the wrapper scroll instead of crushing the columns. */
+    #paymentsTable { min-width: 1180px; }
+    #paymentsTable td:nth-child(1),
+    #paymentsTable td:nth-child(1) div { white-space: nowrap; }
+    #paymentsTable td:nth-child(4) { white-space: nowrap; }
+
     .table tbody tr {
       transition: all 0.2s ease;
     }

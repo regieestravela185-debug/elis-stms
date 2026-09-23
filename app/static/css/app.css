@@ -427,7 +427,9 @@ input, select, textarea{ font-size:16px; }
   padding:4px 10px;
   border:1px solid var(--border);
   font-size:12px;
-  text-transform:lowercase;
+  /* Proper case: the first letter of each word, per the panel's review of
+     the Payments Management table. Badges carry labels, not codes. */
+  text-transform:capitalize;
 }
 .badge--available{border-color: rgba(44, 164, 99, .35); color: rgba(18, 110, 63, 1)}
 .badge--occupied{border-color: rgba(56, 130, 246, .35); color: rgba(30, 64, 175, 1)}
