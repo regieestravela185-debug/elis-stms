@@ -250,8 +250,8 @@ class Reservation(db.Model):
     # for how the figure differs between residential and commercial.
     deposit_amount = db.Column(db.Numeric(10, 2), nullable=False, default=5000.00)
     # What the tenant has actually handed over so far against that move-in
-    # total. A reservation may be paid in instalments; whatever arrives is
-    # credited to the deposit first and the month's rent is left whole.
+    # total. A reservation may be paid in instalments; the month's rent is
+    # settled first and whole, and the deposit carries the balance.
     amount_paid = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     # When the first peso landed. Reservations are settled by who paid
     # first, not by who booked first, so this is the field that decides
@@ -306,9 +306,15 @@ class Reservation(db.Model):
 
     @property
     def payment_state(self):
-        """Deposit-first split of whatever has been paid so far."""
+        """Rent-first split of whatever has been paid so far.
+
+        Measured against the deposit THIS reservation agreed to, not against
+        what the unit would ask of a new applicant today: repricing a unit
+        must never put a tenant who already signed into arrears.
+        """
         from .deposits import apply_partial
-        return apply_partial(self.amount_paid, self.unit)
+        return apply_partial(self.amount_paid, self.unit,
+                             deposit_due=float(self.deposit_amount or 0) or None)
 
     @property
     def is_settled(self):

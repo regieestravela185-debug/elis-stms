@@ -310,17 +310,17 @@
 {% block content %}
   <section class="dash-panel">
     {% if short_deposits %}
-      {# A tenancy can be approved on a part payment, which leaves both the
-         security deposit and the first month short after the reservation
-         screen has closed. To the tenant that is one balance paid as one
-         sum, so it is taken here in one entry and split by the server —
-         deposit first, the month booked only once it is whole. #}
+      {# A tenancy can be approved on a part payment, which leaves the security
+         deposit short after the reservation screen has closed. To the tenant
+         that is one balance paid as one sum, so it is taken here in one entry
+         and split by the server — the month&rsquo;s rent first and whole, the
+         deposit with whatever is left. #}
       <div class="dep-short">
         <h3 class="dep-short__title">Move-in balances not yet complete</h3>
         <p class="dep-short__sub muted">
           Approved on a part payment. Record what comes in here — one amount,
-          split automatically: the security deposit is filled first, and the
-          first month&rsquo;s rent is booked only once the rest covers all of it.
+          split automatically: the month&rsquo;s rent is settled first and always
+          in full, and the security deposit takes whatever is left.
         </p>
         <table class="table dep-short__tbl">
           <thead>

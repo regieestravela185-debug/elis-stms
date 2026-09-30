@@ -1463,9 +1463,9 @@ def send_reservation_payment_email(
     """Receipt for money received against a reservation.
 
     The tenant is told what the payment was applied to, not just that it
-    arrived: whatever is paid fills the security deposit first and the
-    first month's rent is left whole, so a part payment can look like it
-    did nothing to the rent unless the split is spelled out.
+    arrived: the month's rent is settled first and in full, and only the
+    security deposit carries the balance, so a part payment can look like it
+    did nothing to the deposit unless the split is spelled out.
     """
     fmt = lambda n: f"₱{float(n):,.2f}"
     kind = "Payment received" if settled else "Part payment received"
@@ -1491,8 +1491,8 @@ How it was applied:
 - First month's rent: {fmt(rent_paid)} of {fmt(rent_due)}
 - Balance: {fmt(balance)}
 
-A payment is credited to the security deposit first; the first month's rent is
-kept whole and settled once the deposit is complete.
+Your first month's rent is settled first and in full. Only the security
+deposit carries a balance.
 
 {closing}
 
@@ -1529,8 +1529,8 @@ The Elis Center Management
         <table style="width:100%; border-collapse:collapse; font-size:14px; color:#141417;">{rows}</table>
       </div>
       <p style="margin:16px 0 0 0; color:#999999; font-size:12px; line-height:1.5;">
-        A payment is credited to the security deposit first; the first month&rsquo;s rent is kept
-        whole and settled once the deposit is complete.
+        Your first month&rsquo;s rent is settled first and in full. Only the security
+        deposit carries a balance.
       </p>
       <p style="margin:18px 0 0 0; color:#333333; font-size:14px; line-height:1.6;">{closing}</p>
       <p style="margin:24px 0 0 0; color:#666666; font-size:14px;">Thank you,<br/>The Elis Center Management</p>

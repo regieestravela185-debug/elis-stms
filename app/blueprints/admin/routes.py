@@ -2363,9 +2363,10 @@ def record_reservation_payment(reservation_id: int):
 
     # The first payment is what takes the unit off other people, so it has to
     # be worth taking it off them for. Anything at or below one month's rent
-    # would hold a unit on a token, and the rent is not even what it is
-    # credited to — the deposit is filled first. Later top-ups are only
-    # clearing a balance already claimed, so they are not held to this.
+    # would hold a unit on a token, and it is also the floor at which the
+    # split works at all: rent is settled first and whole, so a payment that
+    # cannot cover the month settles nothing. Later top-ups are only clearing
+    # a balance already claimed, so they are not held to this.
     first_money = float(r.amount_paid or 0) <= 0
     if first_money and not state_before["settled"]:
         floor = state_before["rent_due"]
@@ -2519,10 +2520,11 @@ def approve_reservation(reservation_id: int):
     first_cycle = billing_month_for(profile, profile.contract_start)
 
     # Record what the tenant actually handed over, not what the unit asks
-    # for. A reservation may be settled in instalments, and whatever has
-    # arrived is credited to the security deposit first with the month's
-    # rent left whole — see app/deposits.py. Approving on a part payment
-    # must not book rent nobody paid.
+    # for. A reservation may be settled in instalments: the month's rent is
+    # settled first and whole, and the security deposit carries the balance
+    # — see app/deposits.py. Approving on a part payment must not book rent
+    # nobody paid, which is why a payment below one month's rent is refused
+    # outright rather than booked as a fraction of the cycle.
     # Approval is refused above when nothing has been recorded, so this is
     # always a real figure. There used to be a fallback here that treated a
     # zero as "paid in full" — with that guard in place it could only ever
@@ -2661,8 +2663,8 @@ def approve_reservation(reservation_id: int):
         msg = "Reservation approved. User is now a Tenant. Security deposit and monthly payment recorded."
     else:
         msg = (f"Reservation approved on a balance. User is now a Tenant. "
-               f"₱{paid['balance']:,.2f} is still owing and is now collected "
-               f"on the Payments page.")
+               f"₱{paid['balance']:,.2f} is still owing on the security deposit "
+               f"and is now collected on the Deposits page.")
     if others:
         msg += f" Their {len(others)} other pending reservation{'s' if len(others) != 1 else ''} were cancelled"
         msg += f", returning {', '.join(released)} to Available." if released else "."
@@ -4585,29 +4587,49 @@ def _deposit_held_for(tenant_profile_id: int) -> float:
 def _move_in_outstanding(profile) -> dict:
     """What is still owed on a tenant's move-in — deposit and first month both.
 
-    A tenancy approved on a part payment leaves two things short: the
-    security deposit and the first month's rent. To the tenant that is one
-    balance, handed over as one sum, so it is quoted and taken as one figure
-    here and split afterwards, rather than made into two separate errands on
-    two different screens.
+    A tenancy approved on a part payment leaves the security deposit short.
+    To the tenant that is one balance, handed over as one sum, so it is
+    quoted and taken as one figure here and split afterwards.
+
+    The deposit is measured against what the tenancy's own reservation
+    AGREED to, not against what its unit would ask of a new applicant today.
+    Commercial deposits were repriced after several tenancies had already
+    been signed and paid in full; recomputing from the current rule put
+    every one of those tenants in arrears for money nobody ever asked them
+    for. `gross_paid` is likewise the deposit they handed over, not the
+    balance still on file: a deposit later returned at move-out was still
+    paid, and netting the return off made a closed tenancy look unpaid.
 
     `rent_booked` is True once a Payment carries the first billing cycle.
-    Money already received that was too little to settle the whole month
-    sits in `advance_rows`: it counts against the balance but is not rent
-    yet, which is why it is reported apart from what is booked.
+    Money received but too small to settle the whole month sits in
+    `advance_rows`: it counts against the balance but is not rent yet.
 
-    `unsettled` marks a move-in that is genuinely still being collected —
-    the deposit is short, or an advance is waiting to become rent. Without
-    it every tenant with an unrecorded first month would be swept in here,
+    `unsettled` marks a move-in genuinely still being collected. Without it
+    every tenant with an unrecorded first month would be swept in here,
     including long-standing ones whose rent is the Payments page's business.
     """
     from ...deposits import security_deposit_for
     from ...billing_utils import billing_month_for
 
     unit = profile.unit
-    due = security_deposit_for(unit) if unit else 0.0
-    held = _deposit_held_for(profile.id)
-    deposit_short = max(0.0, due - held)
+
+    # What this tenancy agreed to, falling back to the current rule only
+    # when there is no reservation to read it from.
+    reservation = (db.session.query(Reservation)
+                   .filter(Reservation.user_id == profile.user_id,
+                           Reservation.unit_id == profile.unit_id)
+                   .order_by(Reservation.id.desc()).first())
+    agreed = float(reservation.deposit_amount or 0) if reservation else 0.0
+    due = agreed or (security_deposit_for(unit) if unit else 0.0)
+
+    deposit_rows = (db.session.query(Payment)
+                    .filter(Payment.tenant_profile_id == profile.id,
+                            Payment.is_deposit.is_(True),
+                            ~Payment.payment_status.in_(PAYMENT_STATUSES_NOT_COUNTED))
+                    .all())
+    gross_paid = sum(float(p.amount or 0) for p in deposit_rows
+                     if p.deposit_transaction_type == "deposit_paid")
+    deposit_short = max(0.0, due - gross_paid)
 
     rent_due = float(profile.contract_rent or 0)
     first_cycle = (billing_month_for(profile, profile.contract_start)
@@ -4629,7 +4651,7 @@ def _move_in_outstanding(profile) -> dict:
 
     return {
         "profile": profile,
-        "due": due, "held": held, "short": deposit_short,
+        "due": due, "held": gross_paid, "short": deposit_short,
         "rent_due": rent_due, "rent_booked": rent_booked, "rent_short": rent_short,
         "advance_held": advance_held, "advance_rows": advance_rows,
         "first_cycle": first_cycle, "unsettled": unsettled,
@@ -4642,11 +4664,12 @@ def _move_in_outstanding(profile) -> dict:
 def add_deposit_topup():
     """Take money towards a move-in that was approved on a part payment.
 
-    One entry settles whatever the sum reaches. It fills the security
-    deposit first and the first month's rent only once the remainder covers
-    the whole of it — the same order the reservation screen uses, because
-    the deposit is money merely held while a half-booked month reports a
-    billing cycle as settled when it is not.
+    One entry settles whatever the sum reaches, in the same order the
+    reservation screen uses: the month's rent first and always whole, then
+    the security deposit with whatever is left. Rent is income booked
+    against a named billing cycle, so a half-booked month would report that
+    cycle as settled when it is not; the deposit is money merely held, so it
+    is the part that carries a balance.
 
     The ordinary Record Payment form cannot stand in for this: it demands a
     billing month and books the amount as rent, so a deposit entered there
@@ -4684,24 +4707,23 @@ def add_deposit_topup():
     code = unit.unit_code if unit else ""
     paid_at = _dt.utcnow().replace(microsecond=0)
 
-    deposit_part = min(amount, owed["short"])
-    surplus = amount - deposit_part
-    # Everything received towards the first month but not yet booked as
-    # rent — what was waiting from before plus what arrived just now.
-    pool = surplus + owed["advance_held"]
-    completes_month = (not owed["rent_booked"] and bool(owed["first_cycle"])
-                       and pool >= owed["rent_due"] - 0.005)
+    # The month comes first. `need` is what it still takes to make it whole,
+    # counting money already held as an advance towards it; anything beyond
+    # that is deposit.
+    owes_month = not owed["rent_booked"] and owed["rent_short"] > 0.005
+    need = max(0.0, owed["rent_due"] - owed["advance_held"]) if owes_month else 0.0
+    completes_month = owes_month and bool(owed["first_cycle"]) and amount >= need - 0.005
+
+    if not owes_month:
+        deposit_part, surplus = amount, 0.0
+    elif completes_month:
+        deposit_part, surplus = amount - need, need
+    else:
+        # Not enough for the whole month, so it settles nothing yet and none
+        # of it may be diverted to the deposit ahead of the rent.
+        deposit_part, surplus = 0.0, amount
 
     fresh = []
-    if deposit_part > 0.005:
-        fresh.append(Payment(
-            tenant_profile_id=profile.id, amount=deposit_part,
-            reference=f"Security Deposit - {code}",
-            notes="Towards the security deposit",
-            is_deposit=True, deposit_transaction_type="deposit_paid",
-            payment_method=method, paid_at=paid_at,
-        ))
-
     if completes_month:
         # The month is booked once, whole, at the contract rent. Whatever was
         # held as an advance is absorbed into it and voided rather than left
@@ -4729,6 +4751,15 @@ def add_deposit_topup():
             is_deposit=False, payment_method=method, paid_at=paid_at,
         ))
 
+    if deposit_part > 0.005:
+        fresh.append(Payment(
+            tenant_profile_id=profile.id, amount=deposit_part,
+            reference=f"Security Deposit - {code}",
+            notes="Towards the security deposit",
+            is_deposit=True, deposit_transaction_type="deposit_paid",
+            payment_method=method, paid_at=paid_at,
+        ))
+
     for p in fresh:
         db.session.add(p)
     db.session.flush()
@@ -4737,12 +4768,12 @@ def add_deposit_topup():
     db.session.commit()
 
     parts = []
-    if deposit_part > 0.005:
-        parts.append(f"₱{deposit_part:,.2f} to the security deposit")
     if completes_month:
         parts.append("the first month's rent settled in full")
     elif surplus > 0.005:
         parts.append(f"₱{surplus:,.2f} held towards the first month")
+    if deposit_part > 0.005:
+        parts.append(f"₱{deposit_part:,.2f} to the security deposit")
 
     rest = _move_in_outstanding(profile)["balance"]
     tail = ("Nothing further is owed on this move-in."

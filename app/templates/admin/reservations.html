@@ -648,16 +648,20 @@
                           {% else %}
                             {# Approving books the tenancy and settles the first
                                month, so a balance has to be said out loud — the
-                               server refuses this without confirm_partial. #}
+                               server refuses this without confirm_partial. The
+                               rent is settled first and a part payment has to
+                               clear a whole month, so what is left owing is the
+                               security deposit; the rent line is named only in
+                               the state that should not arise. #}
                             <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}"
-                                  onsubmit="return confirm('This reservation still owes \u20b1{{ '{:,.2f}'.format(pay.balance) }} \u2014 \u20b1{{ '{:,.2f}'.format(pay.deposit_balance) }} of the security deposit and \u20b1{{ '{:,.2f}'.format(pay.rent_balance) }} of the first month\u2019s rent.\n\nApprove anyway and collect the balance later?');">
+                                  onsubmit="return confirm('This reservation still owes \u20b1{{ '{:,.2f}'.format(pay.balance) }} of the security deposit{% if pay.rent_balance > 0.005 %}, and the first month\u2019s rent of \u20b1{{ '{:,.2f}'.format(pay.rent_balance) }} is not yet settled{% endif %}.\n\nApprove anyway and collect the balance later?');">
                               <input type="hidden" name="confirm_partial" value="yes" />
                               <button class="btn--approve btn--approve-bal" type="submit">Approve with balance</button>
                             </form>
                             <div class="resv-hint">
                               Once approved they become a tenant, and the
-                              &#8369;{{ '{:,.2f}'.format(pay.balance) }} still owing is collected on the
-                              <strong>Payments</strong> page like any other payment &mdash; this box closes.
+                              &#8369;{{ '{:,.2f}'.format(pay.balance) }} still owing on the security deposit
+                              is collected on the <strong>Deposits</strong> page &mdash; this box closes.
                             </div>
                           {% endif %}
                         </div>
