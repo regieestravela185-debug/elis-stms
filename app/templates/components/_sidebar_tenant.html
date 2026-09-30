@@ -31,6 +31,10 @@
   </a>
   {% endif %}
 
+  <a class="side-link side-link--clearance {% if request.path.startswith('/tenant/clearance') %}is-active{% endif %}" href="{{ url_for('tenant.clearance') }}">
+    <span>Move-Out Clearance</span>
+  </a>
+
   <div class="side-group__label">Finance</div>
   <a class="side-link side-link--payments {% if request.path.startswith('/tenant/payments') %}is-active{% endif %}" href="{{ url_for('tenant.payments') }}"><span>Payment History</span></a>
 
@@ -85,6 +89,7 @@
 .side-link--announcements.is-active,
 .side-link--documents.is-active,
 .side-link--renewal.is-active,
+.side-link--clearance.is-active,
 .side-link--feedback.is-active,
 .side-link--settings.is-active {
   background: linear-gradient(135deg, #D7B35B 0%, #C9A84A 100%) !important;

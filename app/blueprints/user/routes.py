@@ -67,6 +67,16 @@ def _face():
 bp = Blueprint("user", __name__, url_prefix="/user")
 
 
+def _deposit_basis_text(unit) -> str:
+    """How the deposit for this unit was arrived at, for the tenant's email."""
+    from ...deposits import is_commercial, COMMERCIAL_FLAT, COMMERCIAL_MONTHS, RESIDENTIAL_FLAT
+    if is_commercial(unit):
+        head = f"{COMMERCIAL_MONTHS} months' rent + ₱{COMMERCIAL_FLAT:,.0f}"
+    else:
+        head = f"one month's rent + ₱{RESIDENTIAL_FLAT:,.0f}"
+    return f"{head}, refundable after your contract ends minus damages and unpaid bills"
+
+
 def _ensure_user_role():
     if current_user.role not in (Role.USER,):  # type: ignore[attr-defined]
         abort(403)
@@ -256,7 +266,9 @@ def reserve_post(unit_id: int):
         flash("Reservation submitted. Your ID needs a quick check by our "
               "staff before it is approved.", "info")
 
-    deposit_amount = float(unit.price_monthly) + 1000.00
+    from ...deposits import security_deposit_for
+
+    deposit_amount = security_deposit_for(unit)
 
     reservation = Reservation(
         user_id=current_user.id,  # type: ignore[attr-defined]
@@ -281,10 +293,12 @@ def reserve_post(unit_id: int):
         deposit_status=DepositStatus.HELD,
         status=ReservationStatus.PENDING,
     )
-    # Reserve the unit immediately so it stops showing as "Available" to other
-    # visitors while this reservation is pending admin review — otherwise two
-    # people could both submit a reservation for the same unit.
-    unit.status = UnitStatus.RESERVED
+    # The unit deliberately stays AVAILABLE. A reservation is an expression
+    # of interest, not a claim: the unit goes to whoever pays first, not to
+    # whoever filled in the form first, so several people may hold a
+    # reservation on the same unit at once and the listing must keep
+    # accepting them. It is the first payment that reserves the unit and
+    # cancels the others — see admin.record_reservation_payment.
 
     db.session.add(reservation)
     db.session.flush()  # Get reservation.id for verification log
@@ -337,6 +351,7 @@ def reserve_post(unit_id: int):
             deposit_amount=deposit_amount,
             move_in_date=move_in,
             move_out_date=move_out,
+            deposit_basis=_deposit_basis_text(unit),
         )
     except Exception:
         current_app.logger.exception("Failed to send reservation submitted email to %s", email)

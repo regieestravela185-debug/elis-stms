@@ -2288,6 +2288,89 @@ def export_reservations():
     return response
 
 
+def _award_unit_to(r: Reservation) -> list:
+    """Give the unit to this reservation and cancel the rival claims.
+
+    Several people may reserve the same unit — the listing keeps accepting
+    reservations precisely so that it is the first payment, not the first
+    form, that decides. The moment money lands against one of them, that
+    reservation takes the unit and the rest are closed with a reason on
+    file, so a tenant whose reservation disappears can be told why.
+    """
+    unit = db.session.get(Unit, r.unit_id)
+    if unit and unit.status == UnitStatus.AVAILABLE:
+        unit.status = UnitStatus.RESERVED
+
+    losers = (db.session.query(Reservation)
+              .filter(Reservation.unit_id == r.unit_id,
+                      Reservation.id != r.id,
+                      Reservation.status == ReservationStatus.PENDING)
+              .all())
+    for other in losers:
+        # A rival who already paid something is NOT cancelled from here —
+        # two paid claims on one unit is a refund question for a person,
+        # not something to settle silently in a request handler.
+        if float(other.amount_paid or 0) > 0:
+            continue
+        other.status = ReservationStatus.CANCELLED
+        other.superseded_by_id = r.id
+    return [o for o in losers if float(o.amount_paid or 0) <= 0]
+
+
+@bp.post("/reservations/<int:reservation_id>/payment")
+@login_required
+def record_reservation_payment(reservation_id: int):
+    """Record money paid against a reservation, in full or in part."""
+    _ensure_admin()
+    r = db.session.get(Reservation, reservation_id)
+    if not r:
+        abort(404)
+    if r.status in (ReservationStatus.REJECTED, ReservationStatus.CANCELLED):
+        flash("That reservation is closed, so no payment can be recorded against it.", "warning")
+        return redirect(url_for("admin.reservations"))
+
+    try:
+        amount = float(request.form.get("amount") or 0)
+    except ValueError:
+        amount = 0.0
+    if amount <= 0:
+        flash("Enter the amount received.", "warning")
+        return redirect(url_for("admin.reservations"))
+
+    state_before = r.payment_state
+    if amount > state_before["balance"] + 0.005:
+        flash(f"That is more than the {state_before['balance']:,.2f} still outstanding "
+              f"on this reservation.", "warning")
+        return redirect(url_for("admin.reservations"))
+
+    from datetime import datetime as _dt
+    now = _dt.utcnow().replace(microsecond=0)
+    first_money = float(r.amount_paid or 0) <= 0
+
+    r.amount_paid = float(r.amount_paid or 0) + amount
+    if first_money:
+        r.first_paid_at = now
+    if r.is_settled and not r.fully_paid_at:
+        r.fully_paid_at = now
+
+    cancelled = _award_unit_to(r) if first_money else []
+    db.session.commit()
+
+    after = r.payment_state
+    msg = (f"Recorded ₱{amount:,.2f} for {r.full_name}. "
+           f"Security deposit {after['deposit_paid']:,.2f} of {after['deposit_due']:,.2f}; "
+           f"first month's rent {after['rent_paid']:,.2f} of {after['rent_due']:,.2f}.")
+    if after["settled"]:
+        msg += " Fully settled — the reservation can now be approved."
+    else:
+        msg += f" ₱{after['balance']:,.2f} still to follow."
+    if cancelled:
+        msg += (f" {len(cancelled)} other reservation(s) on this unit were cancelled, "
+                f"since this one paid first.")
+    flash(msg, "success")
+    return redirect(url_for("admin.reservations"))
+
+
 @bp.post("/reservations/<int:reservation_id>/approve")
 @login_required
 def approve_reservation(reservation_id: int):
@@ -2303,6 +2386,27 @@ def approve_reservation(reservation_id: int):
     unit = db.session.get(Unit, r.unit_id)
     if not user or not unit:
         abort(400)
+
+    # Approving books the tenancy and settles the first month, so a
+    # reservation that has only been part paid must not go through on a
+    # mis-click. Record the payment first; approving on a balance is still
+    # allowed, but it has to be said out loud.
+    pay_now = r.payment_state
+    if not pay_now["settled"] and request.form.get("confirm_partial") != "yes":
+        if pay_now["paid"] <= 0:
+            flash(f"No payment has been recorded for this reservation. The move-in "
+                  f"total is ₱{pay_now['total_due']:,.2f} "
+                  f"(security deposit ₱{pay_now['deposit_due']:,.2f} + first month's "
+                  f"rent ₱{pay_now['rent_due']:,.2f}). Record what was received "
+                  f"first, or use Approve with balance.", "warning")
+        else:
+            flash(f"This reservation is only part paid — ₱{pay_now['paid']:,.2f} "
+                  f"of ₱{pay_now['total_due']:,.2f}, leaving "
+                  f"₱{pay_now['balance']:,.2f} outstanding "
+                  f"(₱{pay_now['deposit_balance']:,.2f} of the security deposit and "
+                  f"₱{pay_now['rent_balance']:,.2f} of the first month's rent). "
+                  f"Record the balance first, or use Approve with balance.", "warning")
+        return redirect(url_for("admin.reservations"))
 
     # Use customer's move-out date directly
     contract_start = r.move_in_date or date.today()
@@ -2358,32 +2462,51 @@ def approve_reservation(reservation_id: int):
     from ...billing_utils import billing_month_for
     first_cycle = billing_month_for(profile, profile.contract_start)
 
-    monthly_payment = Payment(
-        tenant_profile_id=profile.id,
-        amount=profile.contract_rent,
-        reference=f"Monthly - {unit.unit_code}",
-        notes="First month payment",
-        is_deposit=False,
-        payment_month=first_cycle,
-        paid_at=paid_at_normalized
-    )
-    db.session.add(monthly_payment)
+    # Record what the tenant actually handed over, not what the unit asks
+    # for. A reservation may be settled in instalments, and whatever has
+    # arrived is credited to the security deposit first with the month's
+    # rent left whole — see app/deposits.py. Approving on a part payment
+    # must not book rent nobody paid.
+    paid = r.payment_state
+    if float(r.amount_paid or 0) <= 0:
+        # Nothing was recorded against the reservation itself, which is how
+        # every reservation approved before instalments existed looks. Treat
+        # it as settled in full, exactly as it used to be.
+        paid = {"deposit_paid": float(r.deposit_amount or 0),
+                "rent_paid": float(profile.contract_rent or 0),
+                "balance": 0.0, "settled": True}
 
-    deposit_payment = Payment(
-        tenant_profile_id=profile.id,
-        amount=float(r.deposit_amount),
-        reference=f"Deposit - {unit.unit_code}",
-        notes="Reservation deposit (refundable after contract ends)",
-        is_deposit=True,
-        deposit_transaction_type="deposit_paid",
-        paid_at=paid_at_normalized
-    )
-    db.session.add(deposit_payment)
+    monthly_payment = deposit_payment = None
+    if paid["rent_paid"] > 0:
+        monthly_payment = Payment(
+            tenant_profile_id=profile.id,
+            amount=paid["rent_paid"],
+            reference=f"Monthly - {unit.unit_code}",
+            notes="First month payment",
+            is_deposit=False,
+            payment_month=first_cycle,
+            paid_at=paid_at_normalized
+        )
+        db.session.add(monthly_payment)
+
+    if paid["deposit_paid"] > 0:
+        part = "" if paid["settled"] else " (part payment)"
+        deposit_payment = Payment(
+            tenant_profile_id=profile.id,
+            amount=paid["deposit_paid"],
+            reference=f"Security Deposit - {unit.unit_code}",
+            notes=f"Reservation security deposit{part} "
+                  f"(refundable after contract ends)",
+            is_deposit=True,
+            deposit_transaction_type="deposit_paid",
+            paid_at=paid_at_normalized
+        )
+        db.session.add(deposit_payment)
     db.session.flush()
 
-    # Generate ledger entries for both payments
-    _generate_payment_ledger(monthly_payment)
-    _generate_payment_ledger(deposit_payment)
+    for p in (monthly_payment, deposit_payment):
+        if p is not None:
+            _generate_payment_ledger(p)
 
     # Somebody shopping for a place may reserve several units while they make
     # up their mind, and each reservation takes its unit off the market so two

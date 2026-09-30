@@ -11,7 +11,7 @@ from ...models import (
     Announcement, AnnouncementRead, Concern, ConcernFollowUp, ConcernStatus, Document, Feedback, FeedbackStatus,
     MoveOutNotice, MoveOutNoticeStatus,
     Payment, RenewalRequest, RenewalRequestStatus, Reservation, ReservationStatus,
-    Role, TenantProfile, Unit, UnitStatus, User,
+    Role, TenantProfile, Unit, UnitInventoryItem, UnitStatus, User,
     PAYMENT_STATUSES_NOT_COUNTED,
     payment_revenue_amount,
 )
@@ -1584,6 +1584,52 @@ def cancel_renewal_request(renewal_id: int):
     
     flash("Renewal request cancelled successfully.", "success")
     return redirect(url_for("tenant.renewal"))
+
+
+@bp.get("/clearance")
+@login_required
+def clearance():
+    """A ready-to-print move-out clearance form.
+
+    The tenant prints it, maintenance walks the unit against the inventory
+    recorded at move-in and signs only once everything is accounted for,
+    then the office signs and the tenant may leave. The fixtures are listed
+    with the condition they were accepted in, so the check is a comparison
+    against something on file rather than a judgement made on the spot.
+    """
+    _ensure_tenant()
+    profile, _ = _get_tenant_profile()
+
+    items = []
+    if profile.unit_id:
+        items = (db.session.query(UnitInventoryItem)
+                 .filter(UnitInventoryItem.unit_id == profile.unit_id,
+                         UnitInventoryItem.quantity > 0)
+                 .order_by(UnitInventoryItem.label.asc())
+                 .all())
+
+    notice = (db.session.query(MoveOutNotice)
+              .filter(MoveOutNotice.tenant_profile_id == profile.id)
+              .order_by(MoveOutNotice.created_at.desc())
+              .first())
+
+    outstanding = (
+        db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0))
+        .filter(Payment.tenant_profile_id == profile.id,
+                Payment.is_deposit.is_(True),
+                Payment.deposit_transaction_type == "deposit_paid",
+                ~Payment.payment_status.in_(PAYMENT_STATUSES_NOT_COUNTED))
+        .scalar()
+    )
+
+    return render_template(
+        "tenant/clearance.html",
+        profile=profile,
+        items=items,
+        notice=notice,
+        deposit_on_file=float(outstanding or 0),
+        today=date.today(),
+    )
 
 
 @bp.get("/move-out-notice")

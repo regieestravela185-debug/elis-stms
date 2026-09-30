@@ -429,12 +429,15 @@ The Elis Center Management
 
 def send_reservation_submitted_email(
     to_email, to_name, unit_code, unit_type, floor, monthly_price,
-    deposit_amount, move_in_date, move_out_date,
+    deposit_amount, move_in_date, move_out_date, deposit_basis=None,
 ):
     """Send confirmation email right after a reservation is submitted (pending admin review)."""
     from datetime import date
 
     total_due = float(monthly_price) + float(deposit_amount)
+    # How the deposit was arrived at, in words. Residential and commercial
+    # are priced differently (app/deposits.py), so the caller says which.
+    basis = deposit_basis or "refundable after contract ends minus damages and unpaid bills"
     fmt = lambda n: f"₱{n:,.2f}"
     floor_label = f"{floor}{'st' if floor == 1 else 'nd' if floor == 2 else 'rd' if floor == 3 else 'th'} Floor" if floor else "—"
     move_out_line = f"- Move-out date: {move_out_date.strftime('%B %d, %Y')}\n" if move_out_date else "- Tenancy: Month-to-month (no fixed end date — rent continues until you give move-out notice)\n"
@@ -455,7 +458,7 @@ Unit details:
 - Unit: {unit_code} ({unit_type})
 - Floor: {floor_label}
 - Monthly rent: {fmt(float(monthly_price))}
-- Reservation deposit: {fmt(float(deposit_amount))} (one month's rent + ₱1,000, refundable after contract ends minus damages and unpaid bills)
+- Security deposit: {fmt(float(deposit_amount))} ({basis})
 - Total due on approval: {fmt(total_due)}
 - Move-in date: {move_in_date.strftime('%B %d, %Y')}
 {move_out_line}
@@ -501,10 +504,10 @@ The Elis Center Management
                 <p style="margin: 0 0 12px 0; color: #8a6d1e; font-size: 15px; font-weight: 700;">Payment Breakdown</p>
                 <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #444444;">
                     <tr><td style="padding: 4px 0; color: #888888;">Monthly rent</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{fmt(float(monthly_price))}</td></tr>
-                    <tr><td style="padding: 4px 0; color: #888888;">Reservation deposit</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{fmt(float(deposit_amount))}</td></tr>
+                    <tr><td style="padding: 4px 0; color: #888888;">Security deposit</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{fmt(float(deposit_amount))}</td></tr>
                     <tr><td style="padding: 10px 0 0; color: #1a1a1a; font-weight: 700; border-top: 1px solid #e8dcc0;">Total due on approval</td><td style="padding: 10px 0 0; text-align: right; color: #B8922F; font-weight: 700; font-size: 16px; border-top: 1px solid #e8dcc0;">{fmt(total_due)}</td></tr>
                 </table>
-                <p style="margin: 12px 0 0 0; color: #999999; font-size: 12px; line-height: 1.5;">Deposit = one month's rent + ₱1,000, refundable after your contract ends minus damages and unpaid bills.</p>
+                <p style="margin: 12px 0 0 0; color: #999999; font-size: 12px; line-height: 1.5;">Security deposit = {basis}</p>
             </div>
 
             <div style="background: #f9f9f9; padding: 16px; border-radius: 8px; border-left: 4px solid #D7B35B;">

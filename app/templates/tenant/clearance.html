@@ -1,0 +1,182 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Move-Out Clearance | STMS{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_tenant.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Move-Out Clearance</div>
+{% endblock %}
+
+{% block content %}
+<style>
+  /* The form is a document first and a screen second: on paper it must fit
+     one sheet and carry wet signatures, so the print rules strip the shell
+     and hold the sheet to A4 at 11pt. */
+  .clr-note { margin-bottom: 18px; }
+  .clr-sheet {
+    background: #fff; color: #111;
+    border: 1px solid var(--line-2, #ddd); border-radius: 12px;
+    padding: 34px 38px; max-width: 8.27in; margin: 0 auto;
+    font-family: "Times New Roman", Times, serif; font-size: 12px; line-height: 1.5;
+  }
+  .clr-head { text-align: center; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 16px; }
+  .clr-head__org { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .clr-head__title { font-size: 17px; font-weight: 700; letter-spacing: .04em; margin-top: 6px; }
+  .clr-grid { display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap: 5px 12px; margin-bottom: 16px; }
+  .clr-grid dt { font-weight: 700; }
+  .clr-grid dd { margin: 0; border-bottom: 1px solid #999; min-height: 1.35em; }
+  .clr-h { font-weight: 700; font-size: 12px; letter-spacing: .04em;
+           text-transform: uppercase; margin: 18px 0 7px; border-bottom: 1px solid #111; padding-bottom: 3px; }
+  table.clr-tbl { width: 100%; border-collapse: collapse; }
+  table.clr-tbl th, table.clr-tbl td { border: 1px solid #555; padding: 4px 6px; font-size: 11px; }
+  table.clr-tbl th { background: #f1f1f1; font-weight: 700; text-align: center; }
+  .clr-c { text-align: center; }
+  .clr-box { display: inline-block; width: 11px; height: 11px; border: 1px solid #333; vertical-align: -1px; }
+  .clr-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 22px; }
+  .clr-sign__line { border-top: 1px solid #111; margin-top: 40px; padding-top: 4px; text-align: center; }
+  .clr-sign__role { font-weight: 700; font-size: 11px; }
+  .clr-sign__hint { font-size: 10px; color: #444; }
+  .clr-cert { border: 1px solid #555; padding: 10px 12px; margin-top: 16px; font-size: 11px; }
+  .clr-actions { text-align: center; margin: 20px 0 8px; }
+
+  @media print {
+    @page { size: A4; margin: 12mm 14mm; }
+    body * { visibility: hidden !important; }
+    .clr-sheet, .clr-sheet * { visibility: visible !important; }
+    .clr-sheet { position: absolute; inset: 0 auto auto 0; width: 100%;
+                 border: none; border-radius: 0; padding: 0; max-width: none; font-size: 11px; }
+    .clr-note, .clr-actions { display: none !important; }
+  }
+</style>
+
+<div class="clr-note">
+  <p class="muted" style="margin:0 0 10px;">
+    Print this form and bring it with you. Maintenance inspects the unit against the
+    fixtures listed below and signs only once everything is accounted for; the office
+    signs last. A signed clearance is what releases your security deposit.
+  </p>
+  <div class="clr-actions">
+    <button class="btn btn--primary" type="button" onclick="window.print()">Print clearance form</button>
+  </div>
+</div>
+
+<div class="clr-sheet">
+  <div class="clr-head">
+    <div class="clr-head__org">The Elis Center &middot; Commercial and Residences</div>
+    <div class="clr-head__org">Calamba, Laguna</div>
+    <div class="clr-head__title">Move-Out Clearance Form</div>
+  </div>
+
+  <dl class="clr-grid">
+    <dt>Tenant</dt><dd>{{ profile.user.full_name if profile.user else "" }}</dd>
+    <dt>Unit</dt><dd>{{ profile.unit.unit_code if profile.unit else "" }}</dd>
+    <dt>Contract start</dt><dd>{{ profile.contract_start.strftime("%B %d, %Y") if profile.contract_start else "" }}</dd>
+    <dt>Move-out date</dt>
+    <dd>{% if notice %}{{ notice.planned_move_out_date.strftime("%B %d, %Y") }}{% endif %}</dd>
+    <dt>Contact</dt><dd>{{ profile.user.contact_number if profile.user and profile.user.contact_number else "" }}</dd>
+    <dt>Date issued</dt><dd>{{ today.strftime("%B %d, %Y") }}</dd>
+  </dl>
+
+  <div class="clr-h">1 &nbsp; Inspection of unit fixtures and furnishings</div>
+  {% if items %}
+    <table class="clr-tbl">
+      <thead>
+        <tr>
+          <th style="width:42%">Item</th>
+          <th style="width:8%">Qty</th>
+          <th style="width:22%">Condition at move-in</th>
+          <th style="width:28%">Condition at move-out</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+          <tr>
+            <td>{{ it.label }}</td>
+            <td class="clr-c">{{ it.quantity }}</td>
+            <td class="clr-c">{{ it.condition|replace("_"," ")|title }}</td>
+            <td></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size:10px; margin:5px 0 0;">
+      The condition at move-in is the state the unit was accepted in and recorded on file.
+      Maintenance writes the condition found today in the last column.
+    </p>
+  {% else %}
+    <p style="font-size:11px; margin:0;">
+      No fixtures are recorded on file for this unit. Maintenance lists what the unit
+      contains and its condition below.
+    </p>
+    <table class="clr-tbl" style="margin-top:6px;">
+      <thead>
+        <tr><th style="width:50%">Item</th><th style="width:10%">Qty</th><th style="width:40%">Condition at move-out</th></tr>
+      </thead>
+      <tbody>{% for _ in range(6) %}<tr><td>&nbsp;</td><td></td><td></td></tr>{% endfor %}</tbody>
+    </table>
+  {% endif %}
+
+  <div class="clr-h">2 &nbsp; Checklist</div>
+  <table class="clr-tbl">
+    <tbody>
+      <tr><td style="width:7%" class="clr-c"><span class="clr-box"></span></td>
+          <td>All fixtures and furnishings above are present and in the condition recorded, or the difference is noted.</td></tr>
+      <tr><td class="clr-c"><span class="clr-box"></span></td>
+          <td>Unit keys returned.</td></tr>
+      <tr><td class="clr-c"><span class="clr-box"></span></td>
+          <td>Unit cleared of the tenant&rsquo;s belongings and left clean.</td></tr>
+      <tr><td class="clr-c"><span class="clr-box"></span></td>
+          <td>No damage beyond ordinary wear and tear.</td></tr>
+      <tr><td class="clr-c"><span class="clr-box"></span></td>
+          <td>Electricity and water charges settled up to the move-out date.</td></tr>
+      <tr><td class="clr-c"><span class="clr-box"></span></td>
+          <td>Rent settled up to the move-out date.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="clr-h">3 &nbsp; Damage or deductions found</div>
+  <table class="clr-tbl">
+    <thead><tr><th style="width:56%">Item / description</th><th style="width:22%">Amount</th><th style="width:22%">Charged to deposit</th></tr></thead>
+    <tbody>{% for _ in range(3) %}<tr><td>&nbsp;</td><td></td><td class="clr-c"><span class="clr-box"></span> Yes &nbsp; <span class="clr-box"></span> No</td></tr>{% endfor %}</tbody>
+  </table>
+  <p style="font-size:11px; margin:6px 0 0;">
+    Security deposit on file: <strong>&#8369;{{ "{:,.2f}".format(deposit_on_file) }}</strong>.
+    Any amount charged above is deducted from it; the remainder is returned to the tenant.
+  </p>
+
+  <div class="clr-h">4 &nbsp; Clearance</div>
+  <div class="clr-cert">
+    I certify that the unit named above has been inspected, that the items listed are
+    accounted for, and that the tenant is cleared to vacate.
+  </div>
+
+  <div class="clr-sign">
+    <div>
+      <div class="clr-sign__line">
+        <div class="clr-sign__role">MAINTENANCE</div>
+        <div class="clr-sign__hint">Signature over printed name &middot; Date</div>
+      </div>
+    </div>
+    <div>
+      <div class="clr-sign__line">
+        <div class="clr-sign__role">OFFICE / ADMINISTRATOR</div>
+        <div class="clr-sign__hint">Signature over printed name &middot; Date</div>
+      </div>
+    </div>
+    <div>
+      <div class="clr-sign__line">
+        <div class="clr-sign__role">TENANT</div>
+        <div class="clr-sign__hint">Signature over printed name &middot; Date</div>
+      </div>
+    </div>
+    <div>
+      <div class="clr-sign__line">
+        <div class="clr-sign__role">RECEIVED DEPOSIT REFUND</div>
+        <div class="clr-sign__hint">Signature over printed name &middot; Date</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

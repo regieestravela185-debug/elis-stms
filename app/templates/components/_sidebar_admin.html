@@ -25,7 +25,7 @@
 
   <div class="side-group__label">Finance</div>
   <a class="side-link side-link--payments {% if request.path.startswith('/admin/payments') %}is-active{% endif %}" href="{{ url_for('admin.payments') }}"><span>Payments</span></a>
-  <a class="side-link side-link--deposits {% if request.path.startswith('/admin/deposits') %}is-active{% endif %}" href="{{ url_for('admin.deposits') }}"><span>Deposits</span></a>
+  <a class="side-link side-link--deposits {% if request.path.startswith('/admin/deposits') %}is-active{% endif %}" href="{{ url_for('admin.deposits') }}"><span>Security Deposits</span></a>
   <a class="side-link side-link--utilities {% if request.path.startswith('/admin/tenants/utility-billing') %}is-active{% endif %}" href="{{ url_for('admin.utility_billing') }}"><span>Utility Billing</span></a>
 
   <div class="side-group__label">Communication</div>

@@ -244,8 +244,23 @@ class Reservation(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Deposit fields
+    # Security deposit fields. deposit_amount is the deposit alone; the
+    # first month's rent is charged beside it, so what the tenant owes to
+    # move in is deposit_amount + unit.price_monthly. See app/deposits.py
+    # for how the figure differs between residential and commercial.
     deposit_amount = db.Column(db.Numeric(10, 2), nullable=False, default=5000.00)
+    # What the tenant has actually handed over so far against that move-in
+    # total. A reservation may be paid in instalments; whatever arrives is
+    # credited to the deposit first and the month's rent is left whole.
+    amount_paid = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    # When the first peso landed. Reservations are settled by who paid
+    # first, not by who booked first, so this is the field that decides
+    # which of several reservations on one unit wins it.
+    first_paid_at = db.Column(db.DateTime, nullable=True)
+    fully_paid_at = db.Column(db.DateTime, nullable=True)
+    # Set on the reservations that lost the race, so the tenant can be told
+    # why theirs was cancelled rather than simply finding it gone.
+    superseded_by_id = db.Column(db.Integer, db.ForeignKey("reservations.id"), nullable=True)
     deposit_status = db.Column(
         db.Enum(DepositStatus, values_callable=_enum_values, native_enum=False),
         nullable=False,
@@ -282,6 +297,22 @@ class Reservation(db.Model):
         from decimal import Decimal
         return sum((Decimal(str(d["amount"])) for d in self.deduction_entries
                     if d.get("amount")), Decimal("0"))
+
+    @property
+    def move_in_total(self):
+        """Security deposit plus the first month's rent — what is due to move in."""
+        rent = float(self.unit.price_monthly or 0) if self.unit else 0.0
+        return float(self.deposit_amount or 0) + rent
+
+    @property
+    def payment_state(self):
+        """Deposit-first split of whatever has been paid so far."""
+        from .deposits import apply_partial
+        return apply_partial(self.amount_paid, self.unit)
+
+    @property
+    def is_settled(self):
+        return float(self.amount_paid or 0) >= self.move_in_total - 0.005
 
     # AI-Assisted Identity Verification fields
     selfie_image = db.Column(db.String(255), nullable=True)  # Path to uploaded selfie image

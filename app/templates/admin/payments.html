@@ -583,7 +583,7 @@
           {% if payment_stats.period_months|length > 1 %}
             <table class="rev-period__months">
               <thead>
-                <tr><th>Month</th><th>Payments</th><th>Rent</th><th>Deposits</th><th>Returned</th><th>Total</th></tr>
+                <tr><th>Month</th><th>Payments</th><th>Rent</th><th>Security Deposits</th><th>Returned</th><th>Total</th></tr>
               </thead>
               <tbody>
                 {% for m in payment_stats.period_months %}
@@ -708,7 +708,7 @@
           <select class="input" id="typeSelect">
             <option value="">All Types</option>
             <option value="monthly" {% if request.args.get('type') == 'monthly' %}selected{% endif %}>Monthly Payment</option>
-            <option value="deposit" {% if request.args.get('type') == 'deposit' %}selected{% endif %}>Deposit</option>
+            <option value="deposit" {% if request.args.get('type') == 'deposit' %}selected{% endif %}>Security Deposit</option>
           </select>
 </div>
 
@@ -814,7 +814,7 @@
                       {% if payment.deposit_transaction_type == 'deposit_returned' %}
                         <span class="badge badge--return">Return</span>
                       {% else %}
-                        <span class="badge badge--deposit">Deposit</span>
+                        <span class="badge badge--deposit">Security Deposit</span>
                       {% endif %}
                     {% else %}
                       <span class="badge badge--monthly">Monthly</span>

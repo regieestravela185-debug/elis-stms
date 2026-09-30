@@ -495,9 +495,47 @@
                   <td>
                     <div class="action-buttons">
                       {% if r.status.value == 'pending' %}
-                        <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Approve this reservation? This will create a tenant profile and mark the unit as occupied.');">
-                          <button class="btn--approve" type="submit">Approve</button>
-                        </form>
+                        {% set pay = r.payment_state %}
+                        {# A unit goes to whoever pays first, so what has been
+                           paid against this reservation belongs beside the
+                           approve button, not on a separate screen. #}
+                        <div style="font-size:11px; line-height:1.5; margin-bottom:6px;">
+                          <div>Move-in total: <strong>&#8369;{{ '{:,.2f}'.format(pay.total_due) }}</strong></div>
+                          <div class="muted">Security deposit &#8369;{{ '{:,.2f}'.format(pay.deposit_paid) }} / {{ '{:,.2f}'.format(pay.deposit_due) }}</div>
+                          <div class="muted">First month&rsquo;s rent &#8369;{{ '{:,.2f}'.format(pay.rent_paid) }} / {{ '{:,.2f}'.format(pay.rent_due) }}</div>
+                          {% if pay.settled %}
+                            <div style="color:#16a34a; font-weight:700;">Fully paid</div>
+                          {% elif pay.paid > 0 %}
+                            <div style="color:#b45309; font-weight:700;">&#8369;{{ '{:,.2f}'.format(pay.balance) }} to follow</div>
+                          {% else %}
+                            <div class="muted">No payment yet</div>
+                          {% endif %}
+                        </div>
+                        {% if not pay.settled %}
+                          <form method="post" action="{{ url_for('admin.record_reservation_payment', reservation_id=r.id) }}"
+                                style="display:flex; gap:4px; margin-bottom:6px;"
+                                onsubmit="return confirm('Record this payment? The first payment on a unit takes it and cancels the other unpaid reservations for it.');">
+                            <input class="input" type="number" name="amount" step="0.01" min="0.01"
+                                   max="{{ '%.2f'|format(pay.balance) }}" placeholder="Amount"
+                                   style="width:96px; font-size:11px; padding:4px 6px;" required />
+                            <button class="btn btn--sm" type="submit" style="font-size:11px; padding:4px 8px;">Record</button>
+                          </form>
+                        {% endif %}
+                        {% if pay.settled %}
+                          <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Approve this reservation? This will create a tenant profile and mark the unit as occupied.');">
+                            <button class="btn--approve" type="submit">Approve</button>
+                          </form>
+                        {% else %}
+                          {# Part paid. Approving books the tenancy and settles the
+                             first month, so the balance has to be said out loud —
+                             the server refuses this without confirm_partial. #}
+                          <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}"
+                                onsubmit="return confirm('This reservation still owes ₱{{ '{:,.2f}'.format(pay.balance) }} — ₱{{ '{:,.2f}'.format(pay.deposit_balance) }} of the security deposit and ₱{{ '{:,.2f}'.format(pay.rent_balance) }} of the first month’s rent.\n\nApprove anyway and collect the balance later?');">
+                            <input type="hidden" name="confirm_partial" value="yes" />
+                            <button class="btn--approve" type="submit"
+                                    style="background:#b45309; border-color:#b45309;">Approve with balance</button>
+                          </form>
+                        {% endif %}
                         <form method="post" action="{{ url_for('admin.reject_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Reject this reservation? The unit will become available again.');">
                           <button class="btn--reject" type="submit">Reject</button>
                         </form>
