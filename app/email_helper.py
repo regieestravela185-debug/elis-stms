@@ -1537,3 +1537,65 @@ The Elis Center Management
 </html>
 """
     send_email_async(subject, to_email, to_name, html_content, text_content)
+
+
+def send_temporary_password_email(to_email, to_name, temp_password):
+    """Send a one-time password issued by the administrator.
+
+    Sent in addition to showing it on screen, never instead: this exists
+    for the tenant who cannot get into their own email, and for them the
+    administrator reading it out is the only route that works.
+    """
+    subject = "Temporary password — The Elis Center STMS"
+
+    text_content = f"""
+Dear {to_name},
+
+An administrator has issued a temporary password for your account at The
+Elis Center.
+
+Temporary password: {temp_password}
+
+Sign in with it, then change it straight away from Settings. Your previous
+password no longer works.
+
+If you did not ask for this, contact the office at once.
+
+Thank you,
+The Elis Center Management
+"""
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background-color:#f5f5f5;">
+  <div style="max-width:600px; margin:40px auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+    <div style="background:linear-gradient(135deg,#D7B35B 0%,#C9A84A 100%); padding:30px; text-align:center;">
+      <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:700;">The Elis Center</h1>
+      <p style="margin:8px 0 0 0; color:rgba(255,255,255,0.9); font-size:14px;">Commercial and Residences</p>
+    </div>
+    <div style="padding:40px 30px;">
+      <h2 style="margin:0 0 16px 0; font-size:20px; color:#141417;">Temporary password</h2>
+      <p style="margin:0 0 16px 0; color:#333333; font-size:15px;">Dear {to_name},</p>
+      <p style="margin:0 0 18px 0; color:#333333; font-size:14px; line-height:1.6;">
+        An administrator has issued a temporary password for your account.
+      </p>
+      <div style="background:#faf8f2; border:1px solid #efe6cd; border-radius:10px; padding:18px; text-align:center;">
+        <div style="font-size:12px; color:#888888; letter-spacing:.08em; text-transform:uppercase;">Temporary password</div>
+        <div style="margin-top:8px; font-family:'Courier New',monospace; font-size:26px; font-weight:700; letter-spacing:.08em; color:#141417;">{temp_password}</div>
+      </div>
+      <p style="margin:18px 0 0 0; color:#333333; font-size:14px; line-height:1.6;">
+        Sign in with it, then change it straight away from <strong>Settings</strong>.
+        Your previous password no longer works.
+      </p>
+      <p style="margin:14px 0 0 0; color:#b45309; font-size:13px; line-height:1.6;">
+        If you did not ask for this, contact the office at once.
+      </p>
+      <p style="margin:24px 0 0 0; color:#666666; font-size:14px;">Thank you,<br/>The Elis Center Management</p>
+    </div>
+  </div>
+</body>
+</html>
+"""
+    send_email_async(subject, to_email, to_name, html_content, text_content)

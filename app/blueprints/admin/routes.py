@@ -4149,8 +4149,23 @@ def reset_user_password(user_id: int):
                                action="temp_password_issued"))
     db.session.commit()
 
+    # Emailed as well as shown, never instead. This exists for the tenant
+    # who cannot reach their own email, and for them the administrator
+    # reading it out is the only route that works — so the password appears
+    # on screen whether or not the send succeeds.
+    emailed = False
+    try:
+        from ...email_helper import send_temporary_password_email
+        send_temporary_password_email(user.email, user.full_name or "Tenant", temp)
+        emailed = True
+    except Exception:
+        current_app.logger.exception("Temporary password email failed for %s", user.email)
+
+    sent = ("It has also been emailed to them."
+            if emailed else
+            "The email could not be sent, so pass it on directly.")
     flash(f"Temporary password for {user.full_name} ({user.email}): {temp} — "
-          f"give it to them directly and ask them to change it in Settings. "
+          f"ask them to change it in Settings. {sent} "
           f"It is shown here once and is not stored in readable form.", "success")
     return redirect(url_for("admin.user_details", user_id=user.id))
 
