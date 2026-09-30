@@ -266,6 +266,11 @@
       font-size: 10px; font-weight: 800;
     }
     .resv-hint { color: var(--muted); font-size: 10px; margin-top: 4px; }
+    .resv-locked {
+      font-size: 10px; color: var(--muted); background: rgba(20,20,23,.04);
+      border: 1px dashed rgba(20,20,23,.16); border-radius: 6px;
+      padding: 4px 7px; margin-bottom: 5px;
+    }
   </style>
 {% endblock %}
 
@@ -553,8 +558,19 @@
                           {% if not pay.settled %}
                             <div class="resv-step">
                               <span class="resv-step__n">1</span>
-                              <span class="resv-step__t">Record what was received</span>
+                              <span class="resv-step__t">
+                                {% if pay.paid > 0 %}Record another payment{% else %}Record what was received{% endif %}
+                              </span>
                             </div>
+                            {% if pay.paid > 0 %}
+                              {# What is already in cannot be edited from here —
+                                 each payment is its own record and its own ledger
+                                 entry. This box only ever adds another one. #}
+                              <div class="resv-locked">
+                                Already recorded: <strong>&#8369;{{ '{:,.2f}'.format(pay.paid) }}</strong>
+                                &mdash; settled, not editable
+                              </div>
+                            {% endif %}
                             <form method="post" action="{{ url_for('admin.record_reservation_payment', reservation_id=r.id) }}"
                                   onsubmit="return confirm('Record \u20b1' + this.amount.value + ' for {{ r.full_name }}?\n\nThis is what takes the unit — the other unpaid reservations on it are cancelled.');">
                               <div style="display:flex; gap:4px;">
@@ -567,7 +583,8 @@
                               </div>
                               <div class="resv-hint">
                                 {% if pay.paid > 0 %}
-                                  Box holds the balance. Change it to record less.
+                                  Box holds the remaining balance. This adds a new payment &mdash;
+                                  it does not change the &#8369;{{ '{:,.2f}'.format(pay.paid) }} already in.
                                 {% else %}
                                   Box holds the full amount &mdash; press Record for a full payment.
                                   A part payment must be over &#8369;{{ '{:,.2f}'.format(pay.rent_due) }}.
