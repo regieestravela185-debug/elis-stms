@@ -266,6 +266,22 @@
       font-size: 10px; font-weight: 800;
     }
     .resv-hint { color: var(--muted); font-size: 10px; margin-top: 4px; }
+    /* Approving on a balance is a real choice, not an error — the theme's
+       gold marks it as deliberate without shouting like the orange did. */
+    .btn--approve-bal {
+      background: rgba(215, 179, 91, 0.16);
+      color: #8a6d1f;
+      border-color: rgba(215, 179, 91, 0.55);
+    }
+    .btn--approve-bal:hover {
+      background: rgba(215, 179, 91, 0.28);
+      border-color: rgba(215, 179, 91, 0.8);
+    }
+    .resv-more > summary {
+      cursor: pointer; font-size: 10px; color: var(--muted);
+      margin-bottom: 5px; user-select: none;
+    }
+    .resv-more[open] > summary { margin-bottom: 7px; }
     .resv-locked {
       font-size: 10px; color: var(--muted); background: rgba(20,20,23,.04);
       border: 1px dashed rgba(20,20,23,.16); border-radius: 6px;
@@ -565,12 +581,15 @@
                             {% if pay.paid > 0 %}
                               {# What is already in cannot be edited from here —
                                  each payment is its own record and its own ledger
-                                 entry. This box only ever adds another one. #}
+                                 entry. Folded away so it is not pressed again by
+                                 accident; open it only when more money arrives
+                                 before this reservation is approved. #}
                               <div class="resv-locked">
                                 Already recorded: <strong>&#8369;{{ '{:,.2f}'.format(pay.paid) }}</strong>
                                 &mdash; settled, not editable
                               </div>
                             {% endif %}
+                            {% if pay.paid > 0 %}<details class="resv-more"><summary>Another payment arrived</summary>{% endif %}
                             <form method="post" action="{{ url_for('admin.record_reservation_payment', reservation_id=r.id) }}"
                                   onsubmit="return confirm('Record \u20b1' + this.amount.value + ' for {{ r.full_name }}?\n\nThis is what takes the unit — the other unpaid reservations on it are cancelled.');">
                               <div style="display:flex; gap:4px;">
@@ -591,6 +610,7 @@
                                 {% endif %}
                               </div>
                             </form>
+                            {% if pay.paid > 0 %}</details>{% endif %}
                           {% endif %}
 
                           <div class="resv-step">
@@ -617,10 +637,13 @@
                             <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}"
                                   onsubmit="return confirm('This reservation still owes \u20b1{{ '{:,.2f}'.format(pay.balance) }} \u2014 \u20b1{{ '{:,.2f}'.format(pay.deposit_balance) }} of the security deposit and \u20b1{{ '{:,.2f}'.format(pay.rent_balance) }} of the first month\u2019s rent.\n\nApprove anyway and collect the balance later?');">
                               <input type="hidden" name="confirm_partial" value="yes" />
-                              <button class="btn--approve" type="submit"
-                                      style="background:#b45309; border-color:#b45309;">Approve with balance</button>
+                              <button class="btn--approve btn--approve-bal" type="submit">Approve with balance</button>
                             </form>
-                            <div class="resv-hint">Record the balance first unless they are moving in on credit.</div>
+                            <div class="resv-hint">
+                              Once approved they become a tenant, and the
+                              &#8369;{{ '{:,.2f}'.format(pay.balance) }} still owing is collected on the
+                              <strong>Payments</strong> page like any other payment &mdash; this box closes.
+                            </div>
                           {% endif %}
                         </div>
                         <form method="post" action="{{ url_for('admin.reject_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Reject this reservation? The unit will become available again.');">
