@@ -76,7 +76,8 @@
   <p class="muted" style="margin:0 0 10px;">
     Print this form and bring it with you. Maintenance inspects the unit against the
     fixtures listed below and signs only once everything is accounted for; the office
-    signs last. A signed clearance is what releases your security deposit.
+    signs last. The clearance records that you are cleared to vacate; the security
+    deposit is settled separately, about a month later, once the final bills are in.
   </p>
   <div class="clr-actions">
     <button class="btn btn--primary" type="button" onclick="window.print()">Print clearance form</button>
@@ -214,22 +215,22 @@
     <tbody>
       <tr><td style="width:56%"><strong>Security deposit on file</strong></td>
           <td class="clr-c" colspan="2"><strong>&#8369;{{ "{:,.2f}".format(deposit_on_file) }}</strong></td></tr>
-      <tr><td>Less: total deductions above</td><td class="clr-c" colspan="2"></td></tr>
-      <tr><td><strong>Refundable to the tenant</strong></td><td class="clr-c" colspan="2"></td></tr>
+      <tr><td>Total charges entered above</td><td class="clr-c" colspan="2"></td></tr>
     </tbody>
   </table>
   <p style="font-size:10.5px; margin:5px 0 0;">
-    The security deposit is refunded without interest once the unit is surrendered and these
-    charges, if any, are settled.
+    This form clears the tenant to vacate. It does not release the deposit: the refund is
+    computed separately, about a month after move-out, once the final electricity and water
+    readings and any other outstanding account are known.
   </p>
 
   <div class="clr-h">4 &nbsp; Clearance</div>
   <div class="clr-cert">
     I certify that the unit named above was inspected jointly with the tenant, that the fixtures
     listed are accounted for, that all keys have been returned, and that the tenant is cleared to
-    vacate. Any charge entered above is deducted from the security deposit under the
-    {% if is_commercial %}Contract of Lease{% else %}Kasunduan sa Pag-upa{% endif %};
-    the remainder is returned to the tenant.
+    vacate. Charges entered above are chargeable to the security deposit under the
+    {% if is_commercial %}Contract of Lease{% else %}Kasunduan sa Pag-upa{% endif %}.
+    The refund itself is settled separately once the final bills are in.
   </div>
 
   <div class="clr-sign">
@@ -251,12 +252,7 @@
         <div class="clr-sign__hint">Signature over printed name &middot; Date</div>
       </div>
     </div>
-    <div>
-      <div class="clr-sign__line">
-        <div class="clr-sign__role">RECEIVED DEPOSIT REFUND</div>
-        <div class="clr-sign__hint">Signature over printed name &middot; Date</div>
-      </div>
-    </div>
+
   </div>
 </div>
 {% endblock %}

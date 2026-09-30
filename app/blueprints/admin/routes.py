@@ -2357,13 +2357,28 @@ def record_reservation_payment(reservation_id: int):
 
     state_before = r.payment_state
     if amount > state_before["balance"] + 0.005:
-        flash(f"That is more than the {state_before['balance']:,.2f} still outstanding "
+        flash(f"That is more than the ₱{state_before['balance']:,.2f} still outstanding "
               f"on this reservation.", "warning")
         return redirect(url_for("admin.reservations"))
 
+    # The first payment is what takes the unit off other people, so it has to
+    # be worth taking it off them for. Anything at or below one month's rent
+    # would hold a unit on a token, and the rent is not even what it is
+    # credited to — the deposit is filled first. Later top-ups are only
+    # clearing a balance already claimed, so they are not held to this.
+    first_money = float(r.amount_paid or 0) <= 0
+    if first_money and not state_before["settled"]:
+        floor = state_before["rent_due"]
+        if amount <= floor + 0.005 and amount < state_before["total_due"] - 0.005:
+            flash(f"A part payment has to be more than one month’s rent "
+                  f"(₱{floor:,.2f}). The first payment is what takes this unit "
+                  f"away from everyone else holding a reservation on it, so it "
+                  f"cannot be a token. Either collect more, or record the full "
+                  f"move-in total of ₱{state_before['total_due']:,.2f}.", "warning")
+            return redirect(url_for("admin.reservations"))
+
     from datetime import datetime as _dt
     now = _dt.utcnow().replace(microsecond=0)
-    first_money = float(r.amount_paid or 0) <= 0
 
     r.amount_paid = float(r.amount_paid or 0) + amount
     if first_money:
