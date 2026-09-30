@@ -2908,8 +2908,11 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
-                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            <div class="unit-card__status-chip" data-status="{{ 'reserved' if u.status == 'available' and u.reservation_count else u.status }}">
+                              {# A contested unit stays available so it can keep taking
+                                 reservations — it goes to whoever pays first — but it is
+                                 not untouched, and the chip has to say so. #}
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' and u.reservation_count %}Reserved &middot; open{% elif u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
                             </div>
                             <div class="unit-card__scrim">
                               <div class="unit-card__scrim-row">
@@ -2929,7 +2932,12 @@
                                   class="btn btn--sm btn--primary js-open-reserve"
                                   data-unit-id="{{ u.id }}"
                                   data-unit-code="{{ u.unit_code }}"
-                                >Reserve</button>
+                                >{% if u.reservation_count %}Reserve anyway{% else %}Reserve{% endif %}</button>
+                                {% if u.reservation_count %}
+                                  <span class="unit-card__hint" style="width:100%; margin-top:4px;">
+                                    {{ u.reservation_count }} reservation{{ 's' if u.reservation_count > 1 else '' }} already &mdash; the unit goes to whoever pays first
+                                  </span>
+                                {% endif %}
                               {% elif can_reserve %}
                                 <span class="unit-card__hint">{{ u.status }}</span>
                               {% elif not current_user.is_authenticated %}
@@ -2981,8 +2989,11 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
-                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            <div class="unit-card__status-chip" data-status="{{ 'reserved' if u.status == 'available' and u.reservation_count else u.status }}">
+                              {# A contested unit stays available so it can keep taking
+                                 reservations — it goes to whoever pays first — but it is
+                                 not untouched, and the chip has to say so. #}
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' and u.reservation_count %}Reserved &middot; open{% elif u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
                             </div>
                             <div class="unit-card__scrim">
                               <div class="unit-card__scrim-row">
@@ -3002,7 +3013,12 @@
                                   class="btn btn--sm btn--primary js-open-reserve"
                                   data-unit-id="{{ u.id }}"
                                   data-unit-code="{{ u.unit_code }}"
-                                >Reserve</button>
+                                >{% if u.reservation_count %}Reserve anyway{% else %}Reserve{% endif %}</button>
+                                {% if u.reservation_count %}
+                                  <span class="unit-card__hint" style="width:100%; margin-top:4px;">
+                                    {{ u.reservation_count }} reservation{{ 's' if u.reservation_count > 1 else '' }} already &mdash; the unit goes to whoever pays first
+                                  </span>
+                                {% endif %}
                               {% elif can_reserve %}
                                 <span class="unit-card__hint">{{ u.status }}</span>
                               {% elif not current_user.is_authenticated %}
@@ -3055,8 +3071,11 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
-                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            <div class="unit-card__status-chip" data-status="{{ 'reserved' if u.status == 'available' and u.reservation_count else u.status }}">
+                              {# A contested unit stays available so it can keep taking
+                                 reservations — it goes to whoever pays first — but it is
+                                 not untouched, and the chip has to say so. #}
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' and u.reservation_count %}Reserved &middot; open{% elif u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
                             </div>
                             <div class="unit-card__scrim">
                               <div class="unit-card__scrim-row">
@@ -3076,7 +3095,12 @@
                                   class="btn btn--sm btn--primary js-open-reserve"
                                   data-unit-id="{{ u.id }}"
                                   data-unit-code="{{ u.unit_code }}"
-                                >Reserve</button>
+                                >{% if u.reservation_count %}Reserve anyway{% else %}Reserve{% endif %}</button>
+                                {% if u.reservation_count %}
+                                  <span class="unit-card__hint" style="width:100%; margin-top:4px;">
+                                    {{ u.reservation_count }} reservation{{ 's' if u.reservation_count > 1 else '' }} already &mdash; the unit goes to whoever pays first
+                                  </span>
+                                {% endif %}
                               {% elif can_reserve %}
                                 <span class="unit-card__hint">{{ u.status }}</span>
                               {% elif not current_user.is_authenticated %}
@@ -3130,8 +3154,11 @@
                         >
                           <div class="unit-card__media">
                             <img src="{{ media_url(u.images[0]) }}" alt="{{ u.unit_code }}" />
-                            <div class="unit-card__status-chip" data-status="{{ u.status }}">
-                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
+                            <div class="unit-card__status-chip" data-status="{{ 'reserved' if u.status == 'available' and u.reservation_count else u.status }}">
+                              {# A contested unit stays available so it can keep taking
+                                 reservations — it goes to whoever pays first — but it is
+                                 not untouched, and the chip has to say so. #}
+                              <span class="unit-card__status-dot"></span>{% if u.status == 'available' and u.reservation_count %}Reserved &middot; open{% elif u.status == 'available' %}Available{% elif u.status == 'reserved' %}Reserved{% else %}Occupied{% endif %}
                             </div>
                             <div class="unit-card__scrim">
                               <div class="unit-card__scrim-row">
@@ -3151,7 +3178,12 @@
                                   class="btn btn--sm btn--primary js-open-reserve"
                                   data-unit-id="{{ u.id }}"
                                   data-unit-code="{{ u.unit_code }}"
-                                >Reserve</button>
+                                >{% if u.reservation_count %}Reserve anyway{% else %}Reserve{% endif %}</button>
+                                {% if u.reservation_count %}
+                                  <span class="unit-card__hint" style="width:100%; margin-top:4px;">
+                                    {{ u.reservation_count }} reservation{{ 's' if u.reservation_count > 1 else '' }} already &mdash; the unit goes to whoever pays first
+                                  </span>
+                                {% endif %}
                               {% elif can_reserve %}
                                 <span class="unit-card__hint">{{ u.status }}</span>
                               {% elif not current_user.is_authenticated %}

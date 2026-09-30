@@ -83,6 +83,18 @@ def home():
         label = row.label.split("—")[-1].strip() if "—" in row.label else row.label
         inclusions_by_unit.setdefault(row.unit_id, []).append(label)
 
+    # How many people are already holding a reservation on each unit. A unit
+    # stays AVAILABLE while it is contested, because it goes to whoever pays
+    # first and must keep accepting reservations — but a visitor who is shown
+    # nothing at all reads that as "untouched", which it is not.
+    from ...models import Reservation, ReservationStatus
+    reservation_counts = dict(
+        db.session.query(Reservation.unit_id, func.count(Reservation.id))
+        .filter(Reservation.status == ReservationStatus.PENDING)
+        .group_by(Reservation.unit_id)
+        .all()
+    )
+
     # Group units by building and floor
     units_by_building = {}
     for u in units:
@@ -135,7 +147,8 @@ def home():
             "contract_note": "Minimum 1-year contract" if is_commercial else "Studio type unit",
             "floor": unit_floor,
             "rating": unit_ratings[u.id]['avg'],
-            "rating_count": unit_ratings[u.id]['count']
+            "rating_count": unit_ratings[u.id]['count'],
+            "reservation_count": reservation_counts.get(u.id, 0),
         }
 
         # Group by floor (1, 2, 3, or 4)

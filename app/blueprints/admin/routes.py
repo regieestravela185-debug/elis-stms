@@ -480,17 +480,18 @@ def verify_blockchain_chain() -> dict:
     }
 
 
-def _send_reservation_result_email(to_email: str, status: ReservationStatus, unit_code: str, to_name: str = "Tenant") -> None:
+def _send_reservation_result_email(to_email: str, status: ReservationStatus, unit_code: str,
+                                   to_name: str = "Tenant", reason: str | None = None) -> None:
     """Send reservation result email using Brevo HTTP API"""
     if not to_email:
         return
-    
+
     from ...email_helper import send_reservation_result_email
-    
+
     # Convert ReservationStatus enum to string
     status_str = status.value.lower()  # 'approved', 'rejected', 'cancelled'
-    
-    send_reservation_result_email(to_email, to_name, status_str, unit_code)
+
+    send_reservation_result_email(to_email, to_name, status_str, unit_code, reason=reason)
 
 
 def _send_renewal_reminder_email(tenant_name: str, tenant_email: str, unit_code: str, contract_end: date, days_remaining: int) -> None:
@@ -2314,7 +2315,24 @@ def _award_unit_to(r: Reservation) -> list:
             continue
         other.status = ReservationStatus.CANCELLED
         other.superseded_by_id = r.id
-    return [o for o in losers if float(o.amount_paid or 0) <= 0]
+    cancelled = [o for o in losers if float(o.amount_paid or 0) <= 0]
+
+    # Tell them, and say why. A reservation that simply disappears reads as
+    # the office losing it; "someone else paid for the unit first" is the
+    # actual rule and the tenant can act on it.
+    for o in cancelled:
+        try:
+            _send_reservation_result_email(
+                o.email, status=ReservationStatus.CANCELLED,
+                unit_code=(unit.unit_code if unit else "the unit"),
+                to_name=o.full_name or "Tenant",
+                reason=("The unit was taken by another reservation that was paid for first. "
+                        "A unit at Elis goes to whoever pays first rather than whoever books "
+                        "first, and no payment had been recorded against your reservation."),
+            )
+        except Exception:
+            current_app.logger.exception("Failed to email superseded reservation %s", o.id)
+    return cancelled
 
 
 @bp.post("/reservations/<int:reservation_id>/payment")
@@ -2357,6 +2375,21 @@ def record_reservation_payment(reservation_id: int):
     db.session.commit()
 
     after = r.payment_state
+    unit = db.session.get(Unit, r.unit_id)
+    try:
+        from ...email_helper import send_reservation_payment_email
+        from ...deposits import is_commercial
+        send_reservation_payment_email(
+            to_email=r.email, to_name=r.full_name or "Tenant",
+            unit_code=(unit.unit_code if unit else "your unit"),
+            amount=amount,
+            deposit_paid=after["deposit_paid"], deposit_due=after["deposit_due"],
+            rent_paid=after["rent_paid"], rent_due=after["rent_due"],
+            balance=after["balance"], settled=after["settled"],
+            is_commercial=is_commercial(unit) if unit else False,
+        )
+    except Exception:
+        current_app.logger.exception("Failed to email payment receipt for reservation %s", r.id)
     msg = (f"Recorded ₱{amount:,.2f} for {r.full_name}. "
            f"Security deposit {after['deposit_paid']:,.2f} of {after['deposit_due']:,.2f}; "
            f"first month's rent {after['rent_paid']:,.2f} of {after['rent_due']:,.2f}.")

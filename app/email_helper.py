@@ -351,8 +351,13 @@ The Elis Center Management
     send_email_async(subject, user_email, user_name, html_content, text_content)
 
 
-def send_reservation_result_email(to_email, to_name, status, unit_code):
-    """Send reservation result email (approved/rejected/cancelled)"""
+def send_reservation_result_email(to_email, to_name, status, unit_code, reason=None):
+    """Send reservation result email (approved/rejected/cancelled).
+
+    `reason` is shown when there is one. A reservation cancelled because
+    somebody else paid for the unit first is not the same as one the
+    office cancelled, and the tenant is owed that distinction.
+    """
     from datetime import date
     
     status_text = status.upper()
@@ -377,7 +382,7 @@ Dear {to_name},
 
 Your reservation for Unit {unit_code} has been {status_text.lower()}.
 
-{'Your account is now tagged as tenant. Please login again to access your tenant portal.' if next_steps_approved else 'You may contact us or submit another reservation request for other available units.'}
+{reason + chr(10) + chr(10) if reason else ''}{'Your account is now tagged as tenant. Please login again to access your tenant portal.' if next_steps_approved else 'You may contact us or submit another reservation request for other available units.'}
 
 Thank you,
 The Elis Center Management
@@ -1449,3 +1454,86 @@ The Elis Center Management
 """
 
     send_email_async(subject, tenant_email, tenant_name, html_content, text_content)
+
+
+def send_reservation_payment_email(
+    to_email, to_name, unit_code, amount, deposit_paid, deposit_due,
+    rent_paid, rent_due, balance, settled, is_commercial=False,
+):
+    """Receipt for money received against a reservation.
+
+    The tenant is told what the payment was applied to, not just that it
+    arrived: whatever is paid fills the security deposit first and the
+    first month's rent is left whole, so a part payment can look like it
+    did nothing to the rent unless the split is spelled out.
+    """
+    fmt = lambda n: f"₱{float(n):,.2f}"
+    kind = "Payment received" if settled else "Part payment received"
+    subject = f"{kind} — Unit {unit_code} — The Elis Center STMS"
+
+    if settled:
+        closing = ("Your reservation is now fully paid. The office will review it "
+                   "and you will be emailed once it is approved.")
+    else:
+        closing = (f"{fmt(balance)} is still to follow. The unit is held for you while "
+                   f"a balance remains, and your reservation is approved once it is settled.")
+
+    text_content = f"""
+Dear {to_name},
+
+We have received {fmt(amount)} for your reservation of Unit {unit_code}.
+
+How it was applied:
+- Security deposit: {fmt(deposit_paid)} of {fmt(deposit_due)}
+- First month's rent: {fmt(rent_paid)} of {fmt(rent_due)}
+- Balance: {fmt(balance)}
+
+A payment is credited to the security deposit first; the first month's rent is
+kept whole and settled once the deposit is complete.
+
+{closing}
+
+Thank you,
+The Elis Center Management
+"""
+
+    rows = "".join(
+        f'<tr><td style="padding:6px 0; color:#888888;">{label}</td>'
+        f'<td style="padding:6px 0; text-align:right; font-weight:600;">{value}</td></tr>'
+        for label, value in (
+            ("Amount received", fmt(amount)),
+            ("Security deposit", f"{fmt(deposit_paid)} of {fmt(deposit_due)}"),
+            ("First month&rsquo;s rent", f"{fmt(rent_paid)} of {fmt(rent_due)}"),
+            ("Balance", fmt(balance)),
+        )
+    )
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background-color:#f5f5f5;">
+  <div style="max-width:600px; margin:40px auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+    <div style="background:linear-gradient(135deg,#D7B35B 0%,#C9A84A 100%); padding:30px; text-align:center;">
+      <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:700;">The Elis Center</h1>
+      <p style="margin:8px 0 0 0; color:rgba(255,255,255,0.9); font-size:14px;">Commercial and Residences</p>
+    </div>
+    <div style="padding:40px 30px;">
+      <h2 style="margin:0 0 6px 0; font-size:20px; color:#141417;">{kind}</h2>
+      <p style="margin:0 0 20px 0; color:#666666; font-size:14px;">Unit {unit_code}</p>
+      <p style="margin:0 0 16px 0; color:#333333; font-size:15px;">Dear {to_name},</p>
+      <div style="background:#faf8f2; border:1px solid #efe6cd; border-radius:10px; padding:16px 18px;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px; color:#141417;">{rows}</table>
+      </div>
+      <p style="margin:16px 0 0 0; color:#999999; font-size:12px; line-height:1.5;">
+        A payment is credited to the security deposit first; the first month&rsquo;s rent is kept
+        whole and settled once the deposit is complete.
+      </p>
+      <p style="margin:18px 0 0 0; color:#333333; font-size:14px; line-height:1.6;">{closing}</p>
+      <p style="margin:24px 0 0 0; color:#666666; font-size:14px;">Thank you,<br/>The Elis Center Management</p>
+    </div>
+  </div>
+</body>
+</html>
+"""
+    send_email_async(subject, to_email, to_name, html_content, text_content)
