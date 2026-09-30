@@ -829,9 +829,15 @@
           <div class="metric__num">{{ cards.total_payments }}</div>
           <div class="metric__label">Payments</div>
 </div>
+        {# "Revenue" here was rent and security deposits added together. A
+           deposit is held against damage and returned at move-out, so it is a
+           liability, not income — over half of what this property collects in
+           a month is deposits, and calling the sum revenue overstated earnings
+           by more than double. The sum is still shown, named for what it is,
+           with rent beside it as the earned part. #}
         <div class="metric">
           <div class="metric__num">₱{{ '{:,.2f}'.format(cards.total_revenue|float) }}</div>
-          <div class="metric__label">Total Revenue</div>
+          <div class="metric__label">Total Collected</div>
 </div>
         <div class="metric">
           <div class="metric__num">₱{{ '{:,.2f}'.format(cards.rent_revenue|float) }}</div>
@@ -856,10 +862,15 @@
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap;">
           <div style="flex: 1; min-width: 280px;">
             <div class="kicker" style="margin-bottom: 12px;">THIS MONTH'S SUMMARY</div>
-            <h3 style="margin: 0 0 8px 0; font-size: 1.2rem;">₱{{ '{:,.2f}'.format(this_month_revenue|default(0)|float) }} Revenue</h3>
+            {# Rent is the headline because rent is what the month earned. The
+               month-on-month comparison is rent against rent for the same
+               reason: a single new move-in brings a deposit several times its
+               own rent, so comparing collections made one extra tenant look
+               like a change in trading. #}
+            <h3 style="margin: 0 0 8px 0; font-size: 1.2rem;">₱{{ '{:,.2f}'.format(this_month_rent|default(0)|float) }} Rent revenue</h3>
             <p class="muted" style="margin: 0; font-size: 0.9rem; line-height: 1.6;">
-              {% if last_month_revenue > 0 %}
-                {% set change = ((this_month_revenue - last_month_revenue) / last_month_revenue * 100) %}
+              {% if last_month_rent > 0 %}
+                {% set change = ((this_month_rent|float - last_month_rent|float) / last_month_rent|float * 100) %}
                 {% if change > 0 %}
                   <span style="color: #40c978; font-weight: 700;">{{ '{:,.1f}'.format(change) }}%</span> vs last month
                 {% elif change < 0 %}
@@ -869,6 +880,12 @@
                 {% endif %}
               {% else %}
                 First month of operations
+              {% endif %}
+              <br/>
+              ₱{{ '{:,.2f}'.format(this_month_revenue|default(0)|float) }} collected in all
+              {% if this_month_deposits|default(0)|float > 0 %}
+                &mdash; including ₱{{ '{:,.2f}'.format(this_month_deposits|float) }} in
+                security deposits, which are held and refundable, not earnings.
               {% endif %}
 </p>
 </div>

@@ -99,7 +99,7 @@
         <h3>All Documents <span style="font-size: 14px; font-weight: normal; color: #666;">({{ pagination.total }} total{% if pagination.pages > 1 %}, page {{ pagination.page }} of {{ pagination.pages }}{% endif %})</span></h3>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn--ghost btn--sm" onclick="clearFilters()">Clear Filters</button>
-          <a href="{{ url_for('admin.export_documents') }}" class="btn btn--ghost btn--sm">Export CSV</a>
+          <a href="{{ url_for('admin.export_documents') }}" class="btn btn--ghost btn--sm">Export Excel</a>
 </div>
 </div>
 

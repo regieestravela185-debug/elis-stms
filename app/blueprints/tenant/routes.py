@@ -1011,8 +1011,19 @@ def submit_payment_proof():
 @bp.get("/payments/export")
 @login_required
 def export_payments():
+    """The tenant's own payment history, as a workbook.
+
+    It used to be a CSV whose amounts were written as "₱22,500.00" — a
+    string, so nothing summed, and without a byte-order mark Excel read the
+    peso sign as mojibake. It also listed voided payments with nothing to say
+    so, which is the one thing a tenant checking their own record must not be
+    misled about.
+    """
     _ensure_tenant()
     profile, is_expired = _get_tenant_profile()
+    from datetime import datetime
+    from ...models import PAYMENT_STATUSES_NOT_COUNTED
+    from ...excel_export import Sheet, Column, workbook_response
 
     payments = (
         db.session.query(Payment)
@@ -1021,37 +1032,50 @@ def export_payments():
         .all()
     )
 
-    # Create CSV
-    import csv
-    from io import StringIO
-    
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Header
-    writer.writerow(['Date', 'Receipt Number', 'Reference', 'Amount', 'Status', 'Notes'])
-    
-    # Data
+    rows = []
     for p in payments:
-        writer.writerow([
-            p.paid_at.strftime('%Y-%m-%d %H:%M'),
-            p.receipt_number or 'N/A',
-            p.reference or 'N/A',
-            f"₱{float(p.amount):,.2f}",
-            'Late Payment' if p.is_late else 'On Time',
-            p.notes or ''
+        counts = p.payment_status not in PAYMENT_STATUSES_NOT_COUNTED
+        amount = float(p.amount or 0)
+        signed = -amount if p.deposit_transaction_type == "deposit_returned" else amount
+        rows.append([
+            p.paid_at,
+            p.receipt_number or "",
+            p.reference_label or p.reference or "",
+            "Security deposit" if p.is_deposit else "Rent",
+            p.payment_month or "",
+            signed if counts else None,
+            amount if not counts else None,
+            ("Late" if p.is_late else "On time") if counts
+            else (p.payment_status or "").replace("_", " ").title(),
+            (p.payment_method or "").replace("_", " ").title(),
+            p.notes or "",
         ])
-    
-    output.seek(0)
-    
-    from flask import Response
-    return Response(
-        output.getvalue(),
-        mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename=payment_history_{profile.user.full_name.replace(" ", "_")}.csv'}
+
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    name = profile.user.full_name if profile.user else "Tenant"
+    unit = profile.unit.unit_code if profile.unit else ""
+
+    sheet = Sheet(
+        "Payment history", totals=True,
+        heading=["THE ELIS CENTER — Commercial and Residences",
+                 f"Payment history — {name}" + (f" · Unit {unit}" if unit else ""),
+                 f"Generated: {generated}"],
+        columns=[
+            Column("Date", "datetime"), Column("Receipt no."),
+            Column("Reference", wrap=True, width=32), Column("Type"),
+            Column("For month"), Column("Amount", "money", total=True),
+            Column("Not counted", "money", total=True),
+            Column("Status"), Column("Method"), Column("Notes", wrap=True, width=40),
+        ],
+        rows=rows,
+        empty="No payments recorded yet.",
+        notes=["A payment listed under Not counted was voided or rejected and is "
+               "not part of the total. It is shown so the record stays complete.",
+               "A returned security deposit is negative: it is money paid back "
+               "to you."],
     )
-
-
+    safe = (name or "Tenant").replace(" ", "_")
+    return workbook_response(f"Payment_History_{safe}", [sheet])
 @bp.get("/payments/<int:payment_id>/receipt")
 @login_required
 def payment_receipt(payment_id: int):

@@ -466,7 +466,7 @@
       <div class="stat-card stat-card--total">
         <span class="stat-card__icon"></span>
         <div class="stat-card__number">₱{{ '{:,.0f}'.format(payment_stats.total_revenue) }}</div>
-        <div class="stat-card__label">Total Revenue</div>
+        <div class="stat-card__label">Total Collected</div>
 </div>
       <div class="stat-card stat-card--rent">
         <span class="stat-card__icon"></span>
@@ -618,8 +618,8 @@
           <a href="{{ url_for('admin.verify_blockchain') }}" class="btn btn--ghost btn--sm" style="border: 1px solid #D7B35B; color: #D7B35B;">
              Verify Blockchain
 </a>
-          <a data-download-label="the payments list (CSV)" href="{{ url_for('admin.export_payments') }}" class="btn btn--ghost btn--sm">
-             Export CSV
+          <a data-download-label="the payments list (Excel)" href="{{ url_for('admin.export_payments') }}" class="btn btn--ghost btn--sm">
+             Export Excel
 </a>
 </div>
 </div>

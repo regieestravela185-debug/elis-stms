@@ -756,6 +756,26 @@ def dashboard():
         Payment.paid_at >= last_month_start,
         Payment.paid_at <= last_month_end
     ).scalar() or 0
+
+    # Rent alone, which is the part the business has actually earned. The
+    # figures above are everything collected, security deposits included, and
+    # a deposit is money held against damage and given back at move-out — it
+    # is a liability, not income. Over half of what this property collects in
+    # a month is deposits, so headlining the combined figure as "revenue"
+    # overstates earnings by more than double. Both are reported, each
+    # labelled for what it is.
+    this_month_rent = db.session.query(func.sum(Payment.amount)).filter(
+        Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
+        Payment.is_deposit.is_(False),
+        Payment.paid_at >= current_month_start
+    ).scalar() or 0
+    last_month_rent = db.session.query(func.sum(Payment.amount)).filter(
+        Payment.payment_status.notin_(PAYMENT_STATUSES_NOT_COUNTED),
+        Payment.is_deposit.is_(False),
+        Payment.paid_at >= last_month_start,
+        Payment.paid_at <= last_month_end
+    ).scalar() or 0
+    this_month_deposits = float(this_month_revenue) - float(this_month_rent)
     
     new_tenants_this_month = db.session.query(TenantProfile).filter(
         TenantProfile.created_at >= current_month_start
@@ -894,6 +914,9 @@ def dashboard():
         revenue_trend=revenue_trend,
         this_month_revenue=this_month_revenue,
         last_month_revenue=last_month_revenue,
+        this_month_rent=this_month_rent,
+        last_month_rent=last_month_rent,
+        this_month_deposits=this_month_deposits,
         new_tenants_this_month=new_tenants_this_month,
         payments_this_month=payments_this_month,
         building_occupancy=building_occupancy,
@@ -2142,44 +2165,47 @@ def duplicate_unit(unit_id: int):
 @login_required
 def export_units():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
 
-    # Exclude archived units from export
-    units = db.session.query(Unit).filter(Unit.is_archived == False).order_by(Unit.building_id.asc(), Unit.unit_number.asc()).all()
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Units Report", f"Generated: {generated}"]
 
-    output = StringIO()
-    writer = csv.writer(output)
+    units = (db.session.query(Unit).filter(Unit.is_archived == False)  # noqa: E712
+             .order_by(Unit.building_id.asc(), Unit.unit_number.asc()).all())
 
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Units Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
+    from ...deposits import security_deposit_for
+    rows = [[
+        u.unit_code,
+        u.building.code.upper() if u.building else "",
+        u.unit_number,
+        u.floor or "",
+        (u.type or "").title(),
+        float(u.price_monthly or 0),
+        security_deposit_for(u),
+        (u.status.value if hasattr(u.status, "value") else u.status or "").title(),
+        u.description or "",
+        u.created_at,
+    ] for u in units]
 
-    # Column headers
-    writer.writerow(["Unit Code", "Building", "Unit Number", "Floor", "Type", "Price", "Status", "Description", "Created At"])
-
-    for u in units:
-        writer.writerow([
-            u.unit_code,
-            u.building.code,
-            u.unit_number,
-            u.floor or "",
-            u.type or "",
-            u.price_monthly,
-            u.status.value,
-            u.description or "",
-            u.created_at.strftime("%Y-%m-%d %H:%M:%S")
-        ])
-
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Units_Report.csv"}
-    )
-    return response
+    return workbook_response("Elis_Units_Report", [Sheet(
+        "Units", heading=heading, totals=True,
+        columns=[
+            Column("Unit code"), Column("Building"), Column("Unit no."),
+            Column("Floor"), Column("Type"),
+            Column("Monthly rent", "money", total=True),
+            Column("Security deposit", "money", total=True),
+            Column("Status"), Column("Description", wrap=True, width=40),
+            Column("Added", "datetime"),
+        ],
+        rows=rows,
+        empty="No units on record.",
+        notes=["Security deposit is what the unit asks of a new applicant today: "
+               "one month plus ₱1,000 residential, two months plus ₱10,000 "
+               "commercial. A tenancy already signed owes what it agreed to.",
+               "Archived units are left out."],
+    )])
 
 
 @bp.get("/reservations")
@@ -2248,45 +2274,51 @@ def reservations():
 @login_required
 def export_reservations():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
 
-    reservations = db.session.query(Reservation).order_by(Reservation.created_at.desc()).all()
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Reservations Report", f"Generated: {generated}"]
 
-    output = StringIO()
-    writer = csv.writer(output)
+    reservations = (db.session.query(Reservation)
+                    .order_by(Reservation.created_at.desc()).all())
 
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Reservation Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
-
-    # Column headers
-    writer.writerow(["Created", "Name", "Email", "Contact", "Unit", "Move-in Date", "Move-out Date", "Status", "ID Type", "ID Number", "ID Upload"])
-
+    rows = []
     for r in reservations:
-        writer.writerow([
-            r.created_at.strftime("%Y-%m-%d %H:%M"),
-            r.full_name,
-            r.email,
-            r.contact,
-            r.unit.unit_code,
-            r.move_in_date.strftime("%Y-%m-%d") if r.move_in_date else "",
-            r.move_out_date.strftime("%Y-%m-%d") if r.move_out_date else "",
-            r.status.value,
-            r.id_type or "",
-            r.id_number or "",
-            r.id_upload_path or ""
+        state = r.payment_state
+        rows.append([
+            r.created_at, r.full_name, r.email, r.contact,
+            r.unit.unit_code if r.unit else "",
+            (r.status.value if hasattr(r.status, "value") else r.status or "").title(),
+            r.move_in_date, r.move_out_date,
+            r.move_in_total, float(r.amount_paid or 0), state["balance"],
+            r.first_paid_at, r.balance_due_date,
+            r.id_type or "", r.id_number or "",
         ])
 
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Reservations_Report.csv"}
-    )
-    return response
+    return workbook_response("Elis_Reservations_Report", [Sheet(
+        "Reservations", heading=heading, totals=True,
+        columns=[
+            Column("Created", "datetime"), Column("Name"), Column("Email"),
+            Column("Contact"), Column("Unit"), Column("Status"),
+            Column("Move-in", "date"), Column("Move-out", "date"),
+            Column("Move-in total", "money", total=True),
+            Column("Paid", "money", total=True),
+            Column("Balance", "money", total=True),
+            Column("First paid", "datetime"), Column("Balance due", "date"),
+            Column("ID type"), Column("ID number"),
+        ],
+        rows=rows,
+        empty="No reservations on record.",
+        notes=["Move-in total is the first month's rent plus the security deposit. "
+               "Rent is settled first and in full, so a balance is normally the "
+               "deposit alone.",
+               "A reservation is decided by who pays first, not who booked first — "
+               "First paid is the field that settles a contested unit.",
+               "The ID upload path is left out: it is a server filename, not "
+               "something a report can be read from."],
+    )])
 
 
 def _award_unit_to(r: Reservation) -> list:
@@ -4049,59 +4081,101 @@ def deposits():
 @bp.get("/deposits/export")
 @login_required
 def export_deposits():
+    """The deposits report, with what is still being collected in front.
+
+    Amounts used to be written pre-formatted — f"{amount:.2f}" — which Excel
+    reads as text, so the columns could not be summed or sorted numerically
+    and the office retyped them. They are numbers now.
+    """
     _ensure_admin()
-    import csv
-    from io import StringIO
-    from datetime import date
-    
+    from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
+
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Security Deposits Report", f"Generated: {generated}"]
+
     reservations = (
         db.session.query(Reservation)
         .filter(Reservation.status == ReservationStatus.APPROVED)
         .order_by(Reservation.created_at.desc())
         .all()
     )
-    
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Header
-    writer.writerow([
-        'Tenant Name',
-        'Email',
-        'Building',
-        'Unit',
-        'Move-in Date',
-        'Contract End',
-        'Deposit Amount',
-        'Deductions',
-        'Return Amount',
-        'Status',
-        'Return Date'
-    ])
-    
-    # Data
+
+    rows = []
     for r in reservations:
-        deducted_amount = r.deposit_amount - r.deposit_return_amount if r.deposit_return_amount else 0
-        writer.writerow([
+        agreed = float(r.deposit_amount or 0)
+        returned = float(r.deposit_return_amount or 0) if r.deposit_return_amount else 0.0
+        deducted = (agreed - returned) if r.deposit_return_amount else 0.0
+        rows.append([
             r.full_name,
             r.email,
-            r.unit.building.code.upper(),
-            r.unit.unit_code,
-            r.move_in_date.strftime('%Y-%m-%d') if r.move_in_date else '',
-            r.move_out_date.strftime('%Y-%m-%d') if r.move_out_date else '',
-            f'{r.deposit_amount:.2f}',
-            f'{deducted_amount:.2f}',
-            f'{r.deposit_return_amount:.2f}' if r.deposit_return_amount else f'{r.deposit_amount:.2f}',
-            r.deposit_status.replace('_', ' ').title(),
-            r.deposit_return_date.strftime('%Y-%m-%d') if r.deposit_return_date else ''
+            r.unit.building.code.upper() if r.unit and r.unit.building else "",
+            r.unit.unit_code if r.unit else "",
+            r.move_in_date,
+            r.move_out_date,
+            agreed,
+            deducted,
+            returned if r.deposit_return_amount else agreed,
+            (r.deposit_status or "").replace("_", " ").title(),
+            r.deposit_return_date,
         ])
-    
-    output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename=deposits_export_{date.today().isoformat()}.csv'}
+
+    held = Sheet(
+        "Deposits", heading=heading, totals=True,
+        columns=[
+            Column("Tenant"), Column("Email"), Column("Building"), Column("Unit"),
+            Column("Move-in", "date"), Column("Contract end", "date"),
+            Column("Deposit agreed", "money", total=True),
+            Column("Deductions", "money", total=True),
+            Column("Return amount", "money", total=True),
+            Column("Status"), Column("Returned on", "date"),
+        ],
+        rows=rows,
+        notes=["Deposit agreed is what the tenancy signed for, which is not "
+               "always what the unit asks of a new applicant today — deposits "
+               "have been repriced since some of these were signed.",
+               "A security deposit is the tenant's money held against damage. It "
+               "is a liability, not revenue."],
     )
+
+    # What is still outstanding on move-ins approved on a part payment. This
+    # is the one figure the office chases, and it was on no report at all.
+    short_rows = []
+    for profile in (db.session.query(TenantProfile)
+                    .filter(TenantProfile.is_active.is_(True)).all()):
+        if not profile.unit:
+            continue
+        owed = _move_in_outstanding(profile)
+        if owed["balance"] <= 0.005:
+            continue
+        short_rows.append([
+            profile.user.full_name if profile.user else "",
+            profile.unit.unit_code,
+            (profile.unit.type or "").title(),
+            owed["due"], owed["held"], owed["short"],
+            "Settled" if owed["rent_booked"] else "Not yet",
+            owed["rent_short"], owed["balance"],
+        ])
+
+    outstanding = Sheet(
+        "Outstanding", heading=heading, totals=True,
+        columns=[
+            Column("Tenant"), Column("Unit"), Column("Type"),
+            Column("Deposit required", "money"),
+            Column("Deposit paid", "money", total=True),
+            Column("Deposit short", "money", total=True),
+            Column("First month"), Column("Rent short", "money", total=True),
+            Column("Balance", "money", total=True),
+        ],
+        rows=short_rows,
+        notes=["Move-ins approved on a part payment. The rent is settled first "
+               "and in full, so what is normally left owing is the security "
+               "deposit alone.",
+               "Empty means every move-in is fully collected."],
+    )
+
+    return workbook_response("Elis_Deposits_Report", [outstanding, held])
 
 
 @bp.get("/users")
@@ -4182,42 +4256,42 @@ def users():
 @login_required
 def export_users():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
-    
-    # Get all non-admin users
-    users = db.session.query(User).filter(User.role != Role.ADMIN).order_by(User.created_at.desc()).all()
-    
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Header
-    writer.writerow(["THE ELIS CENTER - Customers Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])
-    
-    # Column headers
-    writer.writerow(["ID", "Full Name", "Email", "Role", "Email Verified", "Joined Date", "Last Login"])
-    
-    # Data rows
+    from ...excel_export import Sheet, Column, workbook_response
+
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Customers Report", f"Generated: {generated}"]
+
+    users = (db.session.query(User).filter(User.role != Role.ADMIN)
+             .order_by(User.created_at.desc()).all())
+    tenanted = {p.user_id: p for p in db.session.query(TenantProfile)
+                .filter(TenantProfile.is_active.is_(True)).all()}
+
+    rows = []
     for user in users:
-        writer.writerow([
-            user.id,
-            user.full_name,
-            user.email,
-            user.role.value.title(),
+        profile = tenanted.get(user.id)
+        rows.append([
+            user.id, user.full_name, user.email,
+            (user.role.value if hasattr(user.role, "value") else user.role or "").title(),
             "Yes" if user.is_email_verified else "No",
-            user.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            user.last_login_at.strftime("%Y-%m-%d %H:%M:%S") if user.last_login_at else "Never"
+            profile.unit.unit_code if profile and profile.unit else "",
+            user.created_at, user.last_login_at,
         ])
-    
-    output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": f"attachment;filename=customers_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"}
-    )
+
+    return workbook_response("Elis_Customers_Report", [Sheet(
+        "Customers", heading=heading,
+        columns=[
+            Column("ID", "int"), Column("Full name"), Column("Email"),
+            Column("Role"), Column("Email verified"), Column("Current unit"),
+            Column("Joined", "datetime"), Column("Last login", "datetime"),
+        ],
+        rows=rows,
+        empty="No customers on record.",
+        notes=["Administrators are left out.",
+               "Last login is blank for an account that has never signed in.",
+               "No password or password hash appears in any report."],
+    )])
 
 
 @bp.post("/users/<int:user_id>/reset-password")
@@ -5150,42 +5224,106 @@ def restore_payment(payment_id: int):
 @bp.get("/payments/export")
 @login_required
 def export_payments():
+    """The payments report, as a workbook with a summary sheet in front.
+
+    Two things were wrong with the old one. It listed every Payment row with
+    no status filter, so a voided or rejected payment sat in the report
+    looking exactly like a good one and every hand-added total came out too
+    high. And it gave no summary, so the question actually being asked of it
+    — how much did we earn — had to be answered by retyping a column of text.
+    """
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
 
-    payments = db.session.query(Payment).order_by(Payment.paid_at.desc()).all()
+    payments = (db.session.query(Payment)
+                .order_by(Payment.paid_at.desc()).all())
+    ledgers = {l.payment_id: l.hash for l in db.session.query(PaymentLedger).all()}
 
-    output = StringIO()
-    writer = csv.writer(output)
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Payments Report", f"Generated: {generated}"]
 
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Payments Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
+    def kind_of(p):
+        if not p.is_deposit:
+            return "Rent"
+        return {"deposit_returned": "Deposit returned",
+                "deposit_deducted": "Deposit deducted"}.get(
+                    p.deposit_transaction_type, "Security deposit")
 
-    # Column headers
-    writer.writerow(["Date", "Tenant", "Unit", "Amount", "Reference", "Hash"])
-
+    rows, counted = [], []
     for p in payments:
-        ledger = db.session.query(PaymentLedger).filter_by(payment_id=p.id).first()
-        writer.writerow([
-            p.paid_at.strftime("%Y-%m-%d %H:%M:%S"),
-            p.tenant_profile.user.full_name,
-            p.tenant_profile.unit.unit_code,
-            p.amount,
-            p.reference or "",
-            ledger.hash if ledger else ""
+        profile = p.tenant_profile
+        ok = p.payment_status not in PAYMENT_STATUSES_NOT_COUNTED
+        amount = float(p.amount or 0)
+        # A returned deposit is money leaving, so it is signed negative here
+        # for the same reason the dashboard signs it: a column of payments
+        # that adds a refund to the takings is not a total of anything.
+        signed = -amount if p.deposit_transaction_type == "deposit_returned" else amount
+        rows.append([
+            p.paid_at,
+            profile.user.full_name if profile and profile.user else "",
+            profile.unit.unit_code if profile and profile.unit else "",
+            kind_of(p),
+            signed if ok else None,
+            amount if not ok else None,
+            (p.payment_status or "").replace("_", " ").title(),
+            p.payment_month or "",
+            (p.payment_method or "").replace("_", " ").title(),
+            p.reference_label or p.reference or "",
+            ledgers.get(p.id, ""),
         ])
+        if ok:
+            counted.append((p, signed))
 
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Payments_Report.csv"}
+    detail = Sheet(
+        "Payments", heading=heading, totals=True,
+        columns=[
+            Column("Date", "datetime"), Column("Tenant"), Column("Unit"),
+            Column("Type"), Column("Amount counted", "money", total=True),
+            Column("Not counted", "money", total=True),
+            Column("Status"), Column("For month"), Column("Method"),
+            Column("Reference", wrap=True), Column("Ledger hash", width=24),
+        ],
+        rows=rows,
+        notes=["Amount counted holds what the totals are built from. A voided or "
+               "rejected payment is listed under Not counted so the record stays "
+               "visible without being added in.",
+               "A returned security deposit is negative: it is money paid out."],
     )
-    return response
+
+    rent = sum(a for p, a in counted if not p.is_deposit)
+    dep_in = sum(a for p, a in counted
+                 if p.is_deposit and p.deposit_transaction_type != "deposit_returned")
+    dep_out = sum(-a for p, a in counted
+                  if p.deposit_transaction_type == "deposit_returned")
+    excluded = sum(float(p.amount or 0) for p in payments
+                   if p.payment_status in PAYMENT_STATUSES_NOT_COUNTED)
+
+    summary = Sheet(
+        "Summary", heading=heading,
+        columns=[Column("Figure", width=34), Column("Amount", "money"),
+                 Column("What it is", wrap=True, width=52)],
+        rows=[
+            ["Rent revenue", rent,
+             "Earned income. This is what the property made."],
+            ["Security deposits collected", dep_in,
+             "Held against damage and refundable at move-out. A liability, "
+             "not earnings."],
+            ["Security deposits returned", -dep_out,
+             "Paid back to tenants who moved out."],
+            ["Total collected", rent + dep_in - dep_out,
+             "All money in, less deposits paid back. Not the same as revenue."],
+            [None, None, None],
+            ["Not counted (voided / rejected)", excluded,
+             "Listed on the Payments sheet but excluded from every figure above."],
+        ],
+        notes=["Rent revenue is the earnings figure. Total collected is larger "
+               "because it includes security deposits, which are the tenants' "
+               "money held on deposit and given back at move-out."],
+    )
+
+    return workbook_response("Elis_Payments_Report", [summary, detail])
 
 
 @bp.get("/payments/<int:payment_id>/ledger")
@@ -5307,40 +5445,33 @@ def create_announcement():
 @login_required
 def export_announcements():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
 
-    announcements = db.session.query(Announcement).order_by(Announcement.created_at.desc()).all()
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Announcements Report", f"Generated: {generated}"]
 
-    output = StringIO()
-    writer = csv.writer(output)
+    announcements = (db.session.query(Announcement)
+                     .order_by(Announcement.created_at.desc()).all())
 
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Announcements Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
+    rows = [[
+        a.title, a.category or "General",
+        (a.target_audience or "").title(), a.content,
+        "Active" if a.is_active else "Inactive",
+        a.created_at, a.updated_at,
+    ] for a in announcements]
 
-    # Column headers
-    writer.writerow(["Title", "Category", "Content", "Status", "Created At", "Updated At"])
-
-    for a in announcements:
-        writer.writerow([
-            a.title,
-            a.category or "General",
-            a.content,
-            "Active" if a.is_active else "Inactive",
-            a.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            a.updated_at.strftime("%Y-%m-%d %H:%M:%S") if a.updated_at else ""
-        ])
-
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Announcements_Report.csv"}
-    )
-    return response
+    return workbook_response("Elis_Announcements_Report", [Sheet(
+        "Announcements", heading=heading,
+        columns=[
+            Column("Title", width=30), Column("Category"), Column("Audience"),
+            Column("Content", wrap=True, width=52), Column("Status"),
+            Column("Created", "datetime"), Column("Updated", "datetime"),
+        ],
+        rows=rows,
+        empty="No announcements on record.",
+    )])
 
 
 @bp.post("/announcements/<int:announcement_id>/toggle")
@@ -5724,39 +5855,37 @@ def auto_send_renewal_reminders():
 @login_required
 def export_documents():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
 
-    documents = db.session.query(Document).order_by(Document.uploaded_at.desc()).all()
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Documents Report", f"Generated: {generated}"]
 
-    output = StringIO()
-    writer = csv.writer(output)
+    documents = (db.session.query(Document)
+                 .order_by(Document.uploaded_at.desc()).all())
 
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Documents Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
+    rows = [[
+        doc.title,
+        (doc.document_type or "").replace("_", " ").title(),
+        doc.tenant_profile.user.full_name
+        if doc.tenant_profile and doc.tenant_profile.user else "",
+        doc.tenant_profile.unit.unit_code
+        if doc.tenant_profile and doc.tenant_profile.unit else "",
+        doc.uploaded_at,
+    ] for doc in documents]
 
-    # Column headers
-    writer.writerow(["Title", "Document Type", "Tenant", "Unit", "Uploaded At"])
-
-    for doc in documents:
-        writer.writerow([
-            doc.title,
-            doc.document_type.replace('_', ' ').title(),
-            doc.tenant_profile.user.full_name,
-            doc.tenant_profile.unit.unit_code,
-            doc.uploaded_at.strftime("%Y-%m-%d %H:%M:%S")
-        ])
-
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Documents_Report.csv"}
-    )
-    return response
+    return workbook_response("Elis_Documents_Report", [Sheet(
+        "Documents", heading=heading,
+        columns=[
+            Column("Title", width=32), Column("Type"), Column("Tenant"),
+            Column("Unit"), Column("Uploaded", "datetime"),
+        ],
+        rows=rows,
+        empty="No documents on record.",
+        notes=["The stored file path is left out: it is a server filename, not "
+               "something a report can be read from."],
+    )])
 
 
 @bp.get("/renewals")
@@ -5918,41 +6047,39 @@ def renewals():
 @login_required
 def export_renewals():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
 
-    renewal_requests = db.session.query(RenewalRequest).order_by(RenewalRequest.created_at.desc()).all()
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Renewal Requests Report", f"Generated: {generated}"]
 
-    output = StringIO()
-    writer = csv.writer(output)
+    requests_ = (db.session.query(RenewalRequest)
+                 .order_by(RenewalRequest.created_at.desc()).all())
 
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Renewal Requests Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
-
-    # Column headers
-    writer.writerow(["Tenant", "Unit", "Current Contract End", "Requested End Date", "Status", "Notes", "Created At"])
-
-    for r in renewal_requests:
-        writer.writerow([
-            r.tenant_profile.user.full_name,
-            r.tenant_profile.unit.unit_code,
-            r.tenant_profile.contract_end.strftime("%Y-%m-%d") if r.tenant_profile.contract_end else "",
-            r.requested_end_date.strftime("%Y-%m-%d"),
-            r.status.value.title(),
-            r.notes or "",
-            r.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    rows = []
+    for r in requests_:
+        profile = r.tenant_profile
+        rows.append([
+            profile.user.full_name if profile and profile.user else "",
+            profile.unit.unit_code if profile and profile.unit else "",
+            profile.contract_end if profile else None,
+            r.requested_end_date,
+            (r.status.value if hasattr(r.status, "value") else r.status or "").title(),
+            r.notes or "", r.created_at,
         ])
 
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Renewals_Report.csv"}
-    )
-    return response
+    return workbook_response("Elis_Renewals_Report", [Sheet(
+        "Renewals", heading=heading,
+        columns=[
+            Column("Tenant"), Column("Unit"),
+            Column("Current end", "date"), Column("Requested end", "date"),
+            Column("Status"), Column("Notes", wrap=True, width=40),
+            Column("Requested", "datetime"),
+        ],
+        rows=rows,
+        empty="No renewal requests on record.",
+    )])
 
 
 @bp.post("/renewals/<int:renewal_id>/approve")
@@ -6465,41 +6592,43 @@ def feedbacks():
 @login_required
 def export_feedbacks():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
+
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Feedback Report", f"Generated: {generated}"]
 
     feedbacks = db.session.query(Feedback).order_by(Feedback.created_at.desc()).all()
 
-    output = StringIO()
-    writer = csv.writer(output)
-
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Feedback Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
-
-    # Column headers
-    writer.writerow(["Tenant", "Unit", "Category", "Rating", "Comments", "Status", "Created At"])
-
+    rows = []
     for f in feedbacks:
-        writer.writerow([
-            f.tenant_profile.user.full_name,
-            f.tenant_profile.unit.unit_code,
-            f.category,
-            f.rating or "",
-            f.comments,
-            f.status.value,
-            f.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        profile = f.tenant_profile
+        rows.append([
+            profile.user.full_name if profile and profile.user else "",
+            profile.unit.unit_code if profile and profile.unit else "",
+            f.category, int(f.rating) if f.rating else None, f.comments,
+            (f.status.value if hasattr(f.status, "value") else f.status or "").title(),
+            f.created_at,
         ])
 
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Feedback_Report.csv"}
-    )
-    return response
+    rated = [int(f.rating) for f in feedbacks if f.rating]
+    notes = ["No rating is shown for feedback left without one."]
+    if rated:
+        notes.insert(0, f"Average rating {sum(rated) / len(rated):.2f} "
+                        f"out of 5, from {len(rated)} rated of {len(feedbacks)}.")
+
+    return workbook_response("Elis_Feedback_Report", [Sheet(
+        "Feedback", heading=heading,
+        columns=[
+            Column("Tenant"), Column("Unit"), Column("Category"),
+            Column("Rating", "int"), Column("Comments", wrap=True, width=52),
+            Column("Status"), Column("Submitted", "datetime"),
+        ],
+        rows=rows,
+        empty="No feedback on record.",
+        notes=notes,
+    )])
 
 
 @bp.post("/feedbacks/<int:feedback_id>/review")
@@ -6646,50 +6775,42 @@ def concerns():
 @login_required
 def export_concerns():
     _ensure_admin()
-    import csv
-    from io import StringIO
     from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
+
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Concerns Report", f"Generated: {generated}"]
 
     concerns = db.session.query(Concern).order_by(Concern.created_at.desc()).all()
 
-    output = StringIO()
-    writer = csv.writer(output)
-
-    # Header with Elis branding
-    writer.writerow(["THE ELIS CENTER - Commercial and Residences"])
-    writer.writerow(["Concerns Report"])
-    writer.writerow([f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"])
-    writer.writerow([])  # Empty row
-
-    # Column headers
-    writer.writerow([
-        "Tenant", "Unit", "Subject", "Description", "Status", "Priority", "Category",
-        "Admin Response", "Responded By", "Response Date",
-        "Created At", "Updated At"
-    ])
-
+    rows = []
     for c in concerns:
-        writer.writerow([
-            c.tenant_profile.user.full_name,
-            c.tenant_profile.unit.unit_code,
-            c.subject,
-            c.description,
-            c.status.value.title(),
-            c.priority.title(),
-            c.category.title(),
+        profile = c.tenant_profile
+        rows.append([
+            profile.user.full_name if profile and profile.user else "",
+            profile.unit.unit_code if profile and profile.unit else "",
+            c.subject, c.description,
+            (c.status.value if hasattr(c.status, "value") else c.status or "").title(),
+            (c.priority or "").title(), (c.category or "").title(),
             c.admin_response or "",
             c.responder.full_name if c.responder else "",
-            c.admin_response_at.strftime("%Y-%m-%d %H:%M:%S") if c.admin_response_at else "",
-            c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            c.updated_at.strftime("%Y-%m-%d %H:%M:%S") if c.updated_at else ""
+            c.admin_response_at, c.created_at, c.updated_at,
         ])
 
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=Elis_Concerns_Report.csv"}
-    )
-    return response
+    return workbook_response("Elis_Concerns_Report", [Sheet(
+        "Concerns", heading=heading,
+        columns=[
+            Column("Tenant"), Column("Unit"), Column("Subject", width=28),
+            Column("Description", wrap=True, width=52), Column("Status"),
+            Column("Priority"), Column("Category"),
+            Column("Admin response", wrap=True, width=44),
+            Column("Answered by"), Column("Answered", "datetime"),
+            Column("Raised", "datetime"), Column("Updated", "datetime"),
+        ],
+        rows=rows,
+        empty="No concerns on record.",
+    )])
 
 
 @bp.post("/concerns/<int:concern_id>/update")
@@ -6939,43 +7060,36 @@ def update_inquiry_status(inquiry_id: int):
 @bp.get("/inquiries/export")
 @login_required
 def export_inquiries():
-    """Export inquiries to CSV"""
     _ensure_admin()
-    
     from ...models import Inquiry
-    import csv
-    from io import StringIO
-    
+    from datetime import datetime
+    from ...excel_export import Sheet, Column, workbook_response
+
+    generated = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    heading = ["THE ELIS CENTER — Commercial and Residences",
+               "Inquiries Report", f"Generated: {generated}"]
+
     inquiries = db.session.query(Inquiry).order_by(Inquiry.created_at.desc()).all()
-    
-    # Create CSV
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Write header
-    writer.writerow(['ID', 'Full Name', 'Email', 'Phone', 'Subject', 'Message', 'Status', 'Created At', 'Updated At'])
-    
-    # Write data
-    for inquiry in inquiries:
-        writer.writerow([
-            inquiry.id,
-            inquiry.full_name,
-            inquiry.email,
-            inquiry.phone or '',
-            inquiry.subject,
-            inquiry.message,
-            inquiry.status.value,
-            inquiry.created_at.strftime('%Y-%m-%d %H:%M:%S') if inquiry.created_at else '',
-            inquiry.updated_at.strftime('%Y-%m-%d %H:%M:%S') if inquiry.updated_at else ''
-        ])
-    
-    # Create response
-    output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename=inquiries_{date.today().strftime("%Y%m%d")}.csv'}
-    )
+
+    rows = [[
+        i.id, i.full_name, i.email, i.phone or "", i.subject, i.message,
+        (i.status.value if hasattr(i.status, "value") else i.status or "").title(),
+        i.created_at, i.updated_at,
+    ] for i in inquiries]
+
+    return workbook_response("Elis_Inquiries_Report", [Sheet(
+        "Inquiries", heading=heading,
+        columns=[
+            Column("ID", "int"), Column("Full name"), Column("Email"),
+            Column("Phone"), Column("Subject", width=28),
+            Column("Message", wrap=True, width=52), Column("Status"),
+            Column("Received", "datetime"), Column("Updated", "datetime"),
+        ],
+        rows=rows,
+        empty="No inquiries on record.",
+        notes=["Inquiries come from the public contact form, so these are not "
+               "tenants."],
+    )])
 
 
 def _send_inquiry_reply_email(inquirer_name: str, inquirer_email: str, subject: str, admin_reply: str, admin_name: str) -> None:
