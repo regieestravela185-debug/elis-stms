@@ -2440,20 +2440,27 @@ def approve_reservation(reservation_id: int):
     # mis-click. Record the payment first; approving on a balance is still
     # allowed, but it has to be said out loud.
     pay_now = r.payment_state
+    # Nothing at all recorded. Approving here would hand over the unit, close
+    # everyone else's claim on it and open the tenancy against no money —
+    # and the first payment is meant to be more than a month's rent precisely
+    # because it is what takes the unit. There is no confirmation that makes
+    # that reasonable, so it is refused outright rather than warned about.
+    if pay_now["paid"] <= 0:
+        flash(f"Record the payment first. Nothing has been received against this "
+              f"reservation, and approving it would take the unit and cancel the "
+              f"other reservations on it for nothing. The move-in total is "
+              f"₱{pay_now['total_due']:,.2f} — security deposit "
+              f"₱{pay_now['deposit_due']:,.2f} plus the first month's rent "
+              f"₱{pay_now['rent_due']:,.2f}.", "warning")
+        return redirect(url_for("admin.reservations"))
+
     if not pay_now["settled"] and request.form.get("confirm_partial") != "yes":
-        if pay_now["paid"] <= 0:
-            flash(f"No payment has been recorded for this reservation. The move-in "
-                  f"total is ₱{pay_now['total_due']:,.2f} "
-                  f"(security deposit ₱{pay_now['deposit_due']:,.2f} + first month's "
-                  f"rent ₱{pay_now['rent_due']:,.2f}). Record what was received "
-                  f"first, or use Approve with balance.", "warning")
-        else:
-            flash(f"This reservation is only part paid — ₱{pay_now['paid']:,.2f} "
-                  f"of ₱{pay_now['total_due']:,.2f}, leaving "
-                  f"₱{pay_now['balance']:,.2f} outstanding "
-                  f"(₱{pay_now['deposit_balance']:,.2f} of the security deposit and "
-                  f"₱{pay_now['rent_balance']:,.2f} of the first month's rent). "
-                  f"Record the balance first, or use Approve with balance.", "warning")
+        flash(f"This reservation is only part paid — ₱{pay_now['paid']:,.2f} "
+              f"of ₱{pay_now['total_due']:,.2f}, leaving "
+              f"₱{pay_now['balance']:,.2f} outstanding "
+              f"(₱{pay_now['deposit_balance']:,.2f} of the security deposit and "
+              f"₱{pay_now['rent_balance']:,.2f} of the first month's rent). "
+              f"Record the balance first, or use Approve with balance.", "warning")
         return redirect(url_for("admin.reservations"))
 
     # Use customer's move-out date directly

@@ -580,7 +580,15 @@
                             <span class="resv-step__n">2</span>
                             <span class="resv-step__t">Approve the tenancy</span>
                           </div>
-                          {% if pay.settled %}
+                          {% if pay.paid <= 0 %}
+                            {# Nothing received. Approving would take the unit and
+                               close everyone else's claim on it for no money, so
+                               the button is not offered at all — the server
+                               refuses this path too. #}
+                            <button class="btn--approve" type="button" disabled
+                                    style="opacity:.45; cursor:not-allowed;">Approve</button>
+                            <div class="resv-hint">Record a payment first.</div>
+                          {% elif pay.settled %}
                             <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}"
                                   onsubmit="return confirm('Approve this reservation? This creates the tenant profile and marks the unit occupied.');">
                               <button class="btn--approve" type="submit">Approve</button>
