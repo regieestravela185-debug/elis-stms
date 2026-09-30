@@ -1622,11 +1622,17 @@ def clearance():
         .scalar()
     )
 
+    # The form has to agree with whichever contract the tenant signed: the
+    # Kasunduan for a studio, the Lease Contract for a commercial space.
+    # They name different deductions and different fixed amounts.
+    is_commercial = bool(profile.unit and "commercial" in (profile.unit.type or "").lower())
+
     return render_template(
         "tenant/clearance.html",
         profile=profile,
         items=items,
         notice=notice,
+        is_commercial=is_commercial,
         deposit_on_file=float(outstanding or 0),
         today=date.today(),
     )

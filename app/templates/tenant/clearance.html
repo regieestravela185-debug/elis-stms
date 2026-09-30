@@ -67,6 +67,9 @@
     <div class="clr-head__org">The Elis Center &middot; Commercial and Residences</div>
     <div class="clr-head__org">Calamba, Laguna</div>
     <div class="clr-head__title">Move-Out Clearance Form</div>
+    <div class="clr-head__org" style="margin-top:4px; letter-spacing:0; text-transform:none;">
+      Issued under the {% if is_commercial %}Contract of Lease{% else %}Kasunduan sa Pag-upa{% endif %}
+    </div>
   </div>
 
   <dl class="clr-grid">
@@ -122,34 +125,90 @@
   <table class="clr-tbl">
     <tbody>
       <tr><td style="width:7%" class="clr-c"><span class="clr-box"></span></td>
-          <td>All fixtures and furnishings above are present and in the condition recorded, or the difference is noted.</td></tr>
+          <td>Joint inspection of the unit was scheduled and carried out with the office, with the tenant present.</td></tr>
       <tr><td class="clr-c"><span class="clr-box"></span></td>
-          <td>Unit keys returned.</td></tr>
+          <td>All fixtures and furnishings above are present and in the condition recorded, or the difference is noted below.</td></tr>
       <tr><td class="clr-c"><span class="clr-box"></span></td>
-          <td>Unit cleared of the tenant&rsquo;s belongings and left clean.</td></tr>
-      <tr><td class="clr-c"><span class="clr-box"></span></td>
-          <td>No damage beyond ordinary wear and tear.</td></tr>
-      <tr><td class="clr-c"><span class="clr-box"></span></td>
-          <td>Electricity and water charges settled up to the move-out date.</td></tr>
+          <td>All keys returned &mdash; originals and every duplicate made &mdash; together with the key holder.</td></tr>
+      {% if is_commercial %}
+        <tr><td class="clr-c"><span class="clr-box"></span></td>
+            <td>Unit returned in as good, clean, sanitary and workable condition as when received,
+                reasonable and ordinary wear and tear excepted.</td></tr>
+        <tr><td class="clr-c"><span class="clr-box"></span></td>
+            <td>Unit devoid of all occupants, office equipment, furniture and articles of any kind.</td></tr>
+      {% else %}
+        <tr><td class="clr-c"><span class="clr-box"></span></td>
+            <td>Unit cleared of the tenant&rsquo;s belongings and left in the cleanliness and order it was received in.</td></tr>
+        <tr><td class="clr-c"><span class="clr-box"></span></td>
+            <td>No unapproved alteration to the unit or its facilities.</td></tr>
+      {% endif %}
       <tr><td class="clr-c"><span class="clr-box"></span></td>
           <td>Rent settled up to the move-out date.</td></tr>
+      <tr><td class="clr-c"><span class="clr-box"></span></td>
+          <td>Electricity and water charges settled up to the move-out date.</td></tr>
     </tbody>
   </table>
 
-  <div class="clr-h">3 &nbsp; Damage or deductions found</div>
+  <div class="clr-h">3 &nbsp; Deductions chargeable to the security deposit</div>
+  <p style="font-size:10.5px; margin:0 0 6px;">
+    {% if is_commercial %}
+      Under the Contract of Lease, the following are deducted from the security deposit where they apply.
+      The deposit may not be applied by the lessee to unpaid rent.
+    {% else %}
+      Ayon sa Kasunduan sa Pag-upa, ang mga sumusunod ang ibinabawas sa deposito kung mayroon.
+    {% endif %}
+  </p>
   <table class="clr-tbl">
-    <thead><tr><th style="width:56%">Item / description</th><th style="width:22%">Amount</th><th style="width:22%">Charged to deposit</th></tr></thead>
-    <tbody>{% for _ in range(3) %}<tr><td>&nbsp;</td><td></td><td class="clr-c"><span class="clr-box"></span> Yes &nbsp; <span class="clr-box"></span> No</td></tr>{% endfor %}</tbody>
+    <thead><tr><th style="width:56%">Chargeable item</th><th style="width:22%">Per contract</th><th style="width:22%">Amount charged</th></tr></thead>
+    <tbody>
+      {% if is_commercial %}
+        <tr><td>Unpaid rent</td><td class="clr-c">as incurred</td><td></td></tr>
+        <tr><td>Unpaid utilities</td><td class="clr-c">as incurred</td><td></td></tr>
+        <tr><td>Repairs or damage from negligence, carelessness, accident or abuse &mdash;
+                stickers, scratches, tears, burns, stains or unapproved holes</td>
+            <td class="clr-c">as assessed</td><td></td></tr>
+        <tr><td>Replacement cost of the lessor&rsquo;s property that was in or attached to the unit and is missing</td>
+            <td class="clr-c">as assessed</td><td></td></tr>
+        <tr><td>Cost of repairs or cleaning</td><td class="clr-c">as assessed</td><td></td></tr>
+        <tr><td>Cost of opening the unit when a key is missing</td><td class="clr-c">as incurred</td><td></td></tr>
+        <tr><td>Unreturned keys</td><td class="clr-c">as assessed</td><td></td></tr>
+      {% else %}
+        <tr><td>Cleaning fee on surrender of the unit</td>
+            <td class="clr-c">&#8369;500.00 or higher, depending on the state of the unit</td><td></td></tr>
+        <tr><td>Keys not returned in full &mdash; originals and duplicates</td>
+            <td class="clr-c">&#8369;800.00</td><td></td></tr>
+        <tr><td>Key returned without the key holder</td>
+            <td class="clr-c">&#8369;150.00</td><td></td></tr>
+        <tr><td>Cost of changing the lock where keys cannot be returned</td>
+            <td class="clr-c">as incurred</td><td></td></tr>
+        <tr><td>Damage to the unit or its facilities beyond ordinary wear and tear</td>
+            <td class="clr-c">as assessed</td><td></td></tr>
+        <tr><td>Unpaid rent, electricity and water</td><td class="clr-c">as incurred</td><td></td></tr>
+      {% endif %}
+      <tr><td>Other &mdash; specify</td><td></td><td></td></tr>
+    </tbody>
   </table>
-  <p style="font-size:11px; margin:6px 0 0;">
-    Security deposit on file: <strong>&#8369;{{ "{:,.2f}".format(deposit_on_file) }}</strong>.
-    Any amount charged above is deducted from it; the remainder is returned to the tenant.
+
+  <table class="clr-tbl" style="margin-top:8px;">
+    <tbody>
+      <tr><td style="width:56%"><strong>Security deposit on file</strong></td>
+          <td class="clr-c" colspan="2"><strong>&#8369;{{ "{:,.2f}".format(deposit_on_file) }}</strong></td></tr>
+      <tr><td>Less: total deductions above</td><td class="clr-c" colspan="2"></td></tr>
+      <tr><td><strong>Refundable to the tenant</strong></td><td class="clr-c" colspan="2"></td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:10.5px; margin:5px 0 0;">
+    The security deposit is refunded without interest once the unit is surrendered and these
+    charges, if any, are settled.
   </p>
 
   <div class="clr-h">4 &nbsp; Clearance</div>
   <div class="clr-cert">
-    I certify that the unit named above has been inspected, that the items listed are
-    accounted for, and that the tenant is cleared to vacate.
+    I certify that the unit named above was inspected jointly with the tenant, that the fixtures
+    listed are accounted for, that all keys have been returned, and that the tenant is cleared to
+    vacate. Any charge entered above is deducted from the security deposit under the
+    {% if is_commercial %}Contract of Lease{% else %}Kasunduan sa Pag-upa{% endif %};
+    the remainder is returned to the tenant.
   </div>
 
   <div class="clr-sign">
