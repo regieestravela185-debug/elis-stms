@@ -66,17 +66,26 @@ def deposit_breakdown(unit) -> dict:
 def apply_partial(amount_paid, unit) -> dict:
     """Split what has been paid so far into deposit and rent.
 
-    The deposit is filled first; only what is left over once the deposit is
-    whole counts towards the first month's rent. A tenant who has paid half
-    of a 70,000 move-in total has 35,000 of deposit on file and still owes
-    the whole of the month's rent.
+    Any amount may be paid — the split is worked out from the running
+    total, so the administrator never has to hit a particular figure.
+
+    The deposit is filled first. The month's rent is then settled only when
+    what is left over covers the whole of it: a month is either paid or it
+    is not, and half a month booked against a billing cycle would report
+    that cycle as settled when it is not. Money that has arrived but cannot
+    yet complete the month is held as `advance` — it is counted in the
+    balance, it is simply not booked as rent until it is whole.
     """
     paid = max(0.0, float(amount_paid or 0))
     deposit_due = security_deposit_for(unit)
     rent_due = float(getattr(unit, "price_monthly", 0) or 0)
 
     deposit_paid = min(paid, deposit_due)
-    rent_paid = min(paid - deposit_paid, rent_due)
+    surplus = paid - deposit_paid
+    rent_whole = surplus >= rent_due - 0.005
+    rent_paid = rent_due if rent_whole else 0.0
+    advance = 0.0 if rent_whole else surplus
+
     total_due = deposit_due + rent_due
     return {
         "paid": paid,
@@ -86,6 +95,9 @@ def apply_partial(amount_paid, unit) -> dict:
         "rent_due": rent_due,
         "rent_paid": rent_paid,
         "rent_balance": rent_due - rent_paid,
+        # Received, counted against the balance, not yet booked as rent
+        # because it does not cover the whole month.
+        "advance": advance,
         "total_due": total_due,
         "balance": total_due - paid,
         "settled": paid >= total_due - 0.005,

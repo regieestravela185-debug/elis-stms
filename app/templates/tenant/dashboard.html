@@ -726,7 +726,7 @@ a[href^="tel:"]:hover {
                     {{ icons.icon('calendar', size=12) }} {{ (payment.paid_at|to_ph).strftime('%B %d, %Y') if payment.paid_at else 'N/A' }}
                   </p>
                   {% if payment.reference %}
-                    <p class="muted" style="font-size: 11px; margin-top: 2px;">Ref: {{ payment.reference }}</p>
+                    <p class="muted" style="font-size: 11px; margin-top: 2px;">Ref: {{ payment.reference_label }}</p>
                   {% endif %}
                 </div>
                 <span style="color: #10b981;">{{ icons.icon('check-circle', size=22) }}</span>

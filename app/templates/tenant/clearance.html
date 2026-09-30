@@ -42,12 +42,33 @@
   .clr-actions { text-align: center; margin: 20px 0 8px; }
 
   @media print {
-    @page { size: A4; margin: 12mm 14mm; }
+    /* One sheet. The form is signed at a counter, so a second page is a
+       page that gets separated from the first and lost. Everything below
+       is squeezed rather than dropped — a clearance that omits a fixture
+       or a signature is worse than a cramped one. */
+    @page { size: A4; margin: 8mm 10mm; }
     body * { visibility: hidden !important; }
     .clr-sheet, .clr-sheet * { visibility: visible !important; }
     .clr-sheet { position: absolute; inset: 0 auto auto 0; width: 100%;
-                 border: none; border-radius: 0; padding: 0; max-width: none; font-size: 11px; }
+                 border: none; border-radius: 0; padding: 0; max-width: none;
+                 font-size: 8.2px; line-height: 1.22; }
     .clr-note, .clr-actions { display: none !important; }
+    .clr-head { padding-bottom: 4px; margin-bottom: 7px; }
+    .clr-head__title { font-size: 12.5px; margin-top: 2px; }
+    .clr-head__org { font-size: 7.6px; }
+    .clr-grid { gap: 2px 8px; margin-bottom: 7px; }
+    .clr-h { font-size: 8.4px; margin: 8px 0 3px; padding-bottom: 1px; }
+    table.clr-tbl th, table.clr-tbl td { padding: 1px 3px; font-size: 7.6px; }
+    .clr-box { width: 8px; height: 8px; }
+    .clr-cert { padding: 5px 7px; margin-top: 7px; font-size: 7.8px; }
+    .clr-sign { gap: 10px 22px; margin-top: 10px; }
+    .clr-sign__line { margin-top: 24px; padding-top: 2px; }
+    .clr-sign__role { font-size: 8px; }
+    .clr-sign__hint { font-size: 7px; }
+    .clr-sheet p { margin: 3px 0 0 !important; font-size: 7.4px !important; }
+    /* Never split a table or a signature block across the fold. */
+    table.clr-tbl, .clr-sign, .clr-cert { break-inside: avoid; page-break-inside: avoid; }
+    table.clr-tbl tr { break-inside: avoid; page-break-inside: avoid; }
   }
 </style>
 

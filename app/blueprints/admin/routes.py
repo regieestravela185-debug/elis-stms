@@ -2535,9 +2535,27 @@ def approve_reservation(reservation_id: int):
             paid_at=paid_at_normalized
         )
         db.session.add(deposit_payment)
+
+    # Money received that clears the deposit but cannot yet cover the whole
+    # of the first month. It is deliberately not tagged with a payment_month
+    # — a half-settled cycle reads as a settled one to every arrears check —
+    # so it is recorded as an advance and the month stays open until the
+    # balance arrives.
+    advance_payment = None
+    if paid.get("advance", 0) > 0:
+        advance_payment = Payment(
+            tenant_profile_id=profile.id,
+            amount=paid["advance"],
+            reference=f"Advance on First Month - {unit.unit_code}",
+            notes="Received towards the first month's rent; the month is "
+                  "settled once the balance is paid.",
+            is_deposit=False,
+            paid_at=paid_at_normalized
+        )
+        db.session.add(advance_payment)
     db.session.flush()
 
-    for p in (monthly_payment, deposit_payment):
+    for p in (monthly_payment, deposit_payment, advance_payment):
         if p is not None:
             _generate_payment_ledger(p)
 
@@ -4347,7 +4365,7 @@ def process_deposit(reservation_id: int):
             payment = Payment(
                 tenant_profile_id=tenant_profile.id,
                 amount=r.deposit_return_amount,
-                reference=f"Deposit Return - {r.unit.unit_code}",
+                reference=f"Security Deposit Return - {r.unit.unit_code}",
                 paid_at=paid_at_normalized,
                 is_deposit=True,
                 deposit_transaction_type="deposit_returned"
@@ -4375,7 +4393,7 @@ def process_deposit(reservation_id: int):
             payment = Payment(
                 tenant_profile_id=tenant_profile.id,
                 amount=r.deposit_return_amount,
-                reference=f"Remaining Deposit Return - {r.unit.unit_code}",
+                reference=f"Remaining Security Deposit Return - {r.unit.unit_code}",
                 paid_at=paid_at_normalized,
                 is_deposit=True,
                 deposit_transaction_type="deposit_returned"

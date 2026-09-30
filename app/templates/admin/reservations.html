@@ -503,6 +503,11 @@
                           <div>Move-in total: <strong>&#8369;{{ '{:,.2f}'.format(pay.total_due) }}</strong></div>
                           <div class="muted">Security deposit &#8369;{{ '{:,.2f}'.format(pay.deposit_paid) }} / {{ '{:,.2f}'.format(pay.deposit_due) }}</div>
                           <div class="muted">First month&rsquo;s rent &#8369;{{ '{:,.2f}'.format(pay.rent_paid) }} / {{ '{:,.2f}'.format(pay.rent_due) }}</div>
+                          {% if pay.advance %}
+                            {# Received, but held rather than booked: a month is
+                               settled whole or not at all. #}
+                            <div class="muted">Advance on the month &#8369;{{ '{:,.2f}'.format(pay.advance) }} &mdash; held until the month is whole</div>
+                          {% endif %}
                           {% if pay.settled %}
                             <div style="color:#16a34a; font-weight:700;">Fully paid</div>
                           {% elif pay.paid > 0 %}

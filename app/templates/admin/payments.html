@@ -435,7 +435,7 @@
                   <span class="muted" style="font-weight: 500;">— {{ p.tenant_profile.unit.unit_code if p.tenant_profile and p.tenant_profile.unit else '' }}</span>
                 </div>
                 <div class="muted" style="font-size: 0.8rem; margin-top: 4px;">
-                  ₱{{ '{:,.2f}'.format(p.amount|float) }} • Ref: {{ p.reference or 'N/A' }}
+                  ₱{{ '{:,.2f}'.format(p.amount|float) }} • Ref: {{ p.reference_label or 'N/A' }}
                   {% if p.payment_month %} • {{ p.payment_month }}{% endif %}
                   • Submitted {{ (p.paid_at|to_ph).strftime('%b %d, %Y %I:%M %p') }}
                 </div>
@@ -844,7 +844,7 @@
                     ₱{{ '{:,.2f}'.format(payment.amount|float) }}
 </td>
                   <td class="muted" style="font-size: 13px;">
-                    {{ payment.reference or '—' }}
+                    {{ payment.reference_label or '—' }}
 </td>
                   <td class="mono" style="font-size: 11px;">
                     {% if payment.ledger %}

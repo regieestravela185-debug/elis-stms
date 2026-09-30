@@ -605,6 +605,24 @@ class Payment(db.Model):
     is_deposit = db.Column(db.Boolean, nullable=False, default=False)
     deposit_transaction_type = db.Column(db.String(50), nullable=True)  # 'deposit_paid', 'deposit_returned', 'deposit_deducted'
 
+    @property
+    def reference_label(self):
+        """The reference as it should read on screen.
+
+        Rows written before the deposit was renamed say "Deposit - B1-001".
+        They cannot be rewritten: `reference` is part of the blockchain
+        payload, so editing it would break the hash of that entry and every
+        entry chained after it — the ledger would report tampering, which is
+        exactly what it is there to detect. The stored value therefore stays
+        as it is and only the display is brought into line.
+        """
+        ref = self.reference or ""
+        if ref.startswith("Deposit"):
+            return "Security " + ref
+        if ref.startswith("Remaining Deposit"):
+            return ref.replace("Remaining Deposit", "Remaining Security Deposit", 1)
+        return ref
+
     # Payment improvements
     payment_status = db.Column(db.String(20), nullable=False, default='verified')  # verified, late, pending, rejected, voided
     is_late = db.Column(db.Boolean, nullable=False, default=False)
