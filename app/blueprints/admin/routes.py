@@ -4024,22 +4024,18 @@ def deposits():
 
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
 
-    # Tenants whose security deposit is not yet complete. A tenancy can be
-    # approved on a part payment, and once approved the reservation screen
-    # closes — so without this the shortfall lives nowhere anybody looks.
-    from ...deposits import security_deposit_for
+    # Move-ins still being collected. A tenancy can be approved on a part
+    # payment, and once approved the reservation screen closes — so without
+    # this the balance lives nowhere anybody looks.
     short_deposits = []
     for profile in (db.session.query(TenantProfile)
                     .filter(TenantProfile.is_active.is_(True)).all()):
         if not profile.unit:
             continue
-        due = security_deposit_for(profile.unit)
-        held = _deposit_held_for(profile.id)
-        if due - held > 0.005:
-            short_deposits.append({
-                "profile": profile, "due": due, "held": held, "short": due - held,
-            })
-    short_deposits.sort(key=lambda d: -d["short"])
+        owed = _move_in_outstanding(profile)
+        if owed["balance"] > 0.005:
+            short_deposits.append(owed)
+    short_deposits.sort(key=lambda d: -d["balance"])
 
     return render_template(
         "admin/deposits.html", reservations=reservations, pagination=pagination,
@@ -4585,15 +4581,76 @@ def _deposit_held_for(tenant_profile_id: int) -> float:
     return total
 
 
+
+def _move_in_outstanding(profile) -> dict:
+    """What is still owed on a tenant's move-in — deposit and first month both.
+
+    A tenancy approved on a part payment leaves two things short: the
+    security deposit and the first month's rent. To the tenant that is one
+    balance, handed over as one sum, so it is quoted and taken as one figure
+    here and split afterwards, rather than made into two separate errands on
+    two different screens.
+
+    `rent_booked` is True once a Payment carries the first billing cycle.
+    Money already received that was too little to settle the whole month
+    sits in `advance_rows`: it counts against the balance but is not rent
+    yet, which is why it is reported apart from what is booked.
+
+    `unsettled` marks a move-in that is genuinely still being collected —
+    the deposit is short, or an advance is waiting to become rent. Without
+    it every tenant with an unrecorded first month would be swept in here,
+    including long-standing ones whose rent is the Payments page's business.
+    """
+    from ...deposits import security_deposit_for
+    from ...billing_utils import billing_month_for
+
+    unit = profile.unit
+    due = security_deposit_for(unit) if unit else 0.0
+    held = _deposit_held_for(profile.id)
+    deposit_short = max(0.0, due - held)
+
+    rent_due = float(profile.contract_rent or 0)
+    first_cycle = (billing_month_for(profile, profile.contract_start)
+                   if profile.contract_start else None)
+
+    rows = (db.session.query(Payment)
+            .filter(Payment.tenant_profile_id == profile.id,
+                    Payment.is_deposit.is_(False),
+                    ~Payment.payment_status.in_(PAYMENT_STATUSES_NOT_COUNTED))
+            .all())
+    rent_booked = bool(first_cycle) and any(p.payment_month == first_cycle for p in rows)
+    advance_rows = [p for p in rows if p.payment_month is None]
+    advance_held = sum(float(p.amount or 0) for p in advance_rows)
+
+    unsettled = deposit_short > 0.005 or advance_held > 0.005
+    rent_short = 0.0
+    if unsettled and not rent_booked:
+        rent_short = max(0.0, rent_due - advance_held)
+
+    return {
+        "profile": profile,
+        "due": due, "held": held, "short": deposit_short,
+        "rent_due": rent_due, "rent_booked": rent_booked, "rent_short": rent_short,
+        "advance_held": advance_held, "advance_rows": advance_rows,
+        "first_cycle": first_cycle, "unsettled": unsettled,
+        "balance": deposit_short + rent_short,
+    }
+
+
 @bp.post("/deposits/topup")
 @login_required
 def add_deposit_topup():
-    """Record money paid towards a security deposit that is not yet complete.
+    """Take money towards a move-in that was approved on a part payment.
 
-    A tenant may be approved on a part payment, which leaves the deposit
-    short. The ordinary Record Payment form cannot take it: that one demands
-    a billing month and books the amount as rent, so a deposit top-up
-    entered there would settle a month nobody paid for.
+    One entry settles whatever the sum reaches. It fills the security
+    deposit first and the first month's rent only once the remainder covers
+    the whole of it — the same order the reservation screen uses, because
+    the deposit is money merely held while a half-booked month reports a
+    billing cycle as settled when it is not.
+
+    The ordinary Record Payment form cannot stand in for this: it demands a
+    billing month and books the amount as rent, so a deposit entered there
+    would settle a month nobody paid for.
     """
     _ensure_admin()
     profile = db.session.get(TenantProfile, int(request.form.get("tenant_profile_id") or "0"))
@@ -4607,48 +4664,91 @@ def add_deposit_topup():
         flash("Enter the amount received.", "warning")
         return redirect(url_for("admin.deposits"))
 
-    from ...deposits import security_deposit_for
-    unit = profile.unit
-    due = security_deposit_for(unit) if unit else 0.0
-    held = _deposit_held_for(profile.id)
-    short = max(0.0, due - held)
-    if short <= 0.005:
-        flash(f"{profile.user.full_name}'s security deposit is already complete "
-              f"at ₱{held:,.2f}.", "info")
+    owed = _move_in_outstanding(profile)
+    name = profile.user.full_name
+    if owed["balance"] <= 0.005:
+        flash(f"{name} has nothing outstanding on the move-in — the security "
+              f"deposit is complete at ₱{owed['held']:,.2f}.", "info")
         return redirect(url_for("admin.deposits"))
-    if amount > short + 0.005:
-        flash(f"That is more than the ₱{short:,.2f} still short on this "
-              f"security deposit.", "warning")
+    if amount > owed["balance"] + 0.005:
+        flash(f"That is more than the ₱{owed['balance']:,.2f} still owed on "
+              f"this move-in.", "warning")
         return redirect(url_for("admin.deposits"))
 
     from datetime import datetime as _dt
     method = (request.form.get("payment_method") or "cash").strip()
     if method not in ("cash", "bank_transfer", "other"):
         method = "cash"
-    p = Payment(
-        tenant_profile_id=profile.id,
-        amount=amount,
-        reference=f"Security Deposit - {unit.unit_code if unit else ''}",
-        notes="Top-up towards the security deposit",
-        is_deposit=True,
-        deposit_transaction_type="deposit_paid",
-        payment_method=method,
-        paid_at=_dt.utcnow().replace(microsecond=0),
-    )
-    db.session.add(p)
+
+    unit = profile.unit
+    code = unit.unit_code if unit else ""
+    paid_at = _dt.utcnow().replace(microsecond=0)
+
+    deposit_part = min(amount, owed["short"])
+    surplus = amount - deposit_part
+    # Everything received towards the first month but not yet booked as
+    # rent — what was waiting from before plus what arrived just now.
+    pool = surplus + owed["advance_held"]
+    completes_month = (not owed["rent_booked"] and bool(owed["first_cycle"])
+                       and pool >= owed["rent_due"] - 0.005)
+
+    fresh = []
+    if deposit_part > 0.005:
+        fresh.append(Payment(
+            tenant_profile_id=profile.id, amount=deposit_part,
+            reference=f"Security Deposit - {code}",
+            notes="Towards the security deposit",
+            is_deposit=True, deposit_transaction_type="deposit_paid",
+            payment_method=method, paid_at=paid_at,
+        ))
+
+    if completes_month:
+        # The month is booked once, whole, at the contract rent. Whatever was
+        # held as an advance is absorbed into it and voided rather than left
+        # beside it: the payment timeline keys one row per month, so two rows
+        # for one cycle would report the month as settled for the smaller of
+        # them. Voiding touches only payment_status, which is not part of the
+        # hashed ledger payload, so the chain stays intact.
+        for p in owed["advance_rows"]:
+            p.payment_status = "voided"
+            p.notes = ((p.notes or "") + " — absorbed into the first month's "
+                       "rent once the balance was paid.").strip()
+        fresh.append(Payment(
+            tenant_profile_id=profile.id, amount=owed["rent_due"],
+            reference=f"Monthly - {code}",
+            notes="First month's rent, completed from the move-in balance",
+            is_deposit=False, payment_month=owed["first_cycle"],
+            payment_method=method, paid_at=paid_at,
+        ))
+    elif surplus > 0.005:
+        fresh.append(Payment(
+            tenant_profile_id=profile.id, amount=surplus,
+            reference=f"Advance on First Month - {code}",
+            notes="Received towards the first month's rent; the month is "
+                  "settled once the balance is paid.",
+            is_deposit=False, payment_method=method, paid_at=paid_at,
+        ))
+
+    for p in fresh:
+        db.session.add(p)
     db.session.flush()
-    _generate_payment_ledger(p)
+    for p in fresh:
+        _generate_payment_ledger(p)
     db.session.commit()
 
-    now_held = held + amount
-    rest = due - now_held
-    if rest <= 0.005:
-        flash(f"Recorded ₱{amount:,.2f}. {profile.user.full_name}'s security "
-              f"deposit is now complete at ₱{due:,.2f}.", "success")
-    else:
-        flash(f"Recorded ₱{amount:,.2f}. Security deposit now "
-              f"₱{now_held:,.2f} of ₱{due:,.2f} — "
-              f"₱{rest:,.2f} still short.", "success")
+    parts = []
+    if deposit_part > 0.005:
+        parts.append(f"₱{deposit_part:,.2f} to the security deposit")
+    if completes_month:
+        parts.append("the first month's rent settled in full")
+    elif surplus > 0.005:
+        parts.append(f"₱{surplus:,.2f} held towards the first month")
+
+    rest = _move_in_outstanding(profile)["balance"]
+    tail = ("Nothing further is owed on this move-in."
+            if rest <= 0.005 else f"₱{rest:,.2f} still owed on the move-in.")
+    flash(f"Recorded ₱{amount:,.2f} for {name} — {', '.join(parts)}. {tail}",
+          "success")
     return redirect(url_for("admin.deposits"))
 
 

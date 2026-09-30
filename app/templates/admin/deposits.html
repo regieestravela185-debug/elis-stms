@@ -310,35 +310,48 @@
 {% block content %}
   <section class="dash-panel">
     {% if short_deposits %}
-      {# A tenancy can be approved on a part payment, which leaves the deposit
-         short after the reservation screen has closed. This is where the rest
-         of it is taken — the ordinary Record Payment form cannot, since it
-         demands a billing month and would book the amount as rent. #}
+      {# A tenancy can be approved on a part payment, which leaves both the
+         security deposit and the first month short after the reservation
+         screen has closed. To the tenant that is one balance paid as one
+         sum, so it is taken here in one entry and split by the server —
+         deposit first, the month booked only once it is whole. #}
       <div class="dep-short">
-        <h3 class="dep-short__title">Security deposits not yet complete</h3>
+        <h3 class="dep-short__title">Move-in balances not yet complete</h3>
         <p class="dep-short__sub muted">
-          Approved on a part payment. Record the rest here as it comes in.
+          Approved on a part payment. Record what comes in here — one amount,
+          split automatically: the security deposit is filled first, and the
+          first month&rsquo;s rent is booked only once the rest covers all of it.
         </p>
         <table class="table dep-short__tbl">
           <thead>
-            <tr><th>Tenant</th><th>Unit</th><th class="num">On file</th>
-                <th class="num">Required</th><th class="num">Short</th><th>Record payment</th></tr>
+            <tr><th>Tenant</th><th>Unit</th><th class="num">Deposit on file</th>
+                <th class="num">Deposit short</th><th class="num">First month</th>
+                <th class="num">Balance</th><th>Record payment</th></tr>
           </thead>
           <tbody>
             {% for d in short_deposits %}
               <tr>
                 <td>{{ d.profile.user.full_name }}</td>
                 <td class="mono">{{ d.profile.unit.unit_code }}</td>
-                <td class="num">&#8369;{{ '{:,.2f}'.format(d.held) }}</td>
-                <td class="num">&#8369;{{ '{:,.2f}'.format(d.due) }}</td>
-                <td class="num" style="color:#b45309; font-weight:700;">&#8369;{{ '{:,.2f}'.format(d.short) }}</td>
+                <td class="num">&#8369;{{ '{:,.2f}'.format(d.held) }}
+                  <span class="muted" style="font-size:11px;">of &#8369;{{ '{:,.2f}'.format(d.due) }}</span></td>
+                <td class="num">{% if d.short > 0.005 %}&#8369;{{ '{:,.2f}'.format(d.short) }}{% else %}&mdash;{% endif %}</td>
+                <td class="num">
+                  {% if d.rent_booked %}<span class="muted">Settled</span>
+                  {% elif d.rent_short > 0.005 %}&#8369;{{ '{:,.2f}'.format(d.rent_short) }}
+                    {% if d.advance_held > 0.005 %}
+                      <span class="muted" style="font-size:11px;">&#8369;{{ '{:,.2f}'.format(d.advance_held) }} held</span>
+                    {% endif %}
+                  {% else %}&mdash;{% endif %}
+                </td>
+                <td class="num" style="color:#b45309; font-weight:700;">&#8369;{{ '{:,.2f}'.format(d.balance) }}</td>
                 <td>
                   <form method="post" action="{{ url_for('admin.add_deposit_topup') }}"
                         style="display:flex; gap:6px; align-items:center;"
-                        onsubmit="return confirm('Record ₱' + this.amount.value + ' towards {{ d.profile.user.full_name }}’s security deposit?');">
+                        onsubmit="return confirm('Record ₱' + this.amount.value + ' towards {{ d.profile.user.full_name }}’s move-in balance?');">
                     <input type="hidden" name="tenant_profile_id" value="{{ d.profile.id }}" />
                     <input class="input" type="number" name="amount" step="0.01" min="0.01"
-                           max="{{ '%.2f'|format(d.short) }}" value="{{ '%.2f'|format(d.short) }}"
+                           max="{{ '%.2f'|format(d.balance) }}" value="{{ '%.2f'|format(d.balance) }}"
                            style="width:110px; font-size:12px; padding:5px 7px;" required />
                     <select class="input" name="payment_method" style="width:112px; font-size:12px; padding:5px 7px;">
                       <option value="cash">Cash</option>
