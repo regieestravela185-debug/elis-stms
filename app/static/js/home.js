@@ -1,6 +1,34 @@
 (function () {
   const $ = (sel, root = document) => root.querySelector(sel);
 
+  // The security deposit is priced differently for the two kinds of unit —
+  // a studio asks one month's rent plus a flat 1,000, a commercial space
+  // two months plus a flat 10,000. Kept here so the reserve modal and the
+  // details modal cannot drift apart, and mirroring app/deposits.py, which
+  // is what the server actually charges.
+  const DEPOSIT_RESIDENTIAL_FLAT = 1000;
+  const DEPOSIT_COMMERCIAL_FLAT = 10000;
+  const DEPOSIT_COMMERCIAL_MONTHS = 2;
+
+  function depositFor(monthly, unitType) {
+    const rent = parseFloat(String(monthly).replace(/,/g, "")) || 0;
+    const commercial = String(unitType || "").toLowerCase().includes("commercial");
+    const deposit = commercial
+      ? rent * DEPOSIT_COMMERCIAL_MONTHS + DEPOSIT_COMMERCIAL_FLAT
+      : rent + DEPOSIT_RESIDENTIAL_FLAT;
+    const peso = (n) => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const plain = (n) => n.toLocaleString("en-PH");
+    return {
+      rent, commercial, deposit, total: rent + deposit, peso,
+      basis: commercial
+        ? `${DEPOSIT_COMMERCIAL_MONTHS} months’ rent (₱${plain(rent * DEPOSIT_COMMERCIAL_MONTHS)}) plus ₱${plain(DEPOSIT_COMMERCIAL_FLAT)}`
+        : `one month’s rent (₱${plain(rent)}) plus ₱${plain(DEPOSIT_RESIDENTIAL_FLAT)}`,
+      shortBasis: commercial
+        ? `${DEPOSIT_COMMERCIAL_MONTHS} months’ rent + ₱${plain(DEPOSIT_COMMERCIAL_FLAT)}`
+        : `one month’s rent + ₱${plain(DEPOSIT_RESIDENTIAL_FLAT)}`,
+    };
+  }
+
   function openModal(id) {
     const el = $(id);
     if (!el) return;
@@ -98,16 +126,10 @@
       if (reserveUnitFloor) reserveUnitFloor.value = unitFloor ? `${unitFloor}st Floor` : "";
       if (reserveUnitPrice) reserveUnitPrice.value = `₱${unitPrice} / month`;
       if (reserveMonthlyPrice) reserveMonthlyPrice.value = `₱${unitPrice}`;
-      // Deposit = one month's rent + ₱1,000 (residential or commercial, same formula)
-      const priceNum = parseFloat(String(unitPrice).replace(/,/g, '')) || 0;
-      const depositNum = priceNum + 1000;
-      const fmt = (n) => `₱${n.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      if (reserveDepositAmount) reserveDepositAmount.value = fmt(depositNum);
-      if (reserveDepositTerms) reserveDepositTerms.innerHTML = `<strong>Deposit Terms:</strong> Your security deposit is one month's rent (₱${priceNum.toLocaleString('en-PH')}) plus ₱1,000, for a total of ${fmt(depositNum)}. Refundable after your contract ends, minus damages and unpaid bills.`;
-      if (reserveTotalPayment) {
-        const total = priceNum + depositNum;
-        reserveTotalPayment.value = fmt(total);
-      }
+      const d = depositFor(unitPrice, unitType);
+      if (reserveDepositAmount) reserveDepositAmount.value = d.peso(d.deposit);
+      if (reserveDepositTerms) reserveDepositTerms.innerHTML = `<strong>Deposit Terms:</strong> Your security deposit is ${d.basis}, for a total of ${d.peso(d.deposit)}. Refundable after your contract ends, minus damages and unpaid bills.`;
+      if (reserveTotalPayment) reserveTotalPayment.value = d.peso(d.total);
       closeModals();
       openModal("#modalReserve");
     }
@@ -145,12 +167,10 @@
       if (contract) contract.textContent = card.getAttribute("data-unit-contract") || "N/A";
       if (desc) desc.textContent = card.getAttribute("data-unit-description") || "Admin can add more details for this unit.";
 
-      // Deposit = one month's rent + ₱1,000 (residential or commercial, same formula)
-      const detailsPriceNum = parseFloat((card.getAttribute("data-unit-price") || "0").replace(/,/g, '')) || 0;
-      const detailsDepositNum = detailsPriceNum + 1000;
-      const fmtDetails = (n) => `₱${n.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      if (depositLine) depositLine.innerHTML = `<strong>${fmtDetails(detailsDepositNum)}</strong> — one month's rent + ₱1,000, refundable after contract ends minus damages and unpaid bills.`;
-      if (totalLine) totalLine.textContent = `Total payment on reservation: ${fmtDetails(detailsPriceNum)} (Monthly) + ${fmtDetails(detailsDepositNum)} (Deposit) = ${fmtDetails(detailsPriceNum + detailsDepositNum)}`;
+      const dd = depositFor(card.getAttribute("data-unit-price") || "0",
+                            card.getAttribute("data-unit-type") || "");
+      if (depositLine) depositLine.innerHTML = `<strong>${dd.peso(dd.deposit)}</strong> — ${dd.shortBasis}, refundable after contract ends minus damages and unpaid bills.`;
+      if (totalLine) totalLine.textContent = `Total payment on reservation: ${dd.peso(dd.rent)} (Monthly) + ${dd.peso(dd.deposit)} (Security Deposit) = ${dd.peso(dd.total)}`;
 
       // Set up carousel
       let currentIndex = 0;
