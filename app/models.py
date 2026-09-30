@@ -314,6 +314,27 @@ class Reservation(db.Model):
     def is_settled(self):
         return float(self.amount_paid or 0) >= self.move_in_total - 0.005
 
+    # A part payment holds the unit against everyone else, so it cannot hold
+    # it indefinitely: the balance is due within a week of the first payment.
+    BALANCE_DAYS = 7
+
+    @property
+    def balance_due_date(self):
+        """When the outstanding move-in balance is due, or None."""
+        if self.is_settled or not self.first_paid_at:
+            return None
+        from datetime import timedelta
+        return (self.first_paid_at + timedelta(days=self.BALANCE_DAYS)).date()
+
+    @property
+    def balance_days_left(self):
+        """Days until the balance is due — negative once it is overdue."""
+        due = self.balance_due_date
+        if due is None:
+            return None
+        from datetime import date as _date
+        return (due - _date.today()).days
+
     # AI-Assisted Identity Verification fields
     selfie_image = db.Column(db.String(255), nullable=True)  # Path to uploaded selfie image
     face_match_score = db.Column(db.Numeric(5, 4), nullable=True)  # Face matching score (0-1)

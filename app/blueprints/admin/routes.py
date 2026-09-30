@@ -2402,6 +2402,7 @@ def record_reservation_payment(reservation_id: int):
             rent_paid=after["rent_paid"], rent_due=after["rent_due"],
             balance=after["balance"], settled=after["settled"],
             is_commercial=is_commercial(unit) if unit else False,
+            due_date=r.balance_due_date,
         )
     except Exception:
         current_app.logger.exception("Failed to email payment receipt for reservation %s", r.id)
@@ -2522,14 +2523,11 @@ def approve_reservation(reservation_id: int):
     # arrived is credited to the security deposit first with the month's
     # rent left whole — see app/deposits.py. Approving on a part payment
     # must not book rent nobody paid.
+    # Approval is refused above when nothing has been recorded, so this is
+    # always a real figure. There used to be a fallback here that treated a
+    # zero as "paid in full" — with that guard in place it could only ever
+    # fabricate payments nobody made, so it is gone.
     paid = r.payment_state
-    if float(r.amount_paid or 0) <= 0:
-        # Nothing was recorded against the reservation itself, which is how
-        # every reservation approved before instalments existed looks. Treat
-        # it as settled in full, exactly as it used to be.
-        paid = {"deposit_paid": float(r.deposit_amount or 0),
-                "rent_paid": float(profile.contract_rent or 0),
-                "balance": 0.0, "settled": True}
 
     monthly_payment = deposit_payment = None
     if paid["rent_paid"] > 0:
@@ -2644,15 +2642,27 @@ def approve_reservation(reservation_id: int):
     db.session.commit()
 
     from ...socket_events import emit_payment_notification, emit_unit_status_update
-    emit_payment_notification(user.id, {
-        "amount": float(monthly_payment.amount),
-        "tenant_name": user.full_name,
-        "unit_code": unit.unit_code,
-    })
+    # Approving on a part payment books no monthly row at all — the month is
+    # settled whole or not at all — so this notification has to be driven by
+    # what was actually recorded rather than assuming a rent payment exists.
+    notified = sum(float(p.amount) for p in (monthly_payment, deposit_payment, advance_payment)
+                   if p is not None)
+    if notified > 0:
+        emit_payment_notification(user.id, {
+            "amount": notified,
+            "tenant_name": user.full_name,
+            "unit_code": unit.unit_code,
+        })
     emit_unit_status_update()
 
-    _send_reservation_result_email(r.email, status=ReservationStatus.APPROVED, unit_code=unit.unit_code)
-    msg = "Reservation approved. User is now a Tenant. Deposit and monthly payment recorded."
+    _send_reservation_result_email(r.email, status=ReservationStatus.APPROVED, unit_code=unit.unit_code,
+                                   to_name=r.full_name or "Tenant")
+    if paid["settled"]:
+        msg = "Reservation approved. User is now a Tenant. Security deposit and monthly payment recorded."
+    else:
+        msg = (f"Reservation approved on a balance. User is now a Tenant. "
+               f"₱{paid['balance']:,.2f} is still owing and is now collected "
+               f"on the Payments page.")
     if others:
         msg += f" Their {len(others)} other pending reservation{'s' if len(others) != 1 else ''} were cancelled"
         msg += f", returning {', '.join(released)} to Available." if released else "."

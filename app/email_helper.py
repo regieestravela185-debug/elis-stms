@@ -1458,7 +1458,7 @@ The Elis Center Management
 
 def send_reservation_payment_email(
     to_email, to_name, unit_code, amount, deposit_paid, deposit_due,
-    rent_paid, rent_due, balance, settled, is_commercial=False,
+    rent_paid, rent_due, balance, settled, is_commercial=False, due_date=None,
 ):
     """Receipt for money received against a reservation.
 
@@ -1475,8 +1475,11 @@ def send_reservation_payment_email(
         closing = ("Your reservation is now fully paid. The office will review it "
                    "and you will be emailed once it is approved.")
     else:
-        closing = (f"{fmt(balance)} is still to follow. The unit is held for you while "
-                   f"a balance remains, and your reservation is approved once it is settled.")
+        when = (f" It is due by {due_date.strftime('%B %d, %Y')}."
+                if due_date else "")
+        closing = (f"{fmt(balance)} is still to follow.{when} The unit is held for you "
+                   f"while the balance is outstanding \u2014 it cannot be held "
+                   f"indefinitely, since others have reservations on it too.")
 
     text_content = f"""
 Dear {to_name},

@@ -277,6 +277,12 @@
       background: rgba(215, 179, 91, 0.28);
       border-color: rgba(215, 179, 91, 0.8);
     }
+    .resv-due {
+      font-size: 10px; font-weight: 700; margin-bottom: 4px;
+      color: #8a6d1f;
+    }
+    .resv-due--soon { color: #b45309; }
+    .resv-due--late { color: #dc2626; }
     .resv-more > summary {
       cursor: pointer; font-size: 10px; color: var(--muted);
       margin-bottom: 5px; user-select: none;
@@ -562,6 +568,15 @@
                               &#8369;{{ '{:,.2f}'.format(pay.paid) }} paid &middot;
                               &#8369;{{ '{:,.2f}'.format(pay.balance) }} to follow
                             </div>
+                            {% if r.balance_due_date %}
+                              {% set left = r.balance_days_left %}
+                              <div class="resv-due {% if left < 0 %}resv-due--late{% elif left <= 2 %}resv-due--soon{% endif %}">
+                                Balance due {{ r.balance_due_date.strftime('%b %d') }} &mdash;
+                                {% if left < 0 %}{{ -left }} day{{ 's' if left != -1 }} overdue
+                                {% elif left == 0 %}today
+                                {% else %}{{ left }} day{{ 's' if left != 1 }} left{% endif %}
+                              </div>
+                            {% endif %}
                           {% else %}
                             <div class="resv-flow__state resv-flow__state--none">Nothing paid yet</div>
                           {% endif %}
