@@ -4117,6 +4117,44 @@ def export_users():
     )
 
 
+@bp.post("/users/<int:user_id>/reset-password")
+@login_required
+def reset_user_password(user_id: int):
+    """Issue a one-time password for a tenant who cannot get into their account.
+
+    The stored password cannot be read back — it is a salted hash, which is
+    the point of it — so helping someone who has forgotten theirs means
+    issuing a new one rather than looking the old one up. The temporary
+    password is shown to the administrator once, here, and never stored in
+    the clear; the tenant is expected to change it from Settings once they
+    are in.
+    """
+    _ensure_admin()
+    user = db.session.get(User, user_id)
+    if not user or user.role == Role.ADMIN:
+        abort(404)
+
+    import secrets as _secrets
+    from ...security import hash_password
+    # Readable over the phone: no look-alike characters.
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+    temp = "".join(_secrets.choice(alphabet) for _ in range(10))
+
+    user.password_hash = hash_password(temp)
+    user.reset_token = None
+    user.reset_token_expires_at = None
+    db.session.commit()
+
+    db.session.add(ActivityLog(actor_user_id=current_user.id,  # type: ignore[attr-defined]
+                               action="temp_password_issued"))
+    db.session.commit()
+
+    flash(f"Temporary password for {user.full_name} ({user.email}): {temp} — "
+          f"give it to them directly and ask them to change it in Settings. "
+          f"It is shown here once and is not stored in readable form.", "success")
+    return redirect(url_for("admin.user_details", user_id=user.id))
+
+
 @bp.get("/users/<int:user_id>/details")
 @login_required
 def user_details(user_id: int):

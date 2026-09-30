@@ -219,6 +219,15 @@
        Back to Customers
 </a>
 
+    {# The stored password is a salted hash and cannot be read back, which is
+       what makes it safe. Helping someone locked out therefore means issuing
+       a new one rather than looking the old one up. #}
+    <form method="post" action="{{ url_for('admin.reset_user_password', user_id=user.id) }}"
+          style="float:right;"
+          onsubmit="return confirm('Issue a new temporary password for {{ user.full_name }}?\n\nTheir current password stops working immediately. The new one is shown to you once — write it down before leaving this page.');">
+      <button class="btn btn--sm" type="submit">Issue temporary password</button>
+    </form>
+
     <!-- User Header -->
     <div class="user-header">
       <div class="user-avatar-large">{{ user.full_name[0]|upper }}</div>
