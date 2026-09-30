@@ -2582,6 +2582,34 @@ def approve_reservation(reservation_id: int):
     # could never have been approved anyway. Left alone they stayed PENDING
     # forever and held their units at RESERVED: invisible on the homepage,
     # unrentable, with nothing on any screen saying why.
+    # Everyone else still holding a claim on the unit this approval just took.
+    # _award_unit_to closes these when a payment is recorded, but a
+    # reservation can be approved with a balance and no payment at all, and
+    # those rivals were left PENDING for ever on a unit that is now occupied
+    # — invisible to them, unactionable to the office.
+    rivals = (db.session.query(Reservation)
+              .filter(Reservation.unit_id == unit.id,
+                      Reservation.id != r.id,
+                      Reservation.user_id != user.id,
+                      Reservation.status == ReservationStatus.PENDING)
+              .all())
+    for rival in rivals:
+        rival.status = ReservationStatus.CANCELLED
+        rival.superseded_by_id = r.id
+        paid_note = ""
+        if float(rival.amount_paid or 0) > 0:
+            paid_note = (f" ₱{float(rival.amount_paid):,.2f} had been received "
+                         f"against your reservation and is refundable in full; please "
+                         f"arrange the refund with the office.")
+        try:
+            _send_reservation_result_email(
+                rival.email, status=ReservationStatus.CANCELLED,
+                unit_code=unit.unit_code, to_name=rival.full_name or "Tenant",
+                reason=("The unit has been taken by another reservation." + paid_note),
+            )
+        except Exception:
+            current_app.logger.exception("Failed to email rival reservation %s", rival.id)
+
     released = []
     others = (db.session.query(Reservation)
               .filter(Reservation.user_id == user.id,

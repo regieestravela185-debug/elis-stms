@@ -140,6 +140,22 @@ def reserve_post(unit_id: int):
               f"would like to transfer.", "warning")
         return redirect(url_for("public.home") + "#units")
 
+    # One reservation per person per unit. Several people may hold a
+    # reservation on the same unit — it goes to whoever pays first — but a
+    # second one from the same person adds nothing: it cannot improve their
+    # position and it makes the queue on that unit read longer than it is.
+    # Other units stay open to them until one is approved.
+    already = (db.session.query(Reservation)
+               .filter(Reservation.user_id == current_user.id,  # type: ignore[attr-defined]
+                       Reservation.unit_id == unit.id,
+                       Reservation.status == ReservationStatus.PENDING)
+               .first())
+    if already:
+        flash(f"You already have a reservation on {unit.unit_code} waiting for "
+              f"review. Please wait for the office to act on it — you are "
+              f"welcome to reserve a different unit in the meantime.", "warning")
+        return redirect(url_for("public.home") + "#units")
+
     full_name = (request.form.get("full_name") or "").strip()
     email = (request.form.get("email") or "").strip().lower()
     contact = (request.form.get("contact") or "").strip()
