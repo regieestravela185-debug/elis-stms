@@ -239,6 +239,33 @@
       color: #eab308;
       border: 1px solid rgba(234, 179, 8, 0.3);
     }
+
+    /* Reservation settlement — money, then tenancy. The two were being read
+       as alternatives ("do I press Record or Approve?"), so they are numbered
+       and the payment state is shown as a bar rather than four figures. */
+    .resv-flow { font-size: 11px; line-height: 1.45; min-width: 210px; }
+    .resv-flow__total { margin-bottom: 4px; }
+    .resv-bar {
+      height: 6px; border-radius: 99px; background: rgba(20,20,23,.10);
+      overflow: hidden; margin-bottom: 5px;
+    }
+    .resv-bar > span { display: block; height: 100%; background: #22c55e; border-radius: 99px; }
+    .resv-flow__state { font-weight: 700; margin-bottom: 4px; }
+    .resv-flow__state--ok { color: #16a34a; }
+    .resv-flow__state--part { color: #b45309; }
+    .resv-flow__state--none { color: var(--muted); font-weight: 600; }
+    .resv-flow__split { color: var(--muted); font-size: 10px; margin-bottom: 10px; }
+    .resv-step {
+      display: flex; align-items: center; gap: 6px;
+      margin: 10px 0 5px; font-weight: 700; font-size: 11px;
+    }
+    .resv-step__n {
+      width: 17px; height: 17px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(215,179,91,.22); color: #8a6d1f;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800;
+    }
+    .resv-hint { color: var(--muted); font-size: 10px; margin-top: 4px; }
   </style>
 {% endblock %}
 
@@ -496,65 +523,81 @@
                     <div class="action-buttons">
                       {% if r.status.value == 'pending' %}
                         {% set pay = r.payment_state %}
-                        {# A unit goes to whoever pays first, so what has been
-                           paid against this reservation belongs beside the
-                           approve button, not on a separate screen. #}
-                        <div style="font-size:11px; line-height:1.5; margin-bottom:6px;">
-                          <div>Move-in total: <strong>&#8369;{{ '{:,.2f}'.format(pay.total_due) }}</strong></div>
-                          <div class="muted">Security deposit &#8369;{{ '{:,.2f}'.format(pay.deposit_paid) }} / {{ '{:,.2f}'.format(pay.deposit_due) }}</div>
-                          <div class="muted">First month&rsquo;s rent &#8369;{{ '{:,.2f}'.format(pay.rent_paid) }} / {{ '{:,.2f}'.format(pay.rent_due) }}</div>
-                          {% if pay.advance %}
-                            {# Received, but held rather than booked: a month is
-                               settled whole or not at all. #}
-                            <div class="muted">Advance on the month &#8369;{{ '{:,.2f}'.format(pay.advance) }} &mdash; held until the month is whole</div>
-                          {% endif %}
+                        {# Two steps, numbered, because they are sequential and
+                           were being read as alternatives: money is recorded
+                           first — that is what takes the unit — and only then
+                           is the tenancy approved. #}
+                        <div class="resv-flow">
+                          <div class="resv-flow__total">
+                            Move-in total <strong>&#8369;{{ '{:,.2f}'.format(pay.total_due) }}</strong>
+                          </div>
+                          <div class="resv-bar">
+                            <span style="width: {{ (100 * pay.paid / pay.total_due) if pay.total_due else 0 }}%;"></span>
+                          </div>
                           {% if pay.settled %}
-                            <div style="color:#16a34a; font-weight:700;">Fully paid</div>
+                            <div class="resv-flow__state resv-flow__state--ok">Fully paid</div>
                           {% elif pay.paid > 0 %}
-                            <div style="color:#b45309; font-weight:700;">&#8369;{{ '{:,.2f}'.format(pay.balance) }} to follow</div>
+                            <div class="resv-flow__state resv-flow__state--part">
+                              &#8369;{{ '{:,.2f}'.format(pay.paid) }} paid &middot;
+                              &#8369;{{ '{:,.2f}'.format(pay.balance) }} to follow
+                            </div>
                           {% else %}
-                            <div class="muted">No payment yet</div>
+                            <div class="resv-flow__state resv-flow__state--none">Nothing paid yet</div>
+                          {% endif %}
+                          <div class="resv-flow__split">
+                            Security deposit &#8369;{{ '{:,.2f}'.format(pay.deposit_paid) }} / {{ '{:,.2f}'.format(pay.deposit_due) }}<br/>
+                            First month&rsquo;s rent &#8369;{{ '{:,.2f}'.format(pay.rent_paid) }} / {{ '{:,.2f}'.format(pay.rent_due) }}
+                            {% if pay.advance %}<br/>Advance &#8369;{{ '{:,.2f}'.format(pay.advance) }} &mdash; held until the month is whole{% endif %}
+                          </div>
+
+                          {% if not pay.settled %}
+                            <div class="resv-step">
+                              <span class="resv-step__n">1</span>
+                              <span class="resv-step__t">Record what was received</span>
+                            </div>
+                            <form method="post" action="{{ url_for('admin.record_reservation_payment', reservation_id=r.id) }}"
+                                  onsubmit="return confirm('Record \u20b1' + this.amount.value + ' for {{ r.full_name }}?\n\nThis is what takes the unit — the other unpaid reservations on it are cancelled.');">
+                              <div style="display:flex; gap:4px;">
+                                <input class="input" type="number" name="amount" step="0.01"
+                                       min="{{ '%.2f'|format(0.01 if pay.paid > 0 else pay.rent_due + 0.01) }}"
+                                       max="{{ '%.2f'|format(pay.balance) }}"
+                                       value="{{ '%.2f'|format(pay.balance) }}"
+                                       style="width:104px; font-size:11px; padding:4px 6px;" required />
+                                <button class="btn btn--sm" type="submit" style="font-size:11px; padding:4px 8px;">Record</button>
+                              </div>
+                              <div class="resv-hint">
+                                {% if pay.paid > 0 %}
+                                  Box holds the balance. Change it to record less.
+                                {% else %}
+                                  Box holds the full amount &mdash; press Record for a full payment.
+                                  A part payment must be over &#8369;{{ '{:,.2f}'.format(pay.rent_due) }}.
+                                {% endif %}
+                              </div>
+                            </form>
+                          {% endif %}
+
+                          <div class="resv-step">
+                            <span class="resv-step__n">2</span>
+                            <span class="resv-step__t">Approve the tenancy</span>
+                          </div>
+                          {% if pay.settled %}
+                            <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}"
+                                  onsubmit="return confirm('Approve this reservation? This creates the tenant profile and marks the unit occupied.');">
+                              <button class="btn--approve" type="submit">Approve</button>
+                            </form>
+                          {% else %}
+                            {# Approving books the tenancy and settles the first
+                               month, so a balance has to be said out loud — the
+                               server refuses this without confirm_partial. #}
+                            <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}"
+                                  onsubmit="return confirm('This reservation still owes \u20b1{{ '{:,.2f}'.format(pay.balance) }} \u2014 \u20b1{{ '{:,.2f}'.format(pay.deposit_balance) }} of the security deposit and \u20b1{{ '{:,.2f}'.format(pay.rent_balance) }} of the first month\u2019s rent.\n\nApprove anyway and collect the balance later?');">
+                              <input type="hidden" name="confirm_partial" value="yes" />
+                              <button class="btn--approve" type="submit"
+                                      style="background:#b45309; border-color:#b45309;">Approve with balance</button>
+                            </form>
+                            <div class="resv-hint">Record the balance first unless they are moving in on credit.</div>
                           {% endif %}
                         </div>
-                        {% if not pay.settled %}
-                          {# Two ways to settle, so both are offered outright
-                             rather than left to be worked out from one box. #}
-                          <form method="post" action="{{ url_for('admin.record_reservation_payment', reservation_id=r.id) }}"
-                                style="margin-bottom:6px;"
-                                onsubmit="return confirm('Record ₱' + this.amount.value + ' for {{ r.full_name }}?\n\nThe first payment on a unit takes it and cancels the other unpaid reservations for it.');">
-                            <div style="display:flex; gap:4px;">
-                              <input class="input" type="number" name="amount" step="0.01"
-                                     min="{{ '%.2f'|format(0.01 if pay.paid > 0 else pay.rent_due + 0.01) }}"
-                                     max="{{ '%.2f'|format(pay.balance) }}"
-                                     value="{{ '%.2f'|format(pay.balance) }}"
-                                     style="width:104px; font-size:11px; padding:4px 6px;" required />
-                              <button class="btn btn--sm" type="submit" style="font-size:11px; padding:4px 8px;">Record</button>
-                            </div>
-                            <div class="muted" style="font-size:10px; margin-top:3px;">
-                              {% if pay.paid > 0 %}
-                                Balance is &#8369;{{ '{:,.2f}'.format(pay.balance) }} &mdash; shown above. Change it for a part payment.
-                              {% else %}
-                                Full move-in total shown. For a part payment, it must be more than
-                                one month&rsquo;s rent (&#8369;{{ '{:,.2f}'.format(pay.rent_due) }}).
-                              {% endif %}
-                            </div>
-                          </form>
-                        {% endif %}
-                        {% if pay.settled %}
-                          <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Approve this reservation? This will create a tenant profile and mark the unit as occupied.');">
-                            <button class="btn--approve" type="submit">Approve</button>
-                          </form>
-                        {% else %}
-                          {# Part paid. Approving books the tenancy and settles the
-                             first month, so the balance has to be said out loud —
-                             the server refuses this without confirm_partial. #}
-                          <form method="post" action="{{ url_for('admin.approve_reservation', reservation_id=r.id) }}"
-                                onsubmit="return confirm('This reservation still owes ₱{{ '{:,.2f}'.format(pay.balance) }} — ₱{{ '{:,.2f}'.format(pay.deposit_balance) }} of the security deposit and ₱{{ '{:,.2f}'.format(pay.rent_balance) }} of the first month’s rent.\n\nApprove anyway and collect the balance later?');">
-                            <input type="hidden" name="confirm_partial" value="yes" />
-                            <button class="btn--approve" type="submit"
-                                    style="background:#b45309; border-color:#b45309;">Approve with balance</button>
-                          </form>
-                        {% endif %}
                         <form method="post" action="{{ url_for('admin.reject_reservation', reservation_id=r.id) }}" onsubmit="return confirm('Reject this reservation? The unit will become available again.');">
                           <button class="btn--reject" type="submit">Reject</button>
                         </form>

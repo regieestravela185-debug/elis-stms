@@ -2642,8 +2642,23 @@ def reject_reservation(reservation_id: int):
     from ...socket_events import emit_unit_status_update
     emit_unit_status_update()
 
-    _send_reservation_result_email(r.email, status=ReservationStatus.REJECTED, unit_code=(unit.unit_code if unit else "your requested unit"))
-    flash("Reservation rejected.", "info")
+    # Money already taken has to be given back, and both sides need telling.
+    # Rejecting quietly on a paid reservation leaves the tenant out of pocket
+    # with nothing on any screen saying so.
+    paid = float(r.amount_paid or 0)
+    refund_note = None
+    if paid > 0:
+        refund_note = (f"₱{paid:,.2f} had already been received against this "
+                       f"reservation and is refundable in full. Please arrange the "
+                       f"refund with the office.")
+    _send_reservation_result_email(r.email, status=ReservationStatus.REJECTED,
+                                   unit_code=(unit.unit_code if unit else "your requested unit"),
+                                   to_name=r.full_name or "Tenant", reason=refund_note)
+    if paid > 0:
+        flash(f"Reservation rejected. ₱{paid:,.2f} was already recorded against it "
+              f"and is refundable in full — {r.full_name} has been emailed about it.", "warning")
+    else:
+        flash("Reservation rejected.", "info")
     return redirect(url_for("admin.reservations"))
 
 
@@ -2664,8 +2679,20 @@ def cancel_reservation(reservation_id: int):
     from ...socket_events import emit_unit_status_update
     emit_unit_status_update()
 
-    _send_reservation_result_email(r.email, status=ReservationStatus.CANCELLED, unit_code=(unit.unit_code if unit else "your requested unit"))
-    flash("Reservation cancelled.", "info")
+    paid = float(r.amount_paid or 0)
+    refund_note = None
+    if paid > 0:
+        refund_note = (f"₱{paid:,.2f} had already been received against this "
+                       f"reservation and is refundable in full. Please arrange the "
+                       f"refund with the office.")
+    _send_reservation_result_email(r.email, status=ReservationStatus.CANCELLED,
+                                   unit_code=(unit.unit_code if unit else "your requested unit"),
+                                   to_name=r.full_name or "Tenant", reason=refund_note)
+    if paid > 0:
+        flash(f"Reservation cancelled. ₱{paid:,.2f} was already recorded against it "
+              f"and is refundable in full — {r.full_name} has been emailed about it.", "warning")
+    else:
+        flash("Reservation cancelled.", "info")
     return redirect(url_for("admin.reservations"))
 
 
