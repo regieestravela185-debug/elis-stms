@@ -4024,9 +4024,27 @@ def deposits():
 
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
 
+    # Tenants whose security deposit is not yet complete. A tenancy can be
+    # approved on a part payment, and once approved the reservation screen
+    # closes — so without this the shortfall lives nowhere anybody looks.
+    from ...deposits import security_deposit_for
+    short_deposits = []
+    for profile in (db.session.query(TenantProfile)
+                    .filter(TenantProfile.is_active.is_(True)).all()):
+        if not profile.unit:
+            continue
+        due = security_deposit_for(profile.unit)
+        held = _deposit_held_for(profile.id)
+        if due - held > 0.005:
+            short_deposits.append({
+                "profile": profile, "due": due, "held": held, "short": due - held,
+            })
+    short_deposits.sort(key=lambda d: -d["short"])
+
     return render_template(
         "admin/deposits.html", reservations=reservations, pagination=pagination,
         deposit_stats=deposit_stats, buildings=buildings, today=today,
+        short_deposits=short_deposits,
     )
 
 
@@ -4548,6 +4566,89 @@ def process_deposit(reservation_id: int):
         flash("Remaining deposit returned and recorded in blockchain.", "success")
     
     db.session.commit()
+    return redirect(url_for("admin.deposits"))
+
+
+def _deposit_held_for(tenant_profile_id: int) -> float:
+    """Security deposit currently on file for a tenant, net of returns."""
+    rows = (db.session.query(Payment)
+            .filter(Payment.tenant_profile_id == tenant_profile_id,
+                    Payment.is_deposit.is_(True),
+                    ~Payment.payment_status.in_(PAYMENT_STATUSES_NOT_COUNTED))
+            .all())
+    total = 0.0
+    for p in rows:
+        if p.deposit_transaction_type == "deposit_paid":
+            total += float(p.amount or 0)
+        elif p.deposit_transaction_type in ("deposit_returned", "deposit_deducted"):
+            total -= float(p.amount or 0)
+    return total
+
+
+@bp.post("/deposits/topup")
+@login_required
+def add_deposit_topup():
+    """Record money paid towards a security deposit that is not yet complete.
+
+    A tenant may be approved on a part payment, which leaves the deposit
+    short. The ordinary Record Payment form cannot take it: that one demands
+    a billing month and books the amount as rent, so a deposit top-up
+    entered there would settle a month nobody paid for.
+    """
+    _ensure_admin()
+    profile = db.session.get(TenantProfile, int(request.form.get("tenant_profile_id") or "0"))
+    if not profile:
+        abort(404)
+    try:
+        amount = float(request.form.get("amount") or 0)
+    except ValueError:
+        amount = 0.0
+    if amount <= 0:
+        flash("Enter the amount received.", "warning")
+        return redirect(url_for("admin.deposits"))
+
+    from ...deposits import security_deposit_for
+    unit = profile.unit
+    due = security_deposit_for(unit) if unit else 0.0
+    held = _deposit_held_for(profile.id)
+    short = max(0.0, due - held)
+    if short <= 0.005:
+        flash(f"{profile.user.full_name}'s security deposit is already complete "
+              f"at ₱{held:,.2f}.", "info")
+        return redirect(url_for("admin.deposits"))
+    if amount > short + 0.005:
+        flash(f"That is more than the ₱{short:,.2f} still short on this "
+              f"security deposit.", "warning")
+        return redirect(url_for("admin.deposits"))
+
+    from datetime import datetime as _dt
+    method = (request.form.get("payment_method") or "cash").strip()
+    if method not in ("cash", "bank_transfer", "other"):
+        method = "cash"
+    p = Payment(
+        tenant_profile_id=profile.id,
+        amount=amount,
+        reference=f"Security Deposit - {unit.unit_code if unit else ''}",
+        notes="Top-up towards the security deposit",
+        is_deposit=True,
+        deposit_transaction_type="deposit_paid",
+        payment_method=method,
+        paid_at=_dt.utcnow().replace(microsecond=0),
+    )
+    db.session.add(p)
+    db.session.flush()
+    _generate_payment_ledger(p)
+    db.session.commit()
+
+    now_held = held + amount
+    rest = due - now_held
+    if rest <= 0.005:
+        flash(f"Recorded ₱{amount:,.2f}. {profile.user.full_name}'s security "
+              f"deposit is now complete at ₱{due:,.2f}.", "success")
+    else:
+        flash(f"Recorded ₱{amount:,.2f}. Security deposit now "
+              f"₱{now_held:,.2f} of ₱{due:,.2f} — "
+              f"₱{rest:,.2f} still short.", "success")
     return redirect(url_for("admin.deposits"))
 
 
