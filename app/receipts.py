@@ -13,7 +13,6 @@ booklet's. The administrator copies the number off the physical form, and
 the generated PDF carries that same one.
 """
 from io import BytesIO
-import os
 import re
 
 from .ai_utils import amount_to_words
@@ -40,9 +39,14 @@ NOTHING_FOLLOWS = "- nothing follows -"
 
 VAT_RATE = 0.12
 
-GOLD = (0.843, 0.702, 0.357)
+# The booklets' own colours. The forms are printed in a single navy — the
+# border, the ruling and the letterhead all sit in it — with the serial
+# number alone in red. This is deliberately NOT the website's gold: the
+# gold mark in static/img belongs to the site, and a receipt that does not
+# look like the booklet it claims to copy is the wrong document.
+NAVY = (0.106, 0.157, 0.400)
 INK = (0.078, 0.078, 0.090)
-RULE = (0.0, 0.0, 0.35)      # the forms are ruled in dark blue
+RULE = NAVY
 SERIAL_RED = (0.78, 0.07, 0.09)
 
 _TENS = ("Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety")
@@ -84,13 +88,61 @@ def vat_breakdown(total, rate: float = VAT_RATE) -> dict:
     return {"total": total, "net": net, "vat": round(total - net, 2), "rate": rate}
 
 
-def _logo_path():
-    here = os.path.dirname(os.path.abspath(__file__))
-    for name in ("elis-mark.png", "elis-logo.png"):
-        p = os.path.join(here, "static", "img", name)
-        if os.path.exists(p):
-            return p
-    return None
+def _brand_mark(c, x, y, h, color=NAVY):
+    """The stepped skyline from the booklet's letterhead, drawn.
+
+    The only mark that ships with this repository is the website's gold one,
+    which is not what is printed on these forms. Drawing it keeps the receipt
+    looking like the booklet and avoids an image that may not be there.
+    """
+    unit = h / 10.0
+    # (left, width, height) in units — a low block, two tall towers, a tail.
+    towers = ((0.0, 1.9, 4.6), (2.1, 2.4, 9.2), (4.7, 2.3, 7.0), (7.2, 2.4, 5.2))
+    c.saveState()
+    for left, w, th in towers:
+        bx, bw, bh = x + left * unit, w * unit, th * unit
+        c.setFillColorRGB(*color)
+        c.rect(bx, y, bw, bh, stroke=0, fill=1)
+        # The window texture: thin gaps cut back out in white.
+        c.setFillColorRGB(1, 1, 1)
+        step = bw / 4.2
+        gx = bx + step * 0.75
+        while gx < bx + bw - step * 0.35:
+            c.rect(gx, y + unit * 0.35, step * 0.26, bh - unit * 0.7, stroke=0, fill=1)
+            gx += step
+    c.restoreState()
+
+
+def _wordmark(c, x, y, *, the_line, big, rest_lines, color=NAVY, scale=1.0):
+    """"THE / ELIS / BUSINESS CENTER" set the way the booklet sets it.
+
+    ELIS is the whole lockup — several times the size of the words around it
+    — so it is drawn as its own run rather than as part of a sentence.
+    Returns the width taken, so a caller can place the serial clear of it.
+    """
+    big_size = 25 * scale
+    small_size = 7.2 * scale
+    rest_size = 10.5 * scale
+
+    c.setFillColorRGB(*color)
+    if the_line:
+        c.setFont("Helvetica-Bold", small_size)
+        c.drawString(x, y + big_size * 0.78, the_line)
+    c.setFont("Helvetica-Bold", big_size)
+    c.drawString(x, y, big)
+    bw = c.stringWidth(big, "Helvetica-Bold", big_size)
+
+    rx = x + bw + 5 * scale
+    ry = y + big_size * 0.58
+    for i, line in enumerate(rest_lines):
+        size = rest_size if i == 0 else rest_size * 0.63
+        c.setFont("Helvetica-Bold" if i == 0 else "Helvetica", size)
+        c.drawString(rx, ry, line)
+        ry -= size * 1.30
+        if i == 0:
+            rx += 0  # the tagline sits flush under BUSINESS CENTER
+    widest = max([c.stringWidth(l, "Helvetica", rest_size) for l in rest_lines] or [0])
+    return bw + 5 * scale + widest
 
 
 def _peso(c, x, y, font, size):
@@ -142,54 +194,63 @@ def _wrap(c, text, font, size, max_width):
     return lines or [""]
 
 
-def _letterhead(c, W, H, *, title, name, address, extra_lines, serial,
-                serial_label="No.", date_text=""):
+def _letterhead(c, W, H, *, title, wordmark, tagline, address_lines, serial,
+                serial_label="No.", date_text="", scale=1.0):
+    """The booklet's masthead: drawn mark, ELIS lockup, address, serial, date.
+
+    `wordmark` is (small line above, the large word, the words beside it) —
+    the Acknowledgment Receipt reads "THE ELIS BUSINESS CENTER" and the
+    Service Invoice drops the "THE", which is the only difference between
+    the two forms' heads.
+    """
     from reportlab.lib.units import inch
     m = 0.32 * inch
-    y = H - m - 0.30 * inch
+    mark_h = 0.46 * inch * scale
+    top = H - m - 0.16 * inch - mark_h
 
-    logo = _logo_path()
-    text_x = m
-    if logo:
-        try:
-            c.drawImage(logo, m, y - 0.12 * inch, width=0.52 * inch, height=0.52 * inch,
-                        mask="auto", preserveAspectRatio=True, anchor="sw")
-            text_x = m + 0.62 * inch
-        except Exception:
-            pass  # a missing or unreadable logo must not fail the receipt
+    _brand_mark(c, m, top, mark_h)
+    # Clear of the mark: the small "THE" rides above the big word and would
+    # otherwise sit on the skyline's last tower.
+    text_x = m + mark_h * 1.30
+
+    _wordmark(c, text_x, top + mark_h * 0.12,
+              the_line=wordmark[0], big=wordmark[1],
+              rest_lines=[wordmark[2]] + ([tagline] if tagline else []),
+              scale=scale)
 
     c.setFillColorRGB(*INK)
-    c.setFont("Helvetica-Bold", 15)
-    c.drawString(text_x, y + 0.20 * inch, name)
-    c.setFont("Helvetica", 7.4)
-    yy = y + 0.07 * inch
-    for line in [address] + list(extra_lines):
+    c.setFont("Helvetica", 7.2 * scale)
+    yy = top - 0.10 * inch
+    for line in address_lines:
         c.drawString(text_x, yy, line)
-        yy -= 0.115 * inch
+        yy -= 0.112 * inch
 
     if serial:
         c.setFont("Helvetica", 9)
         c.setFillColorRGB(*INK)
         label_w = c.stringWidth(serial_label + " ", "Helvetica", 9)
-        c.setFont("Helvetica-Bold", 13)
         serial_w = c.stringWidth(str(serial), "Helvetica-Bold", 13)
         sx = W - m - serial_w
-        c.setFont("Helvetica", 9)
-        c.drawString(sx - label_w, y + 0.20 * inch, serial_label)
+        c.drawString(sx - label_w, top + mark_h * 0.62, serial_label)
         c.setFillColorRGB(*SERIAL_RED)
         c.setFont("Helvetica-Bold", 13)
-        c.drawString(sx, y + 0.20 * inch, str(serial))
+        c.drawString(sx, top + mark_h * 0.62, str(serial))
         c.setFillColorRGB(*INK)
 
     # Under the serial, never beside it — on one line the two ran together.
     if date_text:
         c.setFont("Helvetica", 9)
-        c.drawRightString(W - m, y + 0.04 * inch, date_text)
+        c.setFillColorRGB(*INK)
+        c.drawRightString(W - m, top + mark_h * 0.62 - 0.17 * inch, date_text)
 
+    bottom = min(yy + 0.112 * inch, top) - 0.06 * inch
     if title:
+        c.setFillColorRGB(*NAVY)
         c.setFont("Helvetica-Bold", 11.5)
-        c.drawString(text_x, y - 0.42 * inch, title)
-    return y - 0.60 * inch
+        c.drawString(text_x, bottom - 0.16 * inch, title)
+        c.setFillColorRGB(*INK)
+        bottom -= 0.16 * inch
+    return bottom - 0.22 * inch
 
 
 def _footer(c, W, lines, *, bottom):
@@ -220,7 +281,7 @@ def generate_acknowledgment_receipt_pdf(data: dict) -> BytesIO:
     cols = data.get("columns") or []
     grid_rows = max(2, max((len(col.get("lines") or []) for col in cols), default=2))
     W = 8.5 * inch
-    H = 3.00 * inch + grid_rows * 0.20 * inch
+    H = 3.62 * inch + grid_rows * 0.20 * inch
 
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=(W, H))
@@ -233,8 +294,8 @@ def generate_acknowledgment_receipt_pdf(data: dict) -> BytesIO:
 
     y = _letterhead(
         c, W, H, title="ACKNOWLEDGMENT RECEIPT",
-        name=BUSINESS_NAME, address=BUSINESS_TAGLINE,
-        extra_lines=[BUSINESS_ADDRESS], serial=data.get("serial_no"),
+        wordmark=("THE", "ELIS", "BUSINESS CENTER"), tagline=BUSINESS_TAGLINE,
+        address_lines=[BUSINESS_ADDRESS], serial=data.get("serial_no"),
         date_text=data.get("date_text") or "",
     )
 
@@ -280,9 +341,11 @@ def generate_acknowledgment_receipt_pdf(data: dict) -> BytesIO:
 
     for i, col in enumerate(cols):
         cx = m + i * cw
+        c.setFillColorRGB(*NAVY)
         c.setFont("Helvetica-Bold", 8.2)
         c.drawCentredString(cx + cw / 2, top - head_h + 0.07 * inch,
                             (col.get("heading") or "").upper())
+        c.setFillColorRGB(*INK)
         c.setFont("Helvetica", 8.2)
         yy = top - head_h - 0.14 * inch
         for line in (col.get("lines") or []):
@@ -323,7 +386,7 @@ def generate_service_invoice_pdf(data: dict) -> BytesIO:
     W = 8.5 * inch
     # Below the item grid sit the VAT boxes, the received line, two signature
     # blocks and the registration footer; 4.97in is what they need clear.
-    H = 4.97 * inch + body_rows * 0.21 * inch
+    H = 5.12 * inch + body_rows * 0.21 * inch
 
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=(W, H))
@@ -334,13 +397,17 @@ def generate_service_invoice_pdf(data: dict) -> BytesIO:
     c.rect(m * 0.6, m * 0.6, W - 1.2 * m, H - 1.2 * m)
 
     y = _letterhead(
-        c, W, H, title=None, name=INVOICE_NAME, address=INVOICE_ADDRESS,
-        extra_lines=[PROPRIETOR, INVOICE_TIN], serial=data.get("serial_no"),
+        c, W, H, title=None,
+        wordmark=("", "ELIS", "BUSINESS CENTER"), tagline="",
+        address_lines=[INVOICE_ADDRESS, PROPRIETOR, INVOICE_TIN],
+        serial=data.get("serial_no"),
     )
 
     c.setFillColorRGB(*INK)
+    c.setFillColorRGB(*NAVY)
     c.setFont("Helvetica-Bold", 12)
     c.drawString(m, y + 0.10 * inch, "Service Invoice")
+    c.setFillColorRGB(*INK)
 
     # Sale type, ticked by the caller.
     bx = m + 1.55 * inch
@@ -402,11 +469,13 @@ def generate_service_invoice_pdf(data: dict) -> BytesIO:
         c.setLineWidth(0.3)
         c.line(m, top - head_h - r * row_h, W - m, top - head_h - r * row_h)
 
+    c.setFillColorRGB(*NAVY)
     c.setFont("Helvetica-Bold", 7.6)
     x = m
     for (label, _), w in zip(heads, widths):
         c.drawCentredString(x + w / 2, top - head_h + 0.075 * inch, label)
         x += w
+    c.setFillColorRGB(*INK)
 
     for i, item in enumerate(items[:body_rows]):
         ry = top - head_h - (i + 1) * row_h + 0.065 * inch

@@ -5266,11 +5266,22 @@ def payment_receipt_form(payment_id: int):
                 .first())
 
     from ...receipts import amount_to_receipt_words, vat_breakdown
+
+    # The phrases the office actually writes in these boxes. Offered as a
+    # list to pick from rather than left blank: they are the same few every
+    # month, and typing them out is where the wording drifts.
+    line_choices = ["Full Payment", "Partial Payment", "- nothing follows -"]
+    if period:
+        line_choices.insert(2, f"Full, {period}")
+
     return render_template(
         "admin/payment_receipt.html",
         payment=payment, profile=profile, unit=unit,
         first_heading=first_heading, first_line=first_line,
         period=period, bill=bill,
+        heading_choices=["Rent", "Security Deposit", "Power", "Water",
+                         "Association Dues", "Others"],
+        line_choices=line_choices,
         amount_words=amount_to_receipt_words(payment.amount),
         vat=vat_breakdown(payment.amount),
         nothing_follows="- nothing follows -",
@@ -5303,7 +5314,20 @@ def payment_receipt_pdf(payment_id: int):
         amount = float(payment.amount or 0)
 
     kind = (form.get("doc_type") or "acknowledgment").strip()
-    date_text = (form.get("date_text") or "").strip()
+
+    # The date arrives from a picker as YYYY-MM-DD and is written onto the
+    # form the way the booklet writes it. Typing it free-hand produced
+    # "Sept 10 2026", "10/09/26" and "September 10, 2026" on three receipts
+    # in a row, and on a dated document that is the field that matters.
+    date_text = ""
+    raw_date = (form.get("date") or "").strip()
+    if raw_date:
+        try:
+            date_text = date.fromisoformat(raw_date).strftime("%B %d, %Y")
+        except ValueError:
+            date_text = raw_date
+    if not date_text:
+        date_text = (form.get("date_text") or "").strip()
 
     if kind == "invoice":
         total = amount

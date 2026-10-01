@@ -61,8 +61,12 @@
         <div class="grid grid--2 mt-8">
           <div>
             <label class="label">Date *</label>
-            <input class="input" name="date_text" required
-                   value="{{ ph(payment.paid_at).strftime('%B %d, %Y') }}" />
+            {# A picker, not free text: typed by hand the same date came out
+               three different ways on three receipts, and on a dated
+               document that is the field that matters. The form prints it
+               as "September 10, 2026" whatever the browser shows here. #}
+            <input class="input" type="date" name="date" required
+                   value="{{ ph(payment.paid_at).strftime('%Y-%m-%d') }}" />
           </div>
           <div>
             <label class="label">Amount (&#8369;) *</label>
@@ -92,6 +96,12 @@
             The three columns are what the money was for. Leave a heading blank to
             drop that column.
           </p>
+          {# Headings pick from the words the forms use; the lines are a
+             list you can also type over, since an odd month needs an odd
+             phrase but most months do not. #}
+          <datalist id="arLines">
+            {% for choice in line_choices %}<option value="{{ choice }}"></option>{% endfor %}
+          </datalist>
           <div class="grid grid--3 mt-8">
             {% for n, heading, l1, l2 in [
                  (1, first_heading, first_line, nothing_follows),
@@ -103,9 +113,14 @@
                      nothing_follows)] %}
               <div>
                 <label class="label">Column {{ n }}</label>
-                <input class="input" name="col{{ n }}_heading" value="{{ heading }}" />
-                <input class="input mt-8" name="col{{ n }}_line1" value="{{ l1 }}" />
-                <input class="input mt-8" name="col{{ n }}_line2" value="{{ l2 }}" />
+                <select class="input" name="col{{ n }}_heading">
+                  {% for choice in heading_choices %}
+                    <option value="{{ choice }}" {% if choice == heading %}selected{% endif %}>{{ choice }}</option>
+                  {% endfor %}
+                  <option value="">&mdash; drop this column &mdash;</option>
+                </select>
+                <input class="input mt-8" list="arLines" name="col{{ n }}_line1" value="{{ l1 }}" />
+                <input class="input mt-8" list="arLines" name="col{{ n }}_line2" value="{{ l2 }}" />
               </div>
             {% endfor %}
           </div>
@@ -141,8 +156,16 @@
           <div class="grid grid--2 mt-8">
             <div>
               <label class="label">Nature of service</label>
-              <input class="input" name="item_description"
-                     value="{% if period %}{{ period }} {% endif %}{{ 'Security Deposit' if payment.is_deposit else 'Rent' }}{% if unit %} # {{ unit.unit_code }}{% endif %}" />
+              {% set svc = (period ~ ' ' if period else '') ~ ('Security Deposit' if payment.is_deposit else 'Rent') ~ (' # ' ~ unit.unit_code if unit else '') %}
+              <datalist id="siService">
+                <option value="{{ svc }}"></option>
+                {% if unit %}
+                  <option value="{% if period %}{{ period }} {% endif %}Rent # {{ unit.unit_code }}"></option>
+                  <option value="{% if period %}{{ period }} {% endif %}Security Deposit # {{ unit.unit_code }}"></option>
+                  <option value="{% if period %}{{ period }} {% endif %}Association Dues # {{ unit.unit_code }}"></option>
+                {% endif %}
+              </datalist>
+              <input class="input" list="siService" name="item_description" value="{{ svc }}" />
             </div>
             <div>
               <label class="label">Quantity</label>
