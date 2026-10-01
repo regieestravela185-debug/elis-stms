@@ -33,3 +33,24 @@ limiter = Limiter(
 
 login_manager.login_view = "auth.login"
 
+
+
+def paginate(query, **kwargs):
+    """`db.paginate` that also accepts a legacy Query, not only a Select.
+
+    Flask-SQLAlchemy's paginate documents a Select, and every call in this
+    app passed `db.session.query(...)` instead. That worked only because
+    SQLAlchemy quietly coerced the Query on the way in, through
+    `__clause_element__`. A later SQLAlchemy stopped accepting that for an
+    executable statement and raised ObjectNotExecutableError instead, which
+    took out every paginated page in the app at once — the payments list,
+    the deposits list, units, reservations, documents, concerns, all of it.
+    SQLAlchemy was not pinned, so nothing in this repository changed; a
+    rebuild on the host simply resolved a newer version.
+
+    `Query.statement` is the Select the paginator wants, and it carries the
+    joins, ordering and loader options with it, so eager loading still
+    happens in the same query. A Select passed straight in has no
+    `.statement` and goes through untouched.
+    """
+    return db.paginate(getattr(query, "statement", query), **kwargs)

@@ -5,7 +5,7 @@ import json
 import re
 from ...security import hash_password
 
-from ...extensions import db
+from ...extensions import db, paginate
 from ...upload_validation import validate_upload, DOCUMENT_TYPES, IMAGE_TYPES
 from ...models import (
     Announcement, AnnouncementRead, Concern, ConcernFollowUp, ConcernStatus, Document, Feedback, FeedbackStatus,
@@ -398,7 +398,7 @@ def concerns():
 
     query = query.order_by(Concern.created_at.desc())
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    pagination = paginate(query, page=page, per_page=15, error_out=False)
     concerns = pagination.items
 
     # Calculate statistics from ALL concerns (not filtered)
@@ -798,7 +798,7 @@ def payments():
 
     query = query.order_by(Payment.paid_at.desc())
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=20, error_out=False)
+    pagination = paginate(query, page=page, per_page=20, error_out=False)
     payments = pagination.items
 
     # Next payment due (assuming monthly on contract start day)
@@ -1248,7 +1248,7 @@ def announcements():
     latest_announcement = all_matching_announcements[0] if all_matching_announcements else None
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=10, error_out=False)
+    pagination = paginate(query, page=page, per_page=10, error_out=False)
     announcements = pagination.items
 
     # Get available categories
@@ -1348,7 +1348,7 @@ def documents():
     }
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=12, error_out=False)
+    pagination = paginate(query, page=page, per_page=12, error_out=False)
     documents = pagination.items
 
     # Auto-mark documents as viewed — only the ones actually shown on this
@@ -1844,7 +1844,7 @@ def feedback():
     ]
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    pagination = paginate(query, page=page, per_page=15, error_out=False)
     feedbacks = pagination.items
 
     return render_template("tenant/feedback.html", feedbacks=feedbacks, pagination=pagination, feedbacks_json=feedbacks_json, stats=stats, profile=profile)

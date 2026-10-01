@@ -3,6 +3,13 @@ Flask-Login==0.6.3
 Flask-Mail==0.9.1
 Flask-WTF==1.2.1
 Flask-SQLAlchemy==3.1.1
+# Pinned deliberately. It was unpinned, so a rebuild on the host resolved a
+# newer SQLAlchemy that stopped coercing a legacy Query into an executable
+# statement, and every paginated page in the app began returning 500 with
+# nothing in this repository having changed. app/extensions.py:paginate now
+# passes a Select either way; this keeps local and production on one version
+# so the next such change is seen here first.
+SQLAlchemy==2.0.49
 Flask-SocketIO==5.3.6
 Flask-Limiter==3.5.0
 PyMySQL==1.1.1

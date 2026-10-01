@@ -10,7 +10,7 @@ from flask_login import current_user, login_required
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import contains_eager, joinedload
 
-from ...extensions import db
+from ...extensions import db, paginate
 from ...upload_validation import validate_upload, DOCUMENT_TYPES, IMAGE_TYPES
 from ...models import (
     ActivityLog,
@@ -1178,7 +1178,7 @@ def tenant_monitoring():
 
     query = query.order_by(TenantProfile.contract_end.asc())
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=20, error_out=False)
+    pagination = paginate(query, page=page, per_page=20, error_out=False)
     tenants = pagination.items
 
     threshold_warning = today + timedelta(days=30) # 1 month
@@ -1601,7 +1601,7 @@ def units():
     
     query = query.order_by(Unit.building_id.asc(), Unit.unit_number.asc())
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=30, error_out=False)
+    pagination = paginate(query, page=page, per_page=30, error_out=False)
     units = pagination.items
     buildings = db.session.query(Building).order_by(Building.code.asc()).all()
     
@@ -1798,7 +1798,7 @@ def edit_unit(unit_id: int):
     # Exclude archived units
     query = db.session.query(Unit).filter(Unit.is_archived == False).order_by(Unit.building_id.asc(), Unit.unit_number.asc())
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=30, error_out=False)
+    pagination = paginate(query, page=page, per_page=30, error_out=False)
     units = pagination.items
 
     # Statistics (same as units route)
@@ -2248,7 +2248,7 @@ def reservations():
         query = query.order_by(Reservation.created_at.desc())
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=25, error_out=False)
+    pagination = paginate(query, page=page, per_page=25, error_out=False)
     rows = pagination.items
     today = date.today()
 
@@ -2977,7 +2977,7 @@ def payments():
         payments_query = payments_query.order_by(Payment.paid_at.desc())
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(payments_query, page=page, per_page=25, error_out=False)
+    pagination = paginate(payments_query, page=page, per_page=25, error_out=False)
     payments = pagination.items
 
     # Stat cards (Total/This Month/Last Month Revenue, Tenants Paid) reflect
@@ -4020,7 +4020,7 @@ def deposits():
         filtered_query = filtered_query.order_by(Reservation.created_at.desc())
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(filtered_query, page=page, per_page=25, error_out=False)
+    pagination = paginate(filtered_query, page=page, per_page=25, error_out=False)
     reservations = pagination.items
 
     # Stat cards reflect ALL approved reservations' deposits, not just the
@@ -4233,7 +4233,7 @@ def users():
         query = query.order_by(User.last_login_at.desc().nullslast())
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=30, error_out=False)
+    pagination = paginate(query, page=page, per_page=30, error_out=False)
     all_users = pagination.items
 
     # Calculate statistics
@@ -5375,7 +5375,7 @@ def announcements():
         query = query.order_by(Announcement.created_at.desc())
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=20, error_out=False)
+    pagination = paginate(query, page=page, per_page=20, error_out=False)
     announcements = pagination.items
 
     # Stat cards reflect ALL announcements, not just the current page/filter.
@@ -5583,7 +5583,7 @@ def documents():
         query = query.order_by(Document.uploaded_at.desc())
     
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=24, error_out=False)
+    pagination = paginate(query, page=page, per_page=24, error_out=False)
     documents = pagination.items
 
     # Statistics
@@ -5955,7 +5955,7 @@ def renewals():
         query = query.order_by(RenewalRequest.created_at.desc())
     
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    pagination = paginate(query, page=page, per_page=15, error_out=False)
     renewal_requests = pagination.items
 
     # Statistics
@@ -6509,7 +6509,7 @@ def feedbacks():
     flagged_count = sum(1 for f in query.all() if analyze_sentiment(f.comments, f.rating)["flag"])
 
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    pagination = paginate(query, page=page, per_page=15, error_out=False)
     feedbacks = pagination.items
 
     # AI sentiment analysis (rule-based, bilingual) per feedback on this page
@@ -6723,7 +6723,7 @@ def concerns():
     )
     query = query.order_by(priority_order, Concern.created_at.desc())
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=15, error_out=False)
+    pagination = paginate(query, page=page, per_page=15, error_out=False)
     concerns = pagination.items
 
     # Calculate statistics
@@ -6952,7 +6952,7 @@ def inquiries():
     
     query = query.order_by(Inquiry.created_at.desc())
     page = request.args.get('page', 1, type=int)
-    pagination = db.paginate(query, page=page, per_page=25, error_out=False)
+    pagination = paginate(query, page=page, per_page=25, error_out=False)
     inquiries = pagination.items
 
     # Statistics
