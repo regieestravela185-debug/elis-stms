@@ -179,6 +179,80 @@ def _money(c, x, y, value, font="Helvetica", size=9, align="left"):
     return width
 
 
+def _tok_width(c, tok, font, size):
+    """How wide a token draws. A tuple is a peso figure with its brackets."""
+    if isinstance(tok, tuple):
+        pre, value, suf = tok
+        return (c.stringWidth(pre, font, size) + (1.2 if pre else 0)
+                + c.stringWidth("P", font, size) + 1.5
+                + c.stringWidth(f"{float(value):,.2f}", font, size)
+                + c.stringWidth(suf, font, size))
+    return c.stringWidth(tok, font, size)
+
+
+def _draw_tok(c, tok, x, y, font, size):
+    """Draw one token at x and return where the next one starts."""
+    if isinstance(tok, tuple):
+        pre, value, suf = tok
+        c.setFont(font, size)
+        if pre:
+            c.drawString(x, y, pre)
+            # The drawn peso's bars reach left of its stem, so it needs a
+            # hair of clearance or they touch the bracket.
+            x += c.stringWidth(pre, font, size) + 1.2
+        x += _money(c, x, y, value, font, size)
+        if suf:
+            c.setFont(font, size)
+            c.drawString(x, y, suf)
+            x += c.stringWidth(suf, font, size)
+        return x
+    c.setFont(font, size)
+    c.drawString(x, y, tok)
+    return x + c.stringWidth(tok, font, size)
+
+
+def _wrap_tokens(c, tokens, font, size, max_width):
+    """Wrap a token run, returning (tokens, width) per line.
+
+    The amount in figures is a token like any other. It used to be appended
+    after wrapping had already finished, so nothing measured it and a long
+    name or a large figure ran straight off the right edge of the form.
+    """
+    space = c.stringWidth(" ", font, size)
+    lines, line, w = [], [], 0.0
+    for tok in tokens:
+        tw = _tok_width(c, tok, font, size)
+        add = tw if not line else space + tw
+        if line and w + add > max_width:
+            lines.append((line, w))
+            line, w = [tok], tw
+        else:
+            line.append(tok)
+            w += add
+    if line:
+        lines.append((line, w))
+    return lines or [([], 0.0)]
+
+
+def _fit_size(c, text, font, max_width, size, min_size=6.0):
+    """Shrink a font until the text fits, down to a floor."""
+    while size > min_size and c.stringWidth(text or "", font, size) > max_width:
+        size -= 0.25
+    return size
+
+
+def _ellipsize(c, text, font, size, max_width):
+    """Last resort once shrinking has bottomed out — visibly cut, never
+    silently. A description that simply disappeared left the form claiming
+    the money was for something shorter than it was."""
+    text = text or ""
+    if c.stringWidth(text, font, size) <= max_width:
+        return text
+    while text and c.stringWidth(text + "\u2026", font, size) > max_width:
+        text = text[:-1]
+    return text + "\u2026"
+
+
 def _wrap(c, text, font, size, max_width):
     """Greedy wrap, because these are fixed-width ruled boxes."""
     words, lines, line = (text or "").split(), [], ""
@@ -299,29 +373,28 @@ def generate_acknowledgment_receipt_pdf(data: dict) -> BytesIO:
         date_text=data.get("date_text") or "",
     )
 
-    # The sentence, wrapped inside the ruled area.
-    body = (f"Received from Unit # {data.get('unit_label','')} "
-            f"({data.get('payer_name','')}), the amount of "
-            f"{data.get('amount_words','')} ")
-    tail = f"only, in payment for the following:"
-    avail = W - 2 * m
+    # The sentence, centred in the ruled area as the form sets it. The
+    # amount in figures is one of the tokens rather than something appended
+    # once wrapping is over, so it is measured like every other word and a
+    # long company name can no longer push it off the right edge.
+    tokens = (f"Received from Unit # {data.get('unit_label','')} "
+              f"({data.get('payer_name','')}), the amount of "
+              f"{data.get('amount_words','')}").split()
+    tokens.append(("(", float(data.get("amount") or 0), ")"))
+    tokens += "only, in payment for the following:".split()
 
-    c.setFont("Helvetica", 9.3)
-    lines = _wrap(c, body, "Helvetica", 9.3, avail - 1.2 * inch)
-    for i, line in enumerate(lines[:-1]):
-        c.drawString(m, y, line)
+    size = 9.3
+    avail = W - 2 * m - 0.30 * inch
+    c.setFont("Helvetica", size)
+    space = c.stringWidth(" ", "Helvetica", size)
+    for toks, lw in _wrap_tokens(c, tokens, "Helvetica", size, avail):
+        x = (W - lw) / 2
+        for i, tok in enumerate(toks):
+            if i:
+                x += space
+            x = _draw_tok(c, tok, x, y, "Helvetica", size)
         y -= 0.165 * inch
-    # The amount in figures sits inline after the words, with the peso drawn.
-    last = lines[-1]
-    c.drawString(m, y, last)
-    x = m + c.stringWidth(last + " ", "Helvetica", 9.3)
-    c.drawString(x, y, "(")
-    # The drawn peso's bars reach slightly left of its stem, so it needs a
-    # hair of clearance or they touch the bracket.
-    x += c.stringWidth("(", "Helvetica", 9.3) + 1.2
-    x += _money(c, x, y, data.get("amount"), "Helvetica", 9.3)
-    c.drawString(x, y, ") " + tail)
-    y -= 0.28 * inch
+    y -= 0.12 * inch
 
     # The three-column grid.
     n = max(1, len(cols))
@@ -434,15 +507,27 @@ def generate_service_invoice_pdf(data: dict) -> BytesIO:
         ("Registered Name:", data.get("sold_to_name", ""), 4.4),
         ("Business Address:", data.get("sold_to_address", ""), 4.4),
     ):
+        c.setFont("Helvetica", 8)
         c.drawString(m, y, label)
         vx = m + c.stringWidth(label + " ", "Helvetica", 8)
-        c.drawString(vx, y, value or "")
+        # Kept inside its own rule — a long registered name used to run on
+        # over the TIN beside it.
+        box = m + width * inch - vx - 0.04 * inch
+        vs = _fit_size(c, value, "Helvetica", box, 8.0)
+        c.setFont("Helvetica", vs)
+        c.drawString(vx, y, _ellipsize(c, value or "", "Helvetica", vs, box))
+        c.setFont("Helvetica", 8)
         c.setLineWidth(0.5)
         c.line(vx, y - 0.035 * inch, m + width * inch, y - 0.035 * inch)
         if label.startswith("Registered"):
             c.drawString(m + 4.7 * inch, y, "TIN:")
             tx = m + 4.7 * inch + c.stringWidth("TIN: ", "Helvetica", 8)
-            c.drawString(tx, y, data.get("sold_to_tin", "") or "")
+            tin_box = W - m - tx - 0.04 * inch
+            ts = _fit_size(c, data.get("sold_to_tin", ""), "Helvetica", tin_box, 8.0)
+            c.setFont("Helvetica", ts)
+            c.drawString(tx, y, _ellipsize(c, data.get("sold_to_tin", "") or "",
+                                           "Helvetica", ts, tin_box))
+            c.setFont("Helvetica", 8)
             c.line(tx, y - 0.035 * inch, W - m, y - 0.035 * inch)
         y -= 0.20 * inch
 
@@ -479,10 +564,16 @@ def generate_service_invoice_pdf(data: dict) -> BytesIO:
 
     for i, item in enumerate(items[:body_rows]):
         ry = top - head_h - (i + 1) * row_h + 0.065 * inch
-        c.setFont("Helvetica", 8)
-        for part in _wrap(c, item.get("description", ""), "Helvetica", 8,
-                          widths[0] - 0.12 * inch)[:1]:
-            c.drawString(m + 0.06 * inch, ry, part)
+        # The description used to be wrapped and then cut to its first line,
+        # so anything longer than the column simply vanished and the form
+        # claimed the money was for something shorter than it was. It is
+        # shrunk to fit instead, and only visibly cut if even that is not
+        # enough.
+        desc = item.get("description", "")
+        box = widths[0] - 0.12 * inch
+        size = _fit_size(c, desc, "Helvetica", box, 8.0)
+        c.setFont("Helvetica", size)
+        c.drawString(m + 0.06 * inch, ry, _ellipsize(c, desc, "Helvetica", size, box))
         if item.get("qty"):
             c.drawCentredString(m + widths[0] + widths[1] / 2, ry, str(item["qty"]))
         if item.get("unit_price") is not None:
