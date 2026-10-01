@@ -858,6 +858,17 @@
                       <a href="{{ url_for('admin.view_ledger', payment_id=payment.id) }}" class="btn btn--sm btn--ghost" style="font-size: 12px;" title="View Blockchain Ledger">
                         Ledger
 </a>
+                      {# Fills in the office's own Acknowledgment Receipt or
+                         Service Invoice from this payment. Not offered on a
+                         voided one: that payment did not happen, and a receipt
+                         saying it did is the last thing anybody should print. #}
+                      {% if payment.payment_status != 'voided' %}
+                        <a href="{{ url_for('admin.payment_receipt_form', payment_id=payment.id) }}"
+                           class="btn btn--sm btn--ghost" style="font-size: 12px;"
+                           title="Issue an Acknowledgment Receipt or Service Invoice">
+                          Receipt
+</a>
+                      {% endif %}
                       {% if payment.payment_status == 'voided' %}
                         <form method="post" action="{{ url_for('admin.restore_payment', payment_id=payment.id) }}"
                               onsubmit="return confirm('Restore this payment? It will count again toward revenue and this tenant\'s paid months.');">

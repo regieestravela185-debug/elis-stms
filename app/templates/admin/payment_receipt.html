@@ -1,0 +1,190 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Issue Receipt | STMS Admin{% endblock %}
+
+{% block sidebar %}
+  {% include "components/_sidebar_admin.html" %}
+{% endblock %}
+
+{% block topbar_left %}
+  <div class="topbar__title">Issue Receipt</div>
+{% endblock %}
+
+{% block content %}
+  <section class="dash-panel">
+    <div style="margin-bottom: 16px;">
+      <a href="{{ url_for('admin.payments') }}" class="btn btn--ghost btn--sm">Back to Payments</a>
+    </div>
+
+    <div class="card">
+      <div class="section__header">
+        <h3>
+          {{ profile.user.full_name if profile and profile.user else 'Tenant' }}
+          {% if unit %}&mdash; Unit {{ unit.unit_code }}{% endif %}
+        </h3>
+        <p class="muted">
+          Payment #{{ payment.id }} &middot; &#8369;{{ '{:,.2f}'.format(payment.amount|float) }}
+          &middot; {{ ph(payment.paid_at).strftime('%B %d, %Y') }}
+          {% if payment.payment_status == 'voided' %}
+            &middot; <strong style="color:#ef4444;">This payment is voided</strong>
+          {% endif %}
+        </p>
+      </div>
+
+      {# The red number on each form belongs to a BIR-accredited booklet. A
+         system that invented one would be putting a number on a document
+         claiming to be that booklet's copy, so it is typed in instead. #}
+      <div style="background:#fdf6e3; border:1px solid #efe6cd; border-radius:8px;
+                  padding:12px 14px; margin-bottom:18px; font-size:13px; line-height:1.6;">
+        <strong>Copy the serial number off the form you are issuing.</strong>
+        It belongs to the printed BIR booklet, so the system does not make one up &mdash;
+        this prints the same number onto a filled-in copy you can keep or send.
+      </div>
+
+      <form method="post" action="{{ url_for('admin.payment_receipt_pdf', payment_id=payment.id) }}"
+            class="form" target="_blank">
+
+        <div class="grid grid--2">
+          <div>
+            <label class="label">Document *</label>
+            <select class="input" name="doc_type" id="docType">
+              <option value="acknowledgment">Acknowledgment Receipt</option>
+              <option value="invoice">Service Invoice</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Serial number on the form *</label>
+            <input class="input" name="serial_no" placeholder="e.g. 13276" required
+                   autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="grid grid--2 mt-8">
+          <div>
+            <label class="label">Date *</label>
+            <input class="input" name="date_text" required
+                   value="{{ ph(payment.paid_at).strftime('%B %d, %Y') }}" />
+          </div>
+          <div>
+            <label class="label">Amount (&#8369;) *</label>
+            <input class="input" type="number" step="0.01" name="amount" required
+                   value="{{ '%.2f'|format(payment.amount|float) }}" />
+            <small class="muted">In words: {{ amount_words }}</small>
+          </div>
+        </div>
+
+        <!-- Acknowledgment Receipt -->
+        <div id="arFields">
+          <h4 class="mt-16">Acknowledgment Receipt</h4>
+          <div class="grid grid--2 mt-8">
+            <div>
+              <label class="label">Unit as written on the form</label>
+              <input class="input" name="unit_label" value="{{ unit.unit_code if unit else '' }}" />
+            </div>
+            <div>
+              <label class="label">Received from</label>
+              <input class="input" name="payer_name"
+                     value="{{ profile.user.full_name if profile and profile.user else '' }}" />
+              <small class="muted">A company name goes here if the lease is in one.</small>
+            </div>
+          </div>
+
+          <p class="muted mt-16" style="font-size:12px;">
+            The three columns are what the money was for. Leave a heading blank to
+            drop that column.
+          </p>
+          <div class="grid grid--3 mt-8">
+            {% for n, heading, l1, l2 in [
+                 (1, first_heading, first_line, nothing_follows),
+                 (2, 'Power',
+                     ('Full, ' ~ period) if (bill and bill.electric_amount and bill.electric_amount|float > 0) else nothing_follows,
+                     nothing_follows),
+                 (3, 'Water',
+                     ('Full, ' ~ period) if (bill and bill.water_amount and bill.water_amount|float > 0) else nothing_follows,
+                     nothing_follows)] %}
+              <div>
+                <label class="label">Column {{ n }}</label>
+                <input class="input" name="col{{ n }}_heading" value="{{ heading }}" />
+                <input class="input mt-8" name="col{{ n }}_line1" value="{{ l1 }}" />
+                <input class="input mt-8" name="col{{ n }}_line2" value="{{ l2 }}" />
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Service Invoice -->
+        <div id="siFields" hidden>
+          <h4 class="mt-16">Service Invoice</h4>
+          <div class="grid grid--2 mt-8">
+            <div>
+              <label class="label">Sale type</label>
+              <select class="input" name="sale_type">
+                <option value="cash">Cash sales</option>
+                <option value="charge">Charge sales</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Registered name (Sold to)</label>
+              <input class="input" name="sold_to_name"
+                     value="{{ profile.user.full_name if profile and profile.user else '' }}" />
+            </div>
+          </div>
+          <div class="grid grid--2 mt-8">
+            <div>
+              <label class="label">Business address</label>
+              <input class="input" name="sold_to_address" />
+            </div>
+            <div>
+              <label class="label">TIN</label>
+              <input class="input" name="sold_to_tin" />
+            </div>
+          </div>
+          <div class="grid grid--2 mt-8">
+            <div>
+              <label class="label">Nature of service</label>
+              <input class="input" name="item_description"
+                     value="{% if period %}{{ period }} {% endif %}{{ 'Security Deposit' if payment.is_deposit else 'Rent' }}{% if unit %} # {{ unit.unit_code }}{% endif %}" />
+            </div>
+            <div>
+              <label class="label">Quantity</label>
+              <input class="input" name="item_qty" placeholder="leave blank if not counted" />
+            </div>
+          </div>
+
+          {# VAT is worked out from the amount above when the PDF is made; this
+             is here so the figures can be checked before printing. #}
+          <div class="mt-16" style="background:#faf8f2; border:1px solid #efe6cd;
+                                    border-radius:8px; padding:12px 14px; font-size:13px;">
+            <strong>VAT at 12%, from the amount above</strong>
+            <div class="mt-8" style="display:flex; gap:28px; flex-wrap:wrap;">
+              <span>Total (VAT inclusive) <strong>&#8369;{{ '{:,.2f}'.format(vat.total) }}</strong></span>
+              <span>Net of VAT <strong>&#8369;{{ '{:,.2f}'.format(vat.net) }}</strong></span>
+              <span>VAT <strong>&#8369;{{ '{:,.2f}'.format(vat.vat) }}</strong></span>
+            </div>
+            <small class="muted">Change the amount and these follow on the printed copy.</small>
+          </div>
+        </div>
+
+        <div class="mt-16" style="display:flex; gap:10px; align-items:center;">
+          <button class="btn btn--primary" type="submit">Generate PDF</button>
+          <span class="muted" style="font-size:12px;">Opens in a new tab, ready to print.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    // One form, two documents — show only the fields the chosen one uses.
+    (function () {
+      var sel = document.getElementById('docType');
+      var ar = document.getElementById('arFields');
+      var si = document.getElementById('siFields');
+      function sync() {
+        var invoice = sel.value === 'invoice';
+        ar.hidden = invoice;
+        si.hidden = !invoice;
+      }
+      sel.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
+{% endblock %}

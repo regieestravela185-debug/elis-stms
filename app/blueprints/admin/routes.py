@@ -5221,6 +5221,130 @@ def restore_payment(payment_id: int):
     return redirect(request.referrer or url_for("admin.payments"))
 
 
+@bp.get("/payments/<int:payment_id>/receipt")
+@login_required
+def payment_receipt_form(payment_id: int):
+    """Fill in and print one of the office's two BIR-registered receipts.
+
+    Everything the system already knows is pre-filled — who paid, for which
+    unit, how much, when, and what it was for. What it cannot know is the
+    serial number, which belongs to the physical booklet the copy is torn
+    from, so that is typed in and the printed copy carries the same one.
+    """
+    _ensure_admin()
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        abort(404)
+    profile = payment.tenant_profile
+    unit = profile.unit if profile else None
+
+    # What the money was for decides the first column's heading: a deposit
+    # receipt and a rent receipt are the same form with a different word.
+    if payment.deposit_transaction_type == "deposit_returned":
+        first_heading, first_line = "Security Deposit", "Returned"
+    elif payment.is_deposit:
+        first_heading, first_line = "Security Deposit", "Full Payment"
+    else:
+        first_heading, first_line = "Rent", "Full Payment"
+
+    period = ""
+    if payment.payment_month:
+        try:
+            year, month = (int(x) for x in payment.payment_month.split("-"))
+            period = date(year, month, 1).strftime("%B %Y")
+        except (ValueError, TypeError):
+            period = payment.payment_month
+
+    # The month's utility bill, if one was raised — the receipt's other two
+    # columns are power and water, and retyping them off another screen is
+    # exactly the copying this is meant to save.
+    bill = None
+    if profile and payment.payment_month:
+        bill = (db.session.query(UtilityBill)
+                .filter(UtilityBill.tenant_profile_id == profile.id,
+                        UtilityBill.billing_month == payment.payment_month)
+                .first())
+
+    from ...receipts import amount_to_receipt_words, vat_breakdown
+    return render_template(
+        "admin/payment_receipt.html",
+        payment=payment, profile=profile, unit=unit,
+        first_heading=first_heading, first_line=first_line,
+        period=period, bill=bill,
+        amount_words=amount_to_receipt_words(payment.amount),
+        vat=vat_breakdown(payment.amount),
+        nothing_follows="- nothing follows -",
+    )
+
+
+@bp.post("/payments/<int:payment_id>/receipt")
+@login_required
+def payment_receipt_pdf(payment_id: int):
+    _ensure_admin()
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        abort(404)
+    from flask import make_response
+    from ...receipts import (amount_to_receipt_words, vat_breakdown,
+                             generate_acknowledgment_receipt_pdf,
+                             generate_service_invoice_pdf)
+
+    form = request.form
+    serial = (form.get("serial_no") or "").strip()
+    if not serial:
+        flash("Enter the serial number printed on the receipt you are issuing. "
+              "It belongs to the booklet, so the system cannot supply it.",
+              "warning")
+        return redirect(url_for("admin.payment_receipt_form", payment_id=payment_id))
+
+    try:
+        amount = float(form.get("amount") or payment.amount or 0)
+    except ValueError:
+        amount = float(payment.amount or 0)
+
+    kind = (form.get("doc_type") or "acknowledgment").strip()
+    date_text = (form.get("date_text") or "").strip()
+
+    if kind == "invoice":
+        total = amount
+        pdf = generate_service_invoice_pdf({
+            "serial_no": serial, "date_text": date_text,
+            "sale_type": (form.get("sale_type") or "cash").strip(),
+            "sold_to_name": (form.get("sold_to_name") or "").strip(),
+            "sold_to_address": (form.get("sold_to_address") or "").strip(),
+            "sold_to_tin": (form.get("sold_to_tin") or "").strip(),
+            "items": [{
+                "description": (form.get("item_description") or "").strip(),
+                "qty": (form.get("item_qty") or "").strip(),
+                "unit_price": total, "amount": total,
+            }],
+            "total": total, "vat": vat_breakdown(total),
+        })
+        name = f"Service_Invoice_{serial}"
+    else:
+        columns = []
+        for n in (1, 2, 3):
+            heading = (form.get(f"col{n}_heading") or "").strip()
+            if not heading:
+                continue
+            lines = [(form.get(f"col{n}_line{i}") or "").strip() for i in (1, 2)]
+            columns.append({"heading": heading, "lines": [l for l in lines if l]})
+        pdf = generate_acknowledgment_receipt_pdf({
+            "serial_no": serial, "date_text": date_text,
+            "unit_label": (form.get("unit_label") or "").strip(),
+            "payer_name": (form.get("payer_name") or "").strip(),
+            "amount": amount,
+            "amount_words": amount_to_receipt_words(amount),
+            "columns": columns,
+        })
+        name = f"Acknowledgment_Receipt_{serial}"
+
+    response = make_response(pdf.getvalue())
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f"inline; filename={name}.pdf"
+    return response
+
+
 @bp.get("/payments/export")
 @login_required
 def export_payments():
