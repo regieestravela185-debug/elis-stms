@@ -1,0 +1,677 @@
+{
+ "saved": "2026-10-21T18:51:48.647841",
+ "units": [
+  {
+   "id": 1,
+   "unit_code": "B1-001",
+   "unit_number": "001",
+   "building_id": 1,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 2,
+   "unit_code": "B1-002",
+   "unit_number": "002",
+   "building_id": 1,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 6,
+   "unit_code": "B1-003",
+   "unit_number": "003",
+   "building_id": 1,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 7,
+   "unit_code": "B1-004",
+   "unit_number": "004",
+   "building_id": 1,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 8,
+   "unit_code": "B1-005",
+   "unit_number": "005",
+   "building_id": 1,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 317,
+   "unit_code": "B2-A1",
+   "unit_number": "A1",
+   "building_id": 2,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 318,
+   "unit_code": "B2-A2",
+   "unit_number": "A2",
+   "building_id": 2,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 319,
+   "unit_code": "B2-A3",
+   "unit_number": "A3",
+   "building_id": 2,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 320,
+   "unit_code": "B3-B1",
+   "unit_number": "B1",
+   "building_id": 3,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 321,
+   "unit_code": "B3-B2",
+   "unit_number": "B2",
+   "building_id": 3,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 322,
+   "unit_code": "B4-C1",
+   "unit_number": "C1",
+   "building_id": 4,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 323,
+   "unit_code": "B4-C2",
+   "unit_number": "C2",
+   "building_id": 4,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 404,
+   "unit_code": "B1-006",
+   "unit_number": "006",
+   "building_id": 1,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 405,
+   "unit_code": "B1-007",
+   "unit_number": "007",
+   "building_id": 1,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 406,
+   "unit_code": "B1-008",
+   "unit_number": "008",
+   "building_id": 1,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 407,
+   "unit_code": "B1-009",
+   "unit_number": "009",
+   "building_id": 1,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 408,
+   "unit_code": "B1-010",
+   "unit_number": "010",
+   "building_id": 1,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 409,
+   "unit_code": "B1-011",
+   "unit_number": "011",
+   "building_id": 1,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 410,
+   "unit_code": "B1-012",
+   "unit_number": "012",
+   "building_id": 1,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 411,
+   "unit_code": "B1-013",
+   "unit_number": "013",
+   "building_id": 1,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 412,
+   "unit_code": "B1-014",
+   "unit_number": "014",
+   "building_id": 1,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 413,
+   "unit_code": "B1-015",
+   "unit_number": "015",
+   "building_id": 1,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 414,
+   "unit_code": "B1-016",
+   "unit_number": "016",
+   "building_id": 1,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 415,
+   "unit_code": "B1-017",
+   "unit_number": "017",
+   "building_id": 1,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 416,
+   "unit_code": "B1-018",
+   "unit_number": "018",
+   "building_id": 1,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 417,
+   "unit_code": "B1-019",
+   "unit_number": "019",
+   "building_id": 1,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 418,
+   "unit_code": "B1-020",
+   "unit_number": "020",
+   "building_id": 1,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 419,
+   "unit_code": "B1-021",
+   "unit_number": "021",
+   "building_id": 1,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 420,
+   "unit_code": "B1-022",
+   "unit_number": "022",
+   "building_id": 1,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 421,
+   "unit_code": "B2-A4",
+   "unit_number": "A4",
+   "building_id": 2,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 422,
+   "unit_code": "B2-A5",
+   "unit_number": "A5",
+   "building_id": 2,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 423,
+   "unit_code": "B2-A6",
+   "unit_number": "A6",
+   "building_id": 2,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 424,
+   "unit_code": "B2-A7",
+   "unit_number": "A7",
+   "building_id": 2,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 425,
+   "unit_code": "B2-A8",
+   "unit_number": "A8",
+   "building_id": 2,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 426,
+   "unit_code": "B2-A9",
+   "unit_number": "A9",
+   "building_id": 2,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 427,
+   "unit_code": "B2-A10",
+   "unit_number": "A10",
+   "building_id": 2,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 428,
+   "unit_code": "B2-A11",
+   "unit_number": "A11",
+   "building_id": 2,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 429,
+   "unit_code": "B2-A12",
+   "unit_number": "A12",
+   "building_id": 2,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 430,
+   "unit_code": "B2-A13",
+   "unit_number": "A13",
+   "building_id": 2,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 431,
+   "unit_code": "B2-A14",
+   "unit_number": "A14",
+   "building_id": 2,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 432,
+   "unit_code": "B2-A15",
+   "unit_number": "A15",
+   "building_id": 2,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 433,
+   "unit_code": "B2-A16",
+   "unit_number": "A16",
+   "building_id": 2,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 434,
+   "unit_code": "B2-A17",
+   "unit_number": "A17",
+   "building_id": 2,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 435,
+   "unit_code": "B2-A18",
+   "unit_number": "A18",
+   "building_id": 2,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 436,
+   "unit_code": "B2-A19",
+   "unit_number": "A19",
+   "building_id": 2,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 437,
+   "unit_code": "B2-A20",
+   "unit_number": "A20",
+   "building_id": 2,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 438,
+   "unit_code": "B2-A21",
+   "unit_number": "A21",
+   "building_id": 2,
+   "floor": 4,
+   "type": "residential"
+  },
+  {
+   "id": 440,
+   "unit_code": "B3-B3",
+   "unit_number": "B3",
+   "building_id": 3,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 441,
+   "unit_code": "B3-B4",
+   "unit_number": "B4",
+   "building_id": 3,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 442,
+   "unit_code": "B3-B5",
+   "unit_number": "B5",
+   "building_id": 3,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 443,
+   "unit_code": "B3-B6",
+   "unit_number": "B6",
+   "building_id": 3,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 444,
+   "unit_code": "B3-B7",
+   "unit_number": "B7",
+   "building_id": 3,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 445,
+   "unit_code": "B3-B8",
+   "unit_number": "B8",
+   "building_id": 3,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 446,
+   "unit_code": "B3-B9",
+   "unit_number": "B9",
+   "building_id": 3,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 447,
+   "unit_code": "B3-B10",
+   "unit_number": "B10",
+   "building_id": 3,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 448,
+   "unit_code": "B3-B11",
+   "unit_number": "B11",
+   "building_id": 3,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 449,
+   "unit_code": "B3-B12",
+   "unit_number": "B12",
+   "building_id": 3,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 450,
+   "unit_code": "B3-B13",
+   "unit_number": "B13",
+   "building_id": 3,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 451,
+   "unit_code": "B3-B14",
+   "unit_number": "B14",
+   "building_id": 3,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 452,
+   "unit_code": "B3-B15",
+   "unit_number": "B15",
+   "building_id": 3,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 453,
+   "unit_code": "B3-B16",
+   "unit_number": "B16",
+   "building_id": 3,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 454,
+   "unit_code": "B3-B17",
+   "unit_number": "B17",
+   "building_id": 3,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 455,
+   "unit_code": "B3-B18",
+   "unit_number": "B18",
+   "building_id": 3,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 456,
+   "unit_code": "B4-C3",
+   "unit_number": "C3",
+   "building_id": 4,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 457,
+   "unit_code": "B4-C4",
+   "unit_number": "C4",
+   "building_id": 4,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 458,
+   "unit_code": "B4-C5",
+   "unit_number": "C5",
+   "building_id": 4,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 459,
+   "unit_code": "B4-C6",
+   "unit_number": "C6",
+   "building_id": 4,
+   "floor": 1,
+   "type": "residential"
+  },
+  {
+   "id": 460,
+   "unit_code": "B4-C7",
+   "unit_number": "C7",
+   "building_id": 4,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 461,
+   "unit_code": "B4-C8",
+   "unit_number": "C8",
+   "building_id": 4,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 462,
+   "unit_code": "B4-C9",
+   "unit_number": "C9",
+   "building_id": 4,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 463,
+   "unit_code": "B4-C10",
+   "unit_number": "C10",
+   "building_id": 4,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 464,
+   "unit_code": "B4-C11",
+   "unit_number": "C11",
+   "building_id": 4,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 465,
+   "unit_code": "B4-C12",
+   "unit_number": "C12",
+   "building_id": 4,
+   "floor": 2,
+   "type": "residential"
+  },
+  {
+   "id": 466,
+   "unit_code": "B4-C13",
+   "unit_number": "C13",
+   "building_id": 4,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 467,
+   "unit_code": "B4-C14",
+   "unit_number": "C14",
+   "building_id": 4,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 468,
+   "unit_code": "B4-C15",
+   "unit_number": "C15",
+   "building_id": 4,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 469,
+   "unit_code": "B4-C16",
+   "unit_number": "C16",
+   "building_id": 4,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 470,
+   "unit_code": "B4-C17",
+   "unit_number": "C17",
+   "building_id": 4,
+   "floor": 3,
+   "type": "residential"
+  },
+  {
+   "id": 471,
+   "unit_code": "B5-D1",
+   "unit_number": "D1",
+   "building_id": 5,
+   "floor": 1,
+   "type": "commercial"
+  },
+  {
+   "id": 472,
+   "unit_code": "B5-D2",
+   "unit_number": "D2",
+   "building_id": 5,
+   "floor": 1,
+   "type": "commercial"
+  },
+  {
+   "id": 473,
+   "unit_code": "B5-D3",
+   "unit_number": "D3",
+   "building_id": 5,
+   "floor": 2,
+   "type": "commercial"
+  },
+  {
+   "id": 474,
+   "unit_code": "B5-D4",
+   "unit_number": "D4",
+   "building_id": 5,
+   "floor": 2,
+   "type": "commercial"
+  },
+  {
+   "id": 475,
+   "unit_code": "B5-D5",
+   "unit_number": "D5",
+   "building_id": 5,
+   "floor": 3,
+   "type": "commercial"
+  },
+  {
+   "id": 476,
+   "unit_code": "B5-D6",
+   "unit_number": "D6",
+   "building_id": 5,
+   "floor": 3,
+   "type": "commercial"
+  }
+ ]
+}
